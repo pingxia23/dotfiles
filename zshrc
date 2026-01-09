@@ -58,6 +58,16 @@ if command -v pyenv >/dev/null 2>&1; then
   eval "$(pyenv init -)"
 fi
 
+# nvm (if available)
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# Cargo/Rust (if available)
+[ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
+
+# uv (Python package manager) - adds ~/.local/bin to PATH
+export PATH="$HOME/.local/bin:$PATH"
+
 # Custom functions
 git_is_ancestor() {
   if [ $# -ne 2 ]; then
