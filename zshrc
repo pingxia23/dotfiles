@@ -67,25 +67,3 @@ export NVM_DIR="$HOME/.nvm"
 
 # uv (Python package manager) - adds ~/.local/bin to PATH
 export PATH="$HOME/.local/bin:$PATH"
-
-# Custom functions
-git_is_ancestor() {
-  if [ $# -ne 2 ]; then
-    echo "Usage: git_is_ancestor <commit-A> <commit-B>"
-    return 2
-  fi
-  if git merge-base --is-ancestor "$1" "$2"; then
-    echo "$1 is an ancestor of $2"
-    return 0
-  else
-    echo "$1 is not an ancestor of $2"
-    return 1
-  fi
-}
-
-rapid_my_td() {
-  rapid td list -o ping.xia@datadoghq.com
-}
-
-# Load secrets from workspace secrets system (if available)
-[ -f ~/.secrets ] && source ~/.secrets
