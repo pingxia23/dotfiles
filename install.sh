@@ -301,6 +301,42 @@ setup_dd_source() {
   echo "dd-source local configurations installed"
 }
 
+# Setup Python virtual environment for domains/assistant
+setup_dd_source_venv() {
+  DD_SOURCE_DIR="$HOME/dd/dd-source"
+  ASSISTANT_DIR="$DD_SOURCE_DIR/domains/assistant"
+
+  # Check if domains/assistant exists
+  if [ ! -d "$ASSISTANT_DIR" ]; then
+    echo "domains/assistant not found, skipping venv setup..."
+    return 0
+  fi
+
+  # Check if uv is installed
+  if ! command_exists uv; then
+    echo "uv not installed, skipping venv setup..."
+    return 0
+  fi
+
+  # Check if .venv already exists
+  if [ -d "$ASSISTANT_DIR/.venv" ]; then
+    echo "domains/assistant/.venv already exists, skipping..."
+    return 0
+  fi
+
+  echo "Setting up Python virtual environment for domains/assistant..."
+  echo "This may take a few minutes (runs bzl query + installs dependencies)..."
+
+  # Run make setup in domains/assistant
+  (cd "$ASSISTANT_DIR" && make setup)
+
+  if [ $? -eq 0 ]; then
+    echo "domains/assistant venv setup complete"
+  else
+    echo "Warning: venv setup failed. You can run 'make setup' manually in domains/assistant"
+  fi
+}
+
 # Setup Git configuration
 setup_gitconfig() {
   DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -428,6 +464,9 @@ setup_gitconfig
 
 # Setup dd-source local configurations
 setup_dd_source
+
+# Setup Python venv for domains/assistant
+setup_dd_source_venv
 
 # Add source line to .zshrc if it doesn't already exist (idempotent)
 DOTFILES_SOURCE_LINE="source \$HOME/dotfiles/zshrc"
