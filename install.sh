@@ -187,6 +187,79 @@ install_cargo() {
   fi
 }
 
+# Setup Vim configuration
+setup_vim() {
+  DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+  echo "Setting up Vim configuration..."
+
+  # Symlink vimrc (skip if already symlinked to our file)
+  if [ -L "$HOME/.vimrc" ]; then
+    CURRENT_LINK=$(readlink "$HOME/.vimrc")
+    if [ "$CURRENT_LINK" = "$DOTFILES_DIR/vimrc" ]; then
+      echo "~/.vimrc already symlinked to dotfiles"
+    else
+      echo "~/.vimrc is a symlink to something else: $CURRENT_LINK"
+      echo "Backing up and replacing..."
+      mv "$HOME/.vimrc" "$HOME/.vimrc.backup"
+      ln -s "$DOTFILES_DIR/vimrc" "$HOME/.vimrc"
+    fi
+  elif [ -f "$HOME/.vimrc" ]; then
+    echo "Backing up existing ~/.vimrc to ~/.vimrc.backup"
+    mv "$HOME/.vimrc" "$HOME/.vimrc.backup"
+    ln -s "$DOTFILES_DIR/vimrc" "$HOME/.vimrc"
+  else
+    ln -s "$DOTFILES_DIR/vimrc" "$HOME/.vimrc"
+  fi
+  echo "~/.vimrc symlinked to dotfiles/vimrc"
+
+  # Create vim undo directory
+  mkdir -p "$HOME/.vim/undodir"
+  echo "Created ~/.vim/undodir for persistent undo"
+
+  # Install vim-plug if not already installed
+  if [ ! -f "$HOME/.vim/autoload/plug.vim" ]; then
+    echo "Installing vim-plug..."
+    curl -fLo "$HOME/.vim/autoload/plug.vim" --create-dirs \
+      https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+    echo "vim-plug installed"
+  else
+    echo "vim-plug is already installed"
+  fi
+
+  # Install vim plugins headlessly
+  echo "Installing vim plugins (this may take a moment)..."
+  vim +PlugInstall +qall 2>/dev/null
+  echo "Vim plugins installed"
+}
+
+# Setup Git configuration
+setup_gitconfig() {
+  DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+  echo "Setting up Git configuration..."
+
+  # Symlink gitconfig (skip if already symlinked to our file)
+  if [ -L "$HOME/.gitconfig" ]; then
+    CURRENT_LINK=$(readlink "$HOME/.gitconfig")
+    if [ "$CURRENT_LINK" = "$DOTFILES_DIR/gitconfig" ]; then
+      echo "~/.gitconfig already symlinked to dotfiles"
+    else
+      echo "~/.gitconfig is a symlink to something else: $CURRENT_LINK"
+      echo "Backing up and replacing..."
+      mv "$HOME/.gitconfig" "$HOME/.gitconfig.backup"
+      ln -s "$DOTFILES_DIR/gitconfig" "$HOME/.gitconfig"
+    fi
+  elif [ -f "$HOME/.gitconfig" ]; then
+    echo "Backing up existing ~/.gitconfig to ~/.gitconfig.backup"
+    mv "$HOME/.gitconfig" "$HOME/.gitconfig.backup"
+    ln -s "$DOTFILES_DIR/gitconfig" "$HOME/.gitconfig"
+  else
+    ln -s "$DOTFILES_DIR/gitconfig" "$HOME/.gitconfig"
+  fi
+  echo "~/.gitconfig symlinked to dotfiles/gitconfig"
+}
+
 # Install GitHub CLI if not already installed
 install_gh() {
   if ! command_exists gh; then
@@ -275,6 +348,12 @@ install_cargo
 
 # Install GitHub CLI
 install_gh
+
+# Setup Vim configuration
+setup_vim
+
+# Setup Git configuration
+setup_gitconfig
 
 # Add source line to .zshrc if it doesn't already exist (idempotent)
 DOTFILES_SOURCE_LINE="source \$HOME/dotfiles/zshrc"
