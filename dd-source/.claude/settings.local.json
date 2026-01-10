@@ -1,0 +1,21 @@
+{
+  "includeCoAuthoredBy": false,
+  "permissions": {
+    "allow": [
+      "Bash",
+      "WebFetch",
+      "WebSearch",
+      "Read",
+      "Edit",
+      "MultiEdit",
+      "Write"
+    ],
+    "deny": [],
+    "ask": [],
+    "defaultMode": "bypassPermissions"
+  },
+  "disabledMcpjsonServers": [
+    "github"
+  ],
+  "outputStyle": "Explanatory"
+}

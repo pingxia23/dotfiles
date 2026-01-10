@@ -1,0 +1,13 @@
+# direnv conf for #rapid users
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# To use these aliases in your own .envrc, include the following in your local
+# .envrc file:
+#
+#   source_up .envrc-rapid
+#   # ... rest of your .envrc file ...
+#
+
+# make rapid/tidy commands available
+source_env domains/api_platform/rapid/apps/rapid/bin
+source_env domains/api_platform/apps/tidy/bin

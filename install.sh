@@ -233,6 +233,40 @@ setup_vim() {
   echo "Vim plugins installed"
 }
 
+# Setup dd-source local configurations
+setup_dd_source() {
+  DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
+  DD_SOURCE_DIR="$HOME/dd/dd-source"
+
+  # Check if dd-source exists
+  if [ ! -d "$DD_SOURCE_DIR" ]; then
+    echo "dd-source directory not found at $DD_SOURCE_DIR, skipping..."
+    return 0
+  fi
+
+  echo "Setting up dd-source local configurations..."
+
+  # Create directories
+  mkdir -p "$DD_SOURCE_DIR/.vscode"
+  mkdir -p "$DD_SOURCE_DIR/.claude"
+
+  # Copy files (using cp instead of symlinks since these are in a git repo)
+  cp "$DOTFILES_DIR/dd-source/.envrc" "$DD_SOURCE_DIR/.envrc"
+  cp "$DOTFILES_DIR/dd-source/.envrc-rapid" "$DD_SOURCE_DIR/.envrc-rapid"
+  cp "$DOTFILES_DIR/dd-source/CLAUDE.local.md" "$DD_SOURCE_DIR/CLAUDE.local.md"
+  cp "$DOTFILES_DIR/dd-source/.cursorignore" "$DD_SOURCE_DIR/.cursorignore"
+  cp "$DOTFILES_DIR/dd-source/.claude/settings.local.json" "$DD_SOURCE_DIR/.claude/settings.local.json"
+  cp "$DOTFILES_DIR/dd-source/.vscode/settings.json" "$DD_SOURCE_DIR/.vscode/settings.json"
+  cp "$DOTFILES_DIR/dd-source/.vscode/run_bazel_test.sh" "$DD_SOURCE_DIR/.vscode/run_bazel_test.sh"
+
+  # direnv allow (idempotent)
+  if command_exists direnv; then
+    (cd "$DD_SOURCE_DIR" && direnv allow)
+  fi
+
+  echo "dd-source local configurations installed"
+}
+
 # Setup Git configuration
 setup_gitconfig() {
   DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -354,6 +388,9 @@ setup_vim
 
 # Setup Git configuration
 setup_gitconfig
+
+# Setup dd-source local configurations
+setup_dd_source
 
 # Add source line to .zshrc if it doesn't already exist (idempotent)
 DOTFILES_SOURCE_LINE="source \$HOME/dotfiles/zshrc"

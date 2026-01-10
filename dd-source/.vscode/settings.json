@@ -1,0 +1,267 @@
+{
+	"search.exclude": {
+		"**/.git": true,
+		"**/bazel-*": true,
+		"**/node_modules": true,
+		"**/.local": true,
+		"**/target": true,
+		"**/dist": true,
+		"**/build": true,
+		"**/*.log": true,
+		"**/.cache": true,
+		"**/tmp": true,
+		"**/temp": true,
+		"**/coverage": true,
+		"**/.nyc_output": true,
+		"**/vendor": true
+	},
+	"files.exclude": {
+		"**/bazel-*": true,
+		"**/.git": true,
+		"**/.svn": true,
+		"**/.hg": true,
+		"**/CVS": true,
+		"**/.DS_Store": true,
+		"**/Thumbs.db": true,
+		"**/node_modules": true,
+		"**/.local": true,
+		"**/target": true,
+		"**/dist": true,
+		"**/build": true,
+		"**/*.log": true,
+		"**/.cache": true,
+		"**/tmp": true,
+		"**/temp": true,
+		"**/.idea": true,
+		"**/coverage": true,
+		"**/.nyc_output": true,
+		"**/vendor": true
+	},
+
+	"files.watcherExclude": {
+		"bazel-*/": true,
+		"**/bazel-*": true,
+		"**/.git": true,
+		"**/.svn": true,
+		"**/.hg": true,
+		"**/CVS": true,
+		"**/.DS_Store": true,
+		"**/Thumbs.db": true,
+		"**/node_modules": true,
+		"**/.local": true,
+		"**/target": true,
+		"**/dist": true,
+		"**/build": true,
+		"**/*.log": true,
+		"**/.cache": true,
+		"**/tmp": true,
+		"**/temp": true,
+		"**/.idea": true,
+		"**/coverage": true,
+		"**/.nyc_output": true,
+		"**/vendor": true
+	},
+
+	"gopls": {
+		"build.directoryFilters": [
+			"-",
+			"-**/bazel-bin",
+			"-**/bazel-out",
+			"-**/bazel-dd-source",
+			"-**/bazel-testlogs",
+			"-**/bazel-mypkg",
+			"-**/bazel/",
+			"-**/bin/",
+			"+libs/go",
+			"+domains/rapid",
+			"+domains/api_platform",
+			"+domains/ai_platform",
+			"+domains/aaa",
+			"+domains/oncall",
+			"+domains/assistant",
+			"+**/shared"
+		],
+		"analyses": {
+			"unusedparams": false,
+			"shadow": false,
+			"ST1000": false,
+			"ST1003": false,
+			"ST1016": false,
+			"ST1020": false,
+			"ST1021": false,
+			"ST1022": false
+		},
+
+		// "formatting.gofumpt": true,
+		// "formatting.local": "github.com/DataDog/dd-source",
+		// enable placeholders for function parameters when autocompleting
+		"ui.completion.usePlaceholders": true,
+		// remove unnecessary code lenses offered by gopls. These tasks are handled by bazel and gazelle.
+		// https://github.com/golang/tools/blob/master/gopls/doc/codelenses.md for more
+		"ui.semanticTokens": true,
+		"ui.codelenses": {
+			"gc_details": false,
+			"regenerate_cgo": false,
+			"generate": false,
+			"test": false,
+			"tidy": false,
+			"upgrade_dependency": false,
+			"vendor": false
+		},
+		"verboseOutput": true
+	},
+
+	// in cursor, don't bother indexing the git graph. It's quite large and slows things down
+	"cursor.general.gitGraphIndexing": "disabled",
+	"editor.formatOnSave": true,
+	"bazel.enableCodeLens": true,
+	"bazel.buildifierExecutable": "bin/buildifier",
+	"bazel.buildifierFixOnFormat": true,
+
+	// use rapid json schema on rapid.json files
+	"json.schemas": [
+		{
+			"fileMatch": ["**/rapid.json"],
+			"url": "./domains/api_platform/rapid/libs/go/rapidschema/definition/rapidschema.json"
+		}
+	],
+
+	// use deploy.yaml schema on deploy.yaml files. Required redhat yaml extension
+	"yaml.schemas": {
+		"./domains/deployments/shared/libs/proto/deploymentpb/Deployment.json": [
+			"**/deploy.yaml"
+		]
+	},
+
+	// <proto-configuration>
+	"clang-format.executable": "${workspaceRoot}/domains/workflow/tools/bin/clang-format",
+	"clang-format.style": "{BasedOnStyle: Google, ReflowComments: false}",
+	"files.associations": {
+		// We lose syntax highlighting, but we get auto-formatting
+		"*.textproto": "proto3"
+	},
+	"[proto3]": {
+		"editor.defaultFormatter": "xaver.clang-format"
+	},
+	"protoc": {
+		"options": [
+			"--proto_path=${workspaceFolder}/bazel-dd-source/external/com_github_envoyproxy_protoc_gen_validate",
+			"--proto_path=${workspaceFolder}"
+		]
+	},
+	// </proto-configuration>
+
+	// <ecma-configuration>
+	"[json]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+	"[jsonc]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+	"[javascript]": {
+		"editor.formatOnSave": true,
+		"editor.codeActionsOnSave": {
+			"source.fixAll.eslint": "explicit"
+		}
+	},
+	"[typescript]": {
+		"editor.formatOnSave": true,
+		"editor.codeActionsOnSave": {
+			"source.fixAll.eslint": "explicit"
+		},
+		"rewrap.autoWrap.enabled": true,
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+	"prettier.configPath": "domains/workflow/actionplatform/.prettierrc.js",
+	"prettier.ignorePath": "domains/workflow/actionplatform/.prettierignore",
+	"prettier.prettierPath": "domains/workflow/actionplatform/node_modules/prettier",
+	// </ecma-configuration>
+
+	// <yaml-configuration>
+	"yaml.customTags": ["!buffer", "!long", "!date"],
+	// </yaml-configuration>
+
+	// <eslint-configuration>
+	"eslint.workingDirectories": [
+		{ "directory": "domains/workflow/actionplatform", "changeProcessCWD": true }
+	],
+	"cSpell.words": ["Orgstore", "orgstoreclient"],
+
+	// Performance optimizations for dd-source repository
+	"typescript.preferences.maxInferredTypeLength": 100,
+	"typescript.suggest.autoImports": "off",
+	"typescript.disableAutomaticTypeAcquisition": true,
+	"typescript.updateImportsOnFileMove.enabled": "never",
+	"editor.largeFileOptimizations": true,
+	"editor.maxTokenizationLineLength": 10000,
+	"editor.semanticHighlighting.enabled": false,
+	"editor.occurrencesHighlight": "off",
+	"editor.selectionHighlight": false,
+	"editor.colorDecorators": false,
+	"git.decorations.enabled": false,
+	"scm.diffDecorations": "none",
+	"workbench.tree.renderIndentGuides": "none",
+	"breadcrumbs.enabled": true,
+	"outline.showVariables": false,
+	"outline.showFunctions": false,
+	"chatgpt.commentCodeLensEnabled": false,
+
+	// Python configuration - using Cursor's built-in Anysphere Python
+	"python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+	"python.terminal.activateEnvironment": true,
+
+	"[python]": {
+		"editor.defaultFormatter": "charliermarsh.ruff",
+		"editor.formatOnSave": true,
+		"editor.codeActionsOnSave": {
+			"source.fixAll.ruff": "explicit"
+			// "source.organizeImports.ruff": "explicit"
+		}
+	},
+
+	// We are using ruff instead
+	"python.linting.enabled": false,
+	"python.formatting.provider": "none",
+
+	// Ruff configuration
+	"ruff.path": ["${workspaceFolder}/.venv/bin/ruff"],
+	"ruff.interpreter": ["${workspaceFolder}/.venv/bin/python"],
+	"ruff.configurationPreference": "filesystemFirst",
+	"ruff.importStrategy": "fromEnvironment",
+
+	// Python Language Server configuration
+	"python.languageServer": "Pylance",
+	"python.analysis.extraPaths": ["${workspaceFolder}"],
+	"python.analysis.ignore": ["**/*_pb2.py", "**/*.pyi"],
+	"python.analysis.exclude": [
+		"**/bazel-bin/**",
+		"**/bazel-out/**",
+		"**/bazel-dd-source/**",
+		"**/private**"
+	],
+	"python.analysis.include": [
+		"domains/assistant/**",
+		"domains/aaa/**",
+		"domains/ai_platform/**",
+		"domains/api_platform/**",
+		"libs/py/**"
+	],
+	"cursorpyright.analysis.exclude": [
+		"**/bazel-bin/**",
+		"**/bazel-out/**",
+		"**/bazel-dd-source/**",
+		"**/private**"
+	],
+	"cursorpyright.analysis.ignore": ["**/*_pb2.py", "**/*.pyi"],
+	"python.analysis.autoSearchPaths": true,
+	// "python.analysis.autoImportCompletions": true,
+	"python.analysis.typeCheckingMode": "basic",
+	"python.analysis.diagnosticMode": "workspace",
+	"python.analysis.indexing": true,
+	"python.analysis.userFileIndexingLimit": 20000,
+	"python.analysis.useLibraryCodeForTypes": true,
+	"python.analysis.diagnosticSeverityOverrides": {
+		"reportGeneralTypeIssues": "information",
+		"reportPrivateImportUsage": "information"
+	}
+}

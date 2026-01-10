@@ -1,0 +1,17 @@
+# Ignore all directories at root level except domains
+/*
+!/domains
+!/libs
+
+# Ignore all subdirectories in domains 
+/domains/*
+# except the following
+!/domains/api_platform
+!/domains/orgstore
+!/domains/rapid
+!/domains/aaa
+!/domains/ai_platform
+!/domains/assistant
+
+/libs/*
+!/libs/go
