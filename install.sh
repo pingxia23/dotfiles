@@ -143,6 +143,40 @@ install_direnv() {
   fi
 }
 
+# Setup direnv whitelist for DataDog repos (auto-allows .envrc files)
+setup_direnv_whitelist() {
+  # Determine the DataDog source parent directory based on OS
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    DD_PARENT="$HOME/go/src/github.com/DataDog"
+  else
+    # Linux - check common paths
+    if [ -d "$HOME/go/src/github.com/DataDog" ]; then
+      DD_PARENT="$HOME/go/src/github.com/DataDog"
+    else
+      echo "DataDog source directory not found, skipping direnv whitelist..."
+      return 0
+    fi
+  fi
+
+  # Skip if directory doesn't exist
+  if [ ! -d "$DD_PARENT" ]; then
+    echo "DataDog directory $DD_PARENT not found, skipping direnv whitelist..."
+    return 0
+  fi
+
+  echo "Setting up direnv whitelist for $DD_PARENT..."
+
+  mkdir -p "$HOME/.config/direnv"
+
+  # Generate direnv.toml with the correct path
+  cat > "$HOME/.config/direnv/direnv.toml" << EOF
+[whitelist]
+prefix = [ "$DD_PARENT" ]
+EOF
+
+  echo "direnv whitelist configured (auto-allows all .envrc files under $DD_PARENT)"
+}
+
 # Install Rust and Cargo if not already installed
 install_cargo() {
   if ! command_exists cargo || ! command_exists rustc; then
@@ -376,6 +410,9 @@ install_uv_uvx
 
 # Install direnv
 install_direnv
+
+# Setup direnv whitelist for DataDog repos
+setup_direnv_whitelist
 
 # Install Rust and Cargo
 install_cargo
