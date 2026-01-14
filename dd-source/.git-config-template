@@ -1,0 +1,28 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+	ignorecase = true
+	precomposeunicode = true
+	fsmonitor = true
+	preloadindex = true
+	fscache = true
+	untrackedCache = true
+[remote "origin"]
+	url = git@github.com:DataDog/dd-source.git
+	fetch = +refs/heads/main:refs/remotes/origin/main
+	fetch = +refs/heads/ping.xia/*:refs/remotes/origin/ping.xia/*
+	fetch = +refs/heads/assistant/*:refs/remotes/origin/assistant/*
+[branch "main"]
+	remote = origin
+	merge = refs/heads/main
+[maintenance]
+	auto = false
+	strategy = geometric
+[ddsource "hooks.pre-push"]
+	gazelle = true
+[include]
+	path = ../.git-shared-config
+[ddsource]
+	maintenance-set = true

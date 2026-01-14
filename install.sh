@@ -293,6 +293,25 @@ setup_dd_source() {
   cp "$DOTFILES_DIR/dd-source/.vscode/settings.json" "$DD_SOURCE_DIR/.vscode/settings.json"
   cp "$DOTFILES_DIR/dd-source/.vscode/run_bazel_test.sh" "$DD_SOURCE_DIR/.vscode/run_bazel_test.sh"
 
+  # Copy new configuration files
+  if [ -f "$DOTFILES_DIR/dd-source/.vscode/extensions.json" ]; then
+    cp "$DOTFILES_DIR/dd-source/.vscode/extensions.json" "$DD_SOURCE_DIR/.vscode/extensions.json"
+  fi
+
+  # Copy git config template 
+  if [ -d "$DD_SOURCE_DIR/.git" ] && [ -f "$DOTFILES_DIR/dd-source/.git-config-template" ]; then
+    cp "$DOTFILES_DIR/dd-source/.git-config-template" "$DD_SOURCE_DIR/.git/config"
+    echo "  Copied git config template"
+  fi
+
+  # Copy pre-commit hook
+  if [ -d "$DD_SOURCE_DIR/.git" ] && [ -f "$DOTFILES_DIR/dd-source/.git-hooks/pre-commit" ]; then
+    mkdir -p "$DD_SOURCE_DIR/.git/hooks"
+    cp "$DOTFILES_DIR/dd-source/.git-hooks/pre-commit" "$DD_SOURCE_DIR/.git/hooks/pre-commit"
+    chmod +x "$DD_SOURCE_DIR/.git/hooks/pre-commit"
+    echo "  Installed pre-commit hook"
+  fi
+
   # direnv allow (idempotent)
   if command_exists direnv; then
     (cd "$DD_SOURCE_DIR" && direnv allow)
@@ -349,6 +368,40 @@ setup_dd_source_root_venv() {
     echo "Warning: Failed to install dependencies. You can run manually:"
     echo "  cd ~/dd/dd-source && uv pip install -r requirements.txt"
   fi
+}
+
+# Install VSCode extensions (idempotent - already installed extensions are skipped)
+install_vscode_extensions() {
+  # Check for code or cursor CLI
+  local CODE_CMD=""
+  if command_exists code; then
+    CODE_CMD="code"
+  elif command_exists cursor; then
+    CODE_CMD="cursor"
+  else
+    echo "VSCode/Cursor CLI not found, skipping extension installation..."
+    return 0
+  fi
+
+  echo "Installing VSCode extensions..."
+
+  local EXTENSIONS=(
+    "charliermarsh.ruff"
+    "redhat.vscode-yaml"
+    "xaver.clang-format"
+    "esbenp.prettier-vscode"
+    "ms-python.python"
+    "ms-python.vscode-pylance"
+    "BazelBuild.vscode-bazel"
+    "golang.go"
+  )
+
+  for ext in "${EXTENSIONS[@]}"; do
+    echo "  Installing $ext..."
+    $CODE_CMD --install-extension "$ext" --force 2>/dev/null || true
+  done
+
+  echo "VSCode extensions installed"
 }
 
 # Setup Git configuration
@@ -481,6 +534,9 @@ setup_dd_source
 
 # Setup root Python venv for dd-source
 setup_dd_source_root_venv
+
+# Install VSCode extensions
+install_vscode_extensions
 
 # Add source line to .zshrc if it doesn't already exist (idempotent)
 DOTFILES_SOURCE_LINE="source \$HOME/dotfiles/zshrc"

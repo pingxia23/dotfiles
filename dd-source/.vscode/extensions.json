@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "charliermarsh.ruff",
+    "redhat.vscode-yaml",
+    "xaver.clang-format",
+    "esbenp.prettier-vscode",
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "BazelBuild.vscode-bazel",
+    "golang.go"
+  ]
+}

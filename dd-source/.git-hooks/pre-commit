@@ -1,0 +1,315 @@
+#!/bin/bash
+set -euo pipefail
+
+# --------------------------- Color Definitions --------------------------- #
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+GREY='\033[0;37m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+# ---------------------------- Helper Functions ---------------------------- #
+log() {
+    local color="$1"
+    local message="$2"
+    echo -e "${color}${message}${NC}"
+}
+
+info() { log "${BLUE}" "$1"; }
+success() { log "${GREEN}" "$1"; }
+warn() { log "${YELLOW}" "$1"; }
+error() { log "${RED}" "$1"; }
+
+stage_generated_files() {
+    local current_files=$(git diff --name-only)
+    local original_files=$BEFORE_HOOK
+    local original_staged=$BEFORE_HOOK_STAGED
+
+    if [[ "$original_files" != "$current_files" ]]; then
+        warn "📝 Changes detected. Adding modified files to commit..."
+        while IFS= read -r file; do
+            if [[ "$original_staged" == *"$file"* || "$original_files" != *"$file"* ]]; then
+                info "  📝 Adding: $file"
+                git add "$file"
+            fi
+        done <<< "$current_files"
+    fi
+}
+
+# --------------------------- Change Detectors --------------------------- #
+get_proto_dirs() {
+    git diff --name-only --staged --diff-filter=d | {
+        local dirs=""
+        while IFS= read -r file; do
+            [[ "$file" == *.proto ]] && dirs+=" $(dirname "$file")"
+        done
+        echo "$dirs" | xargs -n1 | sort -u | xargs
+    }
+}
+
+get_go_import_dirs() {
+    local files=$(git diff --staged --name-only --diff-filter=d)
+    local added=$(git diff --staged --name-only --diff-filter=A)
+    local removed=$(git diff --staged --name-only --diff-filter=D)
+    local dirs=""
+
+    process_go_file() {
+        local file=$1
+        local current_imports=$(go list -f '{{.Imports}}' "$file" 2>/dev/null || true)
+        local prev_imports=""
+
+        if git show HEAD~1:"$file" &>/dev/null; then
+            git show HEAD~1:"$file" > temp.go
+            prev_imports=$(go list -f '{{.Imports}}' temp.go 2>/dev/null || true)
+            rm temp.go
+        fi
+
+        [[ "$current_imports" != "$prev_imports" ]] && dirs+=" $(dirname "$file")"
+    }
+
+    while IFS= read -r file; do [[ "$file" == *.go ]] && process_go_file "$file"; done <<< "$files"
+    while IFS= read -r file; do [[ "$file" == *.go ]] && dirs+=" $(dirname "$file")"; done <<< "$added"
+    while IFS= read -r file; do [[ "$file" == *.go ]] && dirs+=" $(dirname "$file")"; done <<< "$removed"
+
+    echo "$dirs" | xargs -n1 | sort -u | xargs
+}
+
+get_go_generate_files() {
+    git diff --name-only --staged --diff-filter=d | {
+        local files=""
+        while IFS= read -r file; do
+            [[ "$file" == *.go ]] && grep -q "//go:generate" "$file" && files+=" $file"
+        done
+        echo "$files" | xargs
+    }
+}
+
+get_bazel_dirs() {
+    git diff --name-only --staged | {
+        local dirs=""
+        while IFS= read -r file; do
+            [[ "$file" == *.bazel ]] && dirs+=" $(dirname "$file")"
+        done
+        echo "$dirs" | xargs -n1 | sort -u | xargs
+    }
+}
+
+get_go_embed_dirs() {
+    git diff --name-only --staged --diff-filter=d | {
+        local packages=""
+        while IFS= read -r file; do
+            local dir=$(dirname "$file")
+            find "$dir" -name '*.go' | while read -r go_file; do
+                if grep -q "//go:embed" "$go_file"; then
+                    packages+=" $dir"
+                    break
+                fi
+            done
+        done
+        echo "$packages" | xargs -n1 | sort -u | xargs
+    }
+}
+
+get_python_files() {
+    git diff --name-only --staged --diff-filter=ACMR | {
+        local files=""
+        while IFS= read -r file; do
+            if [[ "$file" == *.py || "$file" == *.pyi ]]; then
+                # Exclude protobuf-generated files
+                if [[ "$file" != *_pb2.py && "$file" != *_pb2.pyi && "$file" != *_pb2_grpc.py && "$file" != *_pb2_grpc.pyi ]]; then
+                    files+=" $file"
+                fi
+            fi
+        done
+        echo "$files" | xargs
+    }
+}
+
+get_assistant_python_files() {
+    git diff --name-only --staged --diff-filter=ACMR | {
+        local files=""
+        while IFS= read -r file; do
+            if [[ "$file" == domains/assistant/*.py || "$file" == domains/assistant/*.pyi ]]; then
+                # Exclude protobuf-generated files
+                if [[ "$file" != *_pb2.py && "$file" != *_pb2.pyi && "$file" != *_pb2_grpc.py && "$file" != *_pb2_grpc.pyi ]]; then
+                    files+=" $file"
+                fi
+            fi
+        done
+        echo "$files" | xargs
+    }
+}
+
+get_python_import_dirs() {
+    local files=$(git diff --staged --name-only --diff-filter=d)
+    local added=$(git diff --staged --name-only --diff-filter=A)
+    local removed=$(git diff --staged --name-only --diff-filter=D)
+    local dirs=""
+
+    process_python_file() {
+        local file=$1
+        # Extract imports from current version
+        local current_imports=$(grep -E '^(import|from) ' "$file" 2>/dev/null | sort || true)
+        local prev_imports=""
+
+        if git show HEAD~1:"$file" &>/dev/null; then
+            prev_imports=$(git show HEAD~1:"$file" | grep -E '^(import|from) ' 2>/dev/null | sort || true)
+        fi
+
+        [[ "$current_imports" != "$prev_imports" ]] && dirs+=" $(dirname "$file")"
+    }
+
+    # Check modified files for import changes
+    while IFS= read -r file; do
+        if [[ "$file" == *.py || "$file" == *.pyi ]]; then
+            # Exclude protobuf-generated files
+            if [[ "$file" != *_pb2.py && "$file" != *_pb2.pyi && "$file" != *_pb2_grpc.py && "$file" != *_pb2_grpc.pyi ]]; then
+                process_python_file "$file"
+            fi
+        fi
+    done <<< "$files"
+
+    # Add directories for all added Python files
+    while IFS= read -r file; do
+        if [[ "$file" == *.py || "$file" == *.pyi ]]; then
+            if [[ "$file" != *_pb2.py && "$file" != *_pb2.pyi && "$file" != *_pb2_grpc.py && "$file" != *_pb2_grpc.pyi ]]; then
+                dirs+=" $(dirname "$file")"
+            fi
+        fi
+    done <<< "$added"
+
+    # Add directories for all removed Python files
+    while IFS= read -r file; do
+        if [[ "$file" == *.py || "$file" == *.pyi ]]; then
+            if [[ "$file" != *_pb2.py && "$file" != *_pb2.pyi && "$file" != *_pb2_grpc.py && "$file" != *_pb2_grpc.pyi ]]; then
+                dirs+=" $(dirname "$file")"
+            fi
+        fi
+    done <<< "$removed"
+
+    echo "$dirs" | xargs -n1 | sort -u | xargs
+}
+
+# --------------------------- Main Execution --------------------------- #
+# Dynamically determine repo root (works in any clone location)
+REPO_ROOT=$(git rev-parse --show-toplevel)
+cd "$REPO_ROOT"
+
+BEFORE_HOOK=$(git diff --name-only)
+BEFORE_HOOK_STAGED=$(git diff --name-only --staged)
+
+# --------------------------- Protobuf Generation --------------------------- #
+warn "🔍 Checking for modified .proto files..."
+proto_dirs=$(get_proto_dirs)
+if [[ -z "$proto_dirs" ]]; then
+    info "  🕵 No .proto file edited. Skipping protobuf generation."
+else
+    warn "  🕵 Modified .proto files detected. Generating protobuf..."
+    for dir in $proto_dirs; do
+        info "  🚀 Running: bzl run //:snapshot -- //$dir/..."
+        bzl run //:snapshot -- "//$dir/..." >/dev/null 2>&1
+    done
+fi
+
+# --------------------------- Go Generate Handling --------------------------- #
+warn "🔍 Checking for '//go:generate' directives..."
+generate_files=$(get_go_generate_files)
+if [[ -z "$generate_files" ]]; then
+    info "  🕵 No '//go:generate' directives found."
+else
+    warn "  🚀 Found '//go:generate' directives. Running generation..."
+    for file in $generate_files; do
+        info "  🚀 Generating: $file"
+        go generate "$file" >/dev/null 2>&1
+    done
+fi
+
+stage_generated_files
+
+# --------------------------- Dependency Management --------------------------- #
+warn "🔍 Analyzing code dependencies..."
+import_dirs=$(get_go_import_dirs)
+python_import_dirs=$(get_python_import_dirs)
+bazel_dirs=$(get_bazel_dirs)
+embed_dirs=$(get_go_embed_dirs)
+
+all_dirs=$(echo "$import_dirs $python_import_dirs $bazel_dirs $embed_dirs" | xargs -n1 | sort -u | xargs)
+
+if [[ -n "$all_dirs" ]]; then
+    warn "  🚀 Updating build files..."
+    info "  🚀 Running: bzl run //:gazelle -- $all_dirs"
+    if bzl run //:gazelle -- $all_dirs >/dev/null 2>&1; then
+        success "  ✅ Build files updated"
+        git add -u $all_dirs/*.bazel 2>/dev/null || true
+    else
+        warn "  ⚠️ Gazelle encountered issues"
+    fi
+else
+    info "  🕵 No dependency changes detected"
+fi
+
+# --------------------------- Formatting --------------------------- #
+warn "🔍 Formatting Go files..."
+go_files=$(git diff --name-only --staged --diff-filter=ACMR | grep '\.go$' || true)
+if [[ -n "$go_files" ]]; then
+    info "  🛠 Formatting $(echo "$go_files" | wc -w | tr -d ' ') Go files..."
+    # Use native gofmt for much better performance than bazel run
+    if gofmt -w $go_files; then
+        success "  ✅ Go files formatted successfully"
+    else
+        error "  ❌ Go formatting failed!"
+        exit 1
+    fi
+else
+    info "  🕵 No Go files to format"
+fi
+
+stage_generated_files
+
+# --------------------------- Python Formatting --------------------------- #
+warn "🔍 Formatting Python files..."
+python_files=$(get_python_files)
+if [[ -n "$python_files" ]]; then
+    info "  🛠 Formatting $(echo "$python_files" | wc -w | tr -d ' ') Python files..."
+
+    # Run ruff formatter
+    if bzl run //tools/format:format_ruff >/dev/null 2>&1; then
+        success "  ✅ Python files formatted successfully"
+    else
+        error "  ❌ Python formatting failed!"
+        exit 1
+    fi
+
+    # Run ruff linter
+    if bzl run //tools/format:lint_ruff >/dev/null 2>&1; then
+        success "  ✅ Python linting passed"
+    else
+        error "  ❌ Python linting failed!"
+        exit 1
+    fi
+else
+    info "  🕵 No Python files to format"
+fi
+
+stage_generated_files
+
+# --------------------------- Python Type Checking (domains/assistant) --------------------------- #
+warn "🔍 Checking Python types in domains/assistant..."
+assistant_python_files=$(get_assistant_python_files)
+if [[ -n "$assistant_python_files" ]]; then
+    info "  🔎 Running mypy on domains/assistant..."
+    if bzl build --build_tag_filters=dd-mypy --config=mypy //domains/assistant/... 2>&1 | tee /tmp/mypy_output.txt | tail -5; then
+        success "  ✅ Python type checking passed"
+    else
+        error "  ❌ Python type checking failed!"
+        error "  Run: bzl build --build_tag_filters=dd-mypy --config=mypy //domains/assistant/..."
+        cat /tmp/mypy_output.txt | grep -E "(error|Error)" | tail -20
+        exit 1
+    fi
+else
+    info "  🕵 No Python files in domains/assistant to type-check"
+fi
+
+
+success "✅ All pre-commit checks completed successfully! 🎉"
