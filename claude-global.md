@@ -1,7 +1,20 @@
-<global_rules>
+# Global Rules
+
+## GitHub
 - Always use `gh` for GitHub interactions
-- Always use `bzl` for bazel commands.
-- Never run `bzl` commands in the background. They will conflict with each other, fighting over lockfiles.
-- **Pull Request Creation**: If currently on the default branch (which is main, master, or prod usually), create a new branch. Branch format is ping.xia/yyyymmdd-brief-description.
-</global_rules>
+
+
+## Git
+- Never change the current git branch name
+
+## Code Changes 
+
+**Before Making Changes**
+1. Read relevant code and understand existing patterns
+2. Create a clear implementation plan with steps
+3. Include testing/verification in your plan
+
+**Before Committing**
+1. Remove any temporary files created during development, such as your plan files.
+2. Ensure ALL tests in affected packages pass. You can not skip any failed tests
 
