@@ -9,6 +9,26 @@ command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
+# Create a symlink, force-overwriting any existing file/symlink
+# Usage: create_symlink <source> <target>
+create_symlink() {
+  local source="$1"  # File in dotfiles repo (absolute path)
+  local target="$2"  # Where symlink should be created
+
+  # If already correctly symlinked, skip
+  if [ -L "$target" ] && [ "$(readlink "$target")" = "$source" ]; then
+    echo "  $target already symlinked"
+    return 0
+  fi
+
+  # Create parent directory if needed
+  mkdir -p "$(dirname "$target")"
+
+  # Force create symlink (overwrites existing file/symlink)
+  ln -sf "$source" "$target"
+  echo "  Symlinked $target -> $source"
+}
+
 # Check if Node.js is installed and version is 18+
 check_nodejs() {
   if command_exists node; then
@@ -223,8 +243,6 @@ install_cargo() {
 
 # Setup Vim configuration
 setup_vim() {
-  DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
-
   echo "Setting up Vim configuration..."
 
   # Symlink vimrc (skip if already symlinked to our file)
@@ -269,7 +287,6 @@ setup_vim() {
 
 # Setup dd-source local configurations
 setup_dd_source() {
-  DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
   DD_SOURCE_DIR="$HOME/dd/dd-source"
 
   # Check if dd-source exists
@@ -283,33 +300,30 @@ setup_dd_source() {
   # Create directories
   mkdir -p "$DD_SOURCE_DIR/.vscode"
   mkdir -p "$DD_SOURCE_DIR/.claude"
+  mkdir -p "$DD_SOURCE_DIR/.git/hooks"
 
-  # Copy files (using cp instead of symlinks since these are in a git repo)
-  cp "$DOTFILES_DIR/dd-source/.envrc" "$DD_SOURCE_DIR/.envrc"
-  cp "$DOTFILES_DIR/dd-source/.envrc-rapid" "$DD_SOURCE_DIR/.envrc-rapid"
-  cp "$DOTFILES_DIR/dd-source/CLAUDE.local.md" "$DD_SOURCE_DIR/CLAUDE.local.md"
-  cp "$DOTFILES_DIR/dd-source/.cursorignore" "$DD_SOURCE_DIR/.cursorignore"
-  cp "$DOTFILES_DIR/dd-source/.claude/settings.local.json" "$DD_SOURCE_DIR/.claude/settings.local.json"
-  cp "$DOTFILES_DIR/dd-source/.vscode/settings.json" "$DD_SOURCE_DIR/.vscode/settings.json"
+  # Symlinked files (auto-sync with dotfiles repo)
+  create_symlink "$DOTFILES_DIR/dd-source/.envrc" "$DD_SOURCE_DIR/.envrc"
+  create_symlink "$DOTFILES_DIR/dd-source/CLAUDE.local.md" "$DD_SOURCE_DIR/CLAUDE.local.md"
+  create_symlink "$DOTFILES_DIR/dd-source/.cursorignore" "$DD_SOURCE_DIR/.cursorignore"
+  create_symlink "$DOTFILES_DIR/dd-source/.claude/settings.local.json" "$DD_SOURCE_DIR/.claude/settings.local.json"
+  create_symlink "$DOTFILES_DIR/dd-source/.vscode/settings.json" "$DD_SOURCE_DIR/.vscode/settings.json"
+
+  # Symlink pre-commit hook
+  if [ -d "$DD_SOURCE_DIR/.git" ] && [ -f "$DOTFILES_DIR/dd-source/.git-hooks/pre-commit" ]; then
+    create_symlink "$DOTFILES_DIR/dd-source/.git-hooks/pre-commit" "$DD_SOURCE_DIR/.git/hooks/pre-commit"
+  fi
+
+  # Files kept as copies (not symlinked)
   cp "$DOTFILES_DIR/dd-source/.vscode/run_bazel_test.sh" "$DD_SOURCE_DIR/.vscode/run_bazel_test.sh"
-
-  # Copy new configuration files
   if [ -f "$DOTFILES_DIR/dd-source/.vscode/extensions.json" ]; then
     cp "$DOTFILES_DIR/dd-source/.vscode/extensions.json" "$DD_SOURCE_DIR/.vscode/extensions.json"
   fi
 
-  # Copy git config template 
+  # Copy git config template
   if [ -d "$DD_SOURCE_DIR/.git" ] && [ -f "$DOTFILES_DIR/dd-source/.git-config-template" ]; then
     cp "$DOTFILES_DIR/dd-source/.git-config-template" "$DD_SOURCE_DIR/.git/config"
     echo "  Copied git config template"
-  fi
-
-  # Copy pre-commit hook
-  if [ -d "$DD_SOURCE_DIR/.git" ] && [ -f "$DOTFILES_DIR/dd-source/.git-hooks/pre-commit" ]; then
-    mkdir -p "$DD_SOURCE_DIR/.git/hooks"
-    cp "$DOTFILES_DIR/dd-source/.git-hooks/pre-commit" "$DD_SOURCE_DIR/.git/hooks/pre-commit"
-    chmod +x "$DD_SOURCE_DIR/.git/hooks/pre-commit"
-    echo "  Installed pre-commit hook"
   fi
 
   # direnv allow (idempotent)
@@ -406,8 +420,6 @@ install_vscode_extensions() {
 
 # Setup Git configuration
 setup_gitconfig() {
-  DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
-
   echo "Setting up Git configuration..."
 
   # Symlink gitconfig (skip if already symlinked to our file)
@@ -477,6 +489,9 @@ install_gh() {
 # =============================================================================
 # Main Installation
 # =============================================================================
+
+# Get absolute path to dotfiles directory
+DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Install oh-my-zsh if not already installed
 if [ ! -d "$HOME/.oh-my-zsh" ]; then
@@ -550,24 +565,18 @@ else
   echo "Dotfiles source line already exists in .zshrc"
 fi
 
-# Create ~/.claude directory and copy configuration
-if [ -f "$(dirname "$0")/claude-global.md" ]; then
-  echo "Setting up Claude global configuration..."
-  mkdir -p "$HOME/.claude"
-  cp "$(dirname "$0")/claude-global.md" "$HOME/.claude/CLAUDE.md"
-  echo "Global CLAUDE.md copied to ~/.claude/CLAUDE.md"
+# Setup Claude global configuration (symlinked)
+echo "Setting up Claude global configuration..."
+if [ -f "$DOTFILES_DIR/claude-global.md" ]; then
+  create_symlink "$DOTFILES_DIR/claude-global.md" "$HOME/.claude/CLAUDE.md"
 else
-  echo "claude-global.md not found in dotfiles directory"
+  echo "  claude-global.md not found in dotfiles directory"
 fi
 
-# Install Claude settings.json
-if [ -f "$(dirname "$0")/claude-settings.json" ]; then
-  echo "Installing Claude settings..."
-  mkdir -p "$HOME/.claude"
-  cp "$(dirname "$0")/claude-settings.json" "$HOME/.claude/settings.json"
-  echo "Claude settings.json installed to ~/.claude/settings.json"
+if [ -f "$DOTFILES_DIR/claude-settings.json" ]; then
+  create_symlink "$DOTFILES_DIR/claude-settings.json" "$HOME/.claude/settings.json"
 else
-  echo "claude-settings.json not found in dotfiles directory"
+  echo "  claude-settings.json not found in dotfiles directory"
 fi
 
 echo ""
