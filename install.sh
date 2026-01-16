@@ -315,12 +315,6 @@ setup_dd_source() {
     chmod +x "$DD_SOURCE_DIR/.git/hooks/pre-commit"
   fi
 
-  # Files kept as copies (not symlinked)
-  cp "$DOTFILES_DIR/dd-source/.vscode/run_bazel_test.sh" "$DD_SOURCE_DIR/.vscode/run_bazel_test.sh"
-  if [ -f "$DOTFILES_DIR/dd-source/.vscode/extensions.json" ]; then
-    cp "$DOTFILES_DIR/dd-source/.vscode/extensions.json" "$DD_SOURCE_DIR/.vscode/extensions.json"
-  fi
-
   # Copy git config template
   if [ -d "$DD_SOURCE_DIR/.git" ] && [ -f "$DOTFILES_DIR/dd-source/.git-config-template" ]; then
     cp "$DOTFILES_DIR/dd-source/.git-config-template" "$DD_SOURCE_DIR/.git/config"
