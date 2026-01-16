@@ -8,12 +8,14 @@
       "Read",
       "Edit",
       "MultiEdit",
-      "Write"
+      "Write",
+      "Skill(dd:get-pr-feedback)"
     ],
     "deny": [],
     "ask": [],
     "defaultMode": "bypassPermissions"
   },
+  "model": "opus",
   "disabledMcpjsonServers": [
     "github"
   ],

@@ -312,6 +312,7 @@ setup_dd_source() {
   # Symlink pre-commit hook
   if [ -d "$DD_SOURCE_DIR/.git" ] && [ -f "$DOTFILES_DIR/dd-source/.git-hooks/pre-commit" ]; then
     create_symlink "$DOTFILES_DIR/dd-source/.git-hooks/pre-commit" "$DD_SOURCE_DIR/.git/hooks/pre-commit"
+    chmod +x "$DD_SOURCE_DIR/.git/hooks/pre-commit"
   fi
 
   # Files kept as copies (not symlinked)
@@ -418,29 +419,15 @@ install_vscode_extensions() {
   echo "VSCode extensions installed"
 }
 
-# Setup Git configuration
-setup_gitconfig() {
-  echo "Setting up Git configuration..."
-
-  # Symlink gitconfig (skip if already symlinked to our file)
-  if [ -L "$HOME/.gitconfig" ]; then
-    CURRENT_LINK=$(readlink "$HOME/.gitconfig")
-    if [ "$CURRENT_LINK" = "$DOTFILES_DIR/gitconfig" ]; then
-      echo "~/.gitconfig already symlinked to dotfiles"
-    else
-      echo "~/.gitconfig is a symlink to something else: $CURRENT_LINK"
-      echo "Backing up and replacing..."
-      mv "$HOME/.gitconfig" "$HOME/.gitconfig.backup"
-      ln -s "$DOTFILES_DIR/gitconfig" "$HOME/.gitconfig"
-    fi
-  elif [ -f "$HOME/.gitconfig" ]; then
-    echo "Backing up existing ~/.gitconfig to ~/.gitconfig.backup"
-    mv "$HOME/.gitconfig" "$HOME/.gitconfig.backup"
-    ln -s "$DOTFILES_DIR/gitconfig" "$HOME/.gitconfig"
+# Setup Git configuration (only if not already configured)
+setup_gitconfig_if_not_exist() {
+  if [ ! -f "$HOME/.gitconfig" ]; then
+    echo "Setting up Git configuration..."
+    cp "$DOTFILES_DIR/gitconfig" "$HOME/.gitconfig"
+    echo "Copied gitconfig to ~/.gitconfig"
   else
-    ln -s "$DOTFILES_DIR/gitconfig" "$HOME/.gitconfig"
+    echo "~/.gitconfig already exists, skipping..."
   fi
-  echo "~/.gitconfig symlinked to dotfiles/gitconfig"
 }
 
 # Install GitHub CLI if not already installed
@@ -542,7 +529,7 @@ install_gh
 setup_vim
 
 # Setup Git configuration
-setup_gitconfig
+setup_gitconfig_if_not_exist
 
 # Setup dd-source local configurations
 setup_dd_source
