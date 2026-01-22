@@ -1,12 +1,5 @@
 # Repository Guidelines
 
-## Primary Domain
-@domains/assistant/CLAUDE.md
-
-I primarily work on the `domains/assistant` folder. When I ask about "assistant", I'm referring to services in this folder unless specified otherwise.
-
-**Key reference:** See @domains/assistant/CLAUDE.md for domain-specific architecture, code style, and commands.
-
 ## Repository Structure
 
 This is a Bazel monorepo:
@@ -18,31 +11,18 @@ This is a Bazel monorepo:
 
 
 This repo uses `bzl` to build and test packages.
-<bzl_tool_rules>
+**Important bzl rules**
 - Always use `bzl` instead of `bazel`.
 - Do not manually create new targets in BUILD.bazel files; use `bzl run //:gazelle` to generate them instead.
 - Always run `bzl run //:gazelle` after modifying import statements.
 - NEVER clear the bazel cache. `bzl clean` will NOT solve your problem.
 - Do not use `bzl test` with the `--test_filter` flag; there is a bug that may cause the test case you're selecting to be skipped.
 - Never run multiple `bzl` commands in parallel (lockfile conflicts)
-</bzl_tool_rules>
 
-## Development Workflow
-<development_workflow_rules>
+## Domain Specific Guidance
+I primarily work on the `domains/assistant` folder. When I ask about "assistant", I'm referring to services in this folder unless specified otherwise.
 
-**Before Making Changes**
-1. Read relevant code and understand existing patterns
-2. Create a clear implementation plan with steps
-3. Include testing/verification in your plan
+**MANDATORY PREREQUISITE - THIS IS A HARD REQUIREMENT**
+Whenever working in `domains/assistant` domain, MUST follow the guidance and rules defined in the 
+@~/go/src/github.com/DataDog/dd-source/domains/assistant/CLAUDE.md
 
-
-**Before Committing**
-1. Remove any temporary files created during development
-2. Ensure ALL tests in affected packages pass. You can not skip any failed tests
-3. Run the following scripts
-```bash
-bzl run //:gazelle              # After modifying imports, adding or deleting files
-bzl run //tools/format:lint_ruff
-bzl run //tools/format:format_ruff
-```
-</development_workflow_rules>
