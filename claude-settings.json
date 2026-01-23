@@ -39,5 +39,9 @@
       }
     ]
   },
+  "enabledPlugins": {
+    "feature@datadog-claude-plugins": true,
+    "python-code-reviewer@datadog-claude-plugins": true
+  },
   "alwaysThinkingEnabled": true
 }
