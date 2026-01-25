@@ -304,7 +304,6 @@ setup_dd_source() {
 
   # Symlinked files (auto-sync with dotfiles repo)
   create_symlink "$DOTFILES_DIR/dd-source/.envrc" "$DD_SOURCE_DIR/.envrc"
-  create_symlink "$DOTFILES_DIR/dd-source/CLAUDE.local.md" "$DD_SOURCE_DIR/CLAUDE.local.md"
   create_symlink "$DOTFILES_DIR/dd-source/.cursorignore" "$DD_SOURCE_DIR/.cursorignore"
   create_symlink "$DOTFILES_DIR/dd-source/.claude/settings.local.json" "$DD_SOURCE_DIR/.claude/settings.local.json"
   create_symlink "$DOTFILES_DIR/dd-source/.vscode/settings.json" "$DD_SOURCE_DIR/.vscode/settings.json"
