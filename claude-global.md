@@ -1,22 +1,29 @@
 # Global Rules
+These rules apply to all projects and working directories.
 
 ## GitHub
 - Always use `gh` for GitHub interactions
 
 
 ## Git
-- Never change the current git branch name
+- Never change the current git branch name unless I explicitly asked you to do so
 
-## Code Changes 
+## Code Changes
 
 **Before Making Changes**
-1. Read relevant code and understand existing patterns
-2. Create a clear implementation plan with steps
+1. Read the files being modified to understand existing patterns
+2. Create a clear implementation plan with steps (use TodoWrite for multi-step tasks)
 3. Include testing/verification in your plan
 
 **Before Committing**
-1. Remove any temporary files created during development, such as your plan files.
-2. Ensure ALL tests in affected packages pass. You can not skip any failed tests
+1. Remove any temporary files created during development (e.g., plan files, test outputs)
+2. Run tests for affected packages and ensure ALL pass - do not skip or comment out failed tests
+3. Run linting/formatting if code files were modified
+
+**After Committing**
+1. Push the updated branch to GitHub
+2. If no PR exists for the branch, create one
+3. If a PR already exists, update its title and description to reflect the changes
 
 
 # DD-SOURCE Repository Guidelines

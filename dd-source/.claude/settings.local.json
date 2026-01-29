@@ -9,7 +9,8 @@
       "Edit",
       "MultiEdit",
       "Write",
-      "Skill(dd:get-pr-feedback)"
+      "Skill(dd:get-pr-feedback)",
+      "mcp__datadog__search_datadog_logs"
     ],
     "deny": [],
     "ask": [],

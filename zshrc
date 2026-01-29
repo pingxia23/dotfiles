@@ -68,4 +68,4 @@ export NVM_DIR="$HOME/.nvm"
 # uv (Python package manager) - adds ~/.local/bin to PATH
 export PATH="$HOME/.local/bin:$PATH"
 
-alias claude="source ~/.zshrc && ddtool auth login --datacenter us1.ddbuild.io && claude --model opus"
+alias claude="source ~/.zshrc && ddtool auth login --datacenter us1.ddbuild.io && claude --model opus --allow-dangerously-skip-permissions"
