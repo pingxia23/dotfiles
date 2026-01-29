@@ -2,14 +2,7 @@
 	email = ping.xia@datadoghq.com
 	name = Ping Xia
 [alias]
-	newbranch = "!f() { git checkout -b ping.xia/$1 ${@:2}; }; f"
 	repush = "!f() { \\\n  git add --all; \\\n  git commit --amend --no-edit; \\\n  git push origin $(git symbolic-ref --short HEAD) \"$@\"; \\\n}; f"
-	userlog = "!f() { \
-		author=${1:-\"Ping Xia\"}; \
-		commit=${2:-HEAD}; \
-		git log ${commit}^ --author=\"$author\"; \
-	}; f"
-	uncommit = reset --soft HEAD^
 [push]
 	autoSetupRemote = true
 	default = current

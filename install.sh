@@ -558,6 +558,9 @@ else
   echo "  claude-settings.json not found in dotfiles directory"
 fi
 
+# Setup Claude commands (symlink directory)
+create_symlink "$DOTFILES_DIR/claude-commands" "$HOME/.claude/commands"
+
 echo ""
 echo "============================================="
 echo "Installation complete!"
