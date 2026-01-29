@@ -9,7 +9,7 @@ command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
-# Create a symlink, force-overwriting any existing file/symlink
+# Create a symlink, force-overwriting any existing file/symlink/directory
 # Usage: create_symlink <source> <target>
 create_symlink() {
   local source="$1"  # File in dotfiles repo (absolute path)
@@ -23,6 +23,13 @@ create_symlink() {
 
   # Create parent directory if needed
   mkdir -p "$(dirname "$target")"
+
+  # If target is an existing directory (not a symlink), remove it first
+  # ln -sf won't replace a directory, it creates symlink inside it
+  if [ -d "$target" ] && [ ! -L "$target" ]; then
+    echo "  Removing existing directory $target"
+    rm -rf "$target"
+  fi
 
   # Force create symlink (overwrites existing file/symlink)
   ln -sf "$source" "$target"
