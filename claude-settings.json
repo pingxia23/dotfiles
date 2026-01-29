@@ -1,53 +1,37 @@
 {
-  "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "includeCoAuthoredBy": false,
-  "permissions": {
-    "allow": [
-      "Bash",
-      "WebFetch(domain:*.google.com)",
-      "WebFetch(domain:github.com)",
-      "WebSearch",
-      "Read",
-      "Edit",
-      "MultiEdit",
-      "Write"
-    ],
-    "deny": [],
-    "ask": [],
-    "defaultMode": "acceptEdits"
-  },
-  "model": "opus",
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "prompt",
-            "prompt": "Review the conversation and determine if Claude should stop. Check: 1) Were all user-requested tasks completed? 2) Are there any errors or failures that need fixing? 3) Did Claude verify its work when applicable? If anything is incomplete, respond with {\"ok\": false, \"reason\": \"<what's missing>\"}. If truly done, respond with {\"ok\": true}."
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "prompt",
-            "prompt": "Check if the Bash command was a 'git push' that succeeded (output contains 'github.com' or shows commits pushed). If so, verify Claude will update the PR with 'gh pr edit'. If the push succeeded but Claude hasn't mentioned updating the PR, respond {\"decision\": \"stop\", \"reason\": \"You pushed to GitHub. Now run `gh pr view` and `gh pr edit` to update the PR title/description before continuing.\"}. Otherwise respond {\"decision\": \"allow\"}."
-          }
-        ]
-      }
-    ]
-  },
-  "enabledPlugins": {
-    "feature@datadog-claude-plugins": true,
-    "python-code-reviewer@datadog-claude-plugins": true,
-    "skills@datadog-claude-plugins": true,
-    "bits-remote-agent@datadog-claude-plugins": true,
-    "hookify@claude-plugins-official": true,
-    "claude-code-setup@claude-plugins-official": true,
-    "claude-md-management@claude-plugins-official": true
-  },
-  "alwaysThinkingEnabled": true
+    "$schema": "https://json.schemastore.org/claude-code-settings.json",
+    "includeCoAuthoredBy": false,
+    "permissions":
+    {
+        "allow":
+        [
+            "Bash",
+            "WebFetch(domain:*.google.com)",
+            "WebFetch(domain:github.com)",
+            "WebSearch",
+            "Read",
+            "Edit",
+            "MultiEdit",
+            "Write"
+        ],
+        "deny":
+        [],
+        "ask":
+        [],
+        "defaultMode": "acceptEdits"
+    },
+    "model": "opus",
+    "hooks":
+    {},
+    "enabledPlugins":
+    {
+        "feature@datadog-claude-plugins": true,
+        "python-code-reviewer@datadog-claude-plugins": true,
+        "skills@datadog-claude-plugins": true,
+        "bits-remote-agent@datadog-claude-plugins": true,
+        "hookify@claude-plugins-official": true,
+        "claude-code-setup@claude-plugins-official": true,
+        "claude-md-management@claude-plugins-official": true
+    },
+    "alwaysThinkingEnabled": true
 }
