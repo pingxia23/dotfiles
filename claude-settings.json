@@ -27,6 +27,17 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Check if the Bash command was a 'git push' that succeeded (output contains 'github.com' or shows commits pushed). If so, verify Claude will update the PR with 'gh pr edit'. If the push succeeded but Claude hasn't mentioned updating the PR, respond {\"decision\": \"stop\", \"reason\": \"You pushed to GitHub. Now run `gh pr view` and `gh pr edit` to update the PR title/description before continuing.\"}. Otherwise respond {\"decision\": \"allow\"}."
+          }
+        ]
+      }
     ]
   },
   "enabledPlugins": {

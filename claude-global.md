@@ -3,10 +3,12 @@ These rules apply to all projects and working directories.
 
 ## GitHub
 - Always use `gh` for GitHub interactions
-
+- When pushing to GitHub:
+  - If no PR exists, create one with `gh pr create`
+  - If PR exists, update title/description with `gh pr edit`
 
 ## Git
-- Never change the current git branch name unless I explicitly asked you to do so
+- **Never change the current git branch name** unless I explicitly asked you to do so
 
 ## Code Changes
 
@@ -19,12 +21,6 @@ These rules apply to all projects and working directories.
 1. Remove any temporary files created during development (e.g., plan files, test outputs)
 2. Run tests for affected packages and ensure ALL pass - do not skip or comment out failed tests
 3. Run linting/formatting if code files were modified
-
-**After Committing**
-1. Push the updated branch to GitHub
-2. If no PR exists for the branch, create one
-3. If a PR already exists, update its title and description to reflect the changes
-
 
 # DD-SOURCE Repository Guidelines
 These are general guidelines when you work inside `~/dd/dd-source` folder or `~/go/src/github.com/DataDog/dd-source`
