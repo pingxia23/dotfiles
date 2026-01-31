@@ -8,7 +8,7 @@
 
 1. Derive a kebab-case slug from the feature description (e.g., "user authentication system" → `user-auth-system`)
 2. Create directory: `designs/{slug}/`
-3. Save the original prompt to `designs/{slug}/PROMPT.md`
+3. Create `designs/{slug}/REQUIREMENTS.md` with the original feature request
 
 ---
 
@@ -25,11 +25,11 @@ Before designing, fully understand the problem space and constraints.
 
 **If the feature is clear and well-scoped:**
 - Skip to Phase 2 after brief exploration
-- Document assumptions in ASSUMPTIONS.md
+- Document any assumptions in REQUIREMENTS.md
 
 **If the feature needs clarification:**
-- Write questions to `designs/{slug}/QUESTIONS-1.md`
-- Wait for user answers before proceeding
+- Add questions to REQUIREMENTS.md
+- Wait for user answers, then append answers to REQUIREMENTS.md
 
 **What to clarify:**
 
@@ -51,45 +51,31 @@ Before designing, fully understand the problem space and constraints.
 **ITERATIVE Q&A:**
 
 - ASK AS MANY ROUNDS OF QUESTIONS AS YOU NEED
-- QUESTIONS-1 → answers → QUESTIONS-2 → answers → etc.
+- Append each round of Q&A to REQUIREMENTS.md
 - Only proceed to design when confident you understand the full scope
 - It's BETTER to ask too many questions than to make assumptions
 
-**Questions File Template:**
+**REQUIREMENTS.md Template:**
 
 ```markdown
-<!-- INSTRUCTIONS FOR ANSWERING QUESTIONS -->
-<!--
-- Answer each question inline below the question
-- You can edit the questions if they're unclear
-- Add your answers under each question
-- When done, save the file and let me know
--->
+# Requirements: {Feature Name}
 
-## Functional Requirements
+## Original Request
 
-### Q1: [Question about what the feature should do]
+{The original feature request from the user}
 
-### Q2: [Question about specific behavior]
+## Assumptions
 
-## Technical Constraints
+{Any assumptions made - update as needed}
 
-### Q3: [Question about performance/scale]
+## Q&A
 
-### Q4: [Question about integration]
+### Round 1
 
-## Scope & Boundaries
+**Q:** {Question}
+**A:** {Answer}
 
-### Q5: [Question about what's in/out of scope]
-
----
-
-## Anything else you'd like to mention?
-
-**Additional context or clarifications:**
-
-
-<!-- Save this file when you're done -->
+{Add more rounds as needed}
 ```
 
 **⏸ CHECKPOINT**: When you have no more questions, say "Discovery complete. Say 'continue' for Phase 2"
@@ -100,12 +86,36 @@ Before designing, fully understand the problem space and constraints.
 
 Produce a comprehensive design document at `designs/{slug}/DESIGN.md`.
 
+The design document has **8 sections**:
+1. Overview (problem, goals, non-goals)
+2. Background & Context
+3. Proposed Design (architecture, data model, API, components)
+4. Non-functional Considerations (performance, security, reliability)
+5. Alternatives Considered
+6. Dependencies & Risks
+7. Implementation Roadmap
+8. Open Questions
+
+**All sections below are part of the DESIGN.md template.**
+
+---
+
 **CRITICAL: Citation Requirements**
 
 Every code reference MUST include file path and line number:
 - Single line: `path/to/file.py:42`
 - Line range: `path/to/file.py:42-58`
 - Function reference: `path/to/file.py:42` (the `function_name` function)
+
+**Diagram Guidelines:**
+
+Use Mermaid diagrams liberally:
+- `flowchart` - Architecture, data flow, component relationships
+- `sequenceDiagram` - API interactions, process flows
+- `erDiagram` - Data models, entity relationships
+- `stateDiagram-v2` - State machines, lifecycle
+- `classDiagram` - Class/module relationships
+- `journey` - User journeys
 
 **Design Document Structure:**
 
@@ -152,6 +162,11 @@ journey
 ```
 
 ## 3. Proposed Design
+
+**Design Principles:**
+- Follow established software engineering patterns (SOLID, DRY, separation of concerns)
+- Match existing patterns and conventions in the codebase
+- Prefer simplicity over cleverness
 
 ### 3.1 Architecture Overview
 
@@ -226,7 +241,7 @@ stateDiagram-v2
     State2 --> [*]
 ```
 
-## 4. Technical Considerations
+## 4. Non-functional Considerations
 
 ### 4.1 Performance
 - Expected load: {requests/sec, data volume}
@@ -277,250 +292,91 @@ stateDiagram-v2
 |------|------------|--------|------------|
 | Risk 1 | Medium | High | Strategy |
 
-## 7. Implementation Plan
+## 7. Implementation Roadmap
 
-### 7.1 Phases
+### Prerequisites
 
-| Phase | Description | Deliverable | Est. Complexity |
-|-------|-------------|-------------|-----------------|
-| 1     | Foundation  | Core data model | Medium |
-| 2     | API Layer   | REST endpoints | Medium |
-| 3     | Integration | End-to-end flow | High |
+- {Any setup needed before starting, e.g., feature flag, dependencies}
 
-### 7.2 Testing Strategy
-- Unit tests: {what to test}
-- Integration tests: {what to test}
-- E2E tests: {what to test}
+### Milestone 1: {Milestone Name}
 
-### 7.3 Rollout Strategy
-- Feature flag: {yes/no}
-- Gradual rollout: {percentage ramp}
-- Rollback plan: {how to rollback}
+**Goal:** {What this milestone achieves}
+**Files:** {Files to create or modify}
+**Verification:** {How to verify - test command or manual check}
+
+### Milestone N: {Milestone Name}
+
+{Add as many milestones as needed}
+
+**Roadmap Guidelines:**
+- Each milestone = one commit with all tests passing
+- High-risk milestones should come early (fail-fast)
+- Dependencies must be sequenced correctly
 
 ## 8. Open Questions
 
 - [ ] {Question that still needs answering}
 - [ ] {Another open question}
 
-## 9. Appendix
-
-### 9.1 Key Files Reference
-
-| File | Lines | Purpose |
-|------|-------|---------|
-| `path/to/file.py` | 10-50 | Description |
-
-### 9.2 Glossary
-| Term | Definition |
-|------|------------|
-| Term1 | Definition |
-
-### 9.3 References
-- [Link to relevant doc]
-- [Link to related design]
-```
-
-**Diagram Guidelines:**
-
-Use Mermaid diagrams liberally:
-- `flowchart` - Architecture, data flow, component relationships
-- `sequenceDiagram` - API interactions, process flows
-- `erDiagram` - Data models, entity relationships
-- `stateDiagram-v2` - State machines, lifecycle
-- `classDiagram` - Class/module relationships
-- `journey` - User journeys
-
-**⏸ CHECKPOINT**: When DESIGN.md is ready, say "Design document created. Say 'continue' for Phase 3"
-
 ---
 
 ## Phase 3: Design Review
 
-Critically review the design using this checklist. Act as a staff engineer reviewer.
+Launch a **fresh sub-agent** to review the design with unbiased perspective.
 
-### Review Checklist
+**Use the Task tool:**
 
-#### 1. Completeness
-- [ ] All functional requirements addressed
-- [ ] All non-functional requirements addressed
-- [ ] Edge cases identified and handled
-- [ ] Error scenarios documented
+```
+Task tool call:
+  subagent_type: "general-purpose"
+  description: "Staff engineer design review"
+  prompt: |
+    You are a staff engineer conducting a design review.
 
-#### 2. Correctness
-- [ ] Design solves the stated problem
-- [ ] Assumptions are valid and documented
-- [ ] Data model supports all use cases
-- [ ] API design follows existing conventions
+    **Read these files:**
+    1. designs/{slug}/REQUIREMENTS.md (original request, assumptions, Q&A)
+    2. designs/{slug}/DESIGN.md (the design to review)
 
-#### 3. Clarity
-- [ ] Design is understandable to other engineers
-- [ ] Diagrams accurately represent the system
-- [ ] Ambiguous terms defined in glossary
-- [ ] Decision rationale is clear
+    **Review checklist:**
+    - Completeness: All requirements addressed? Edge cases handled?
+    - Correctness: Design solves the problem? Assumptions valid?
+    - Clarity: Understandable? Diagrams accurate? Terms defined?
+    - Feasibility: Can be implemented? Dependencies available?
+    - Scalability: Handles expected load? Growth path clear?
+    - Security: Auth addressed? Data protected? Input validated?
+    - Maintainability: Follows patterns? Testable? Observable?
+    - Simplicity: No over-engineering? YAGNI followed?
 
-#### 4. Feasibility
-- [ ] Can be implemented with current tech stack
-- [ ] Dependencies are available/accessible
-- [ ] Team has skills to implement
-- [ ] No blocking unknowns
+    **Your task:**
+    DIRECTLY EDIT DESIGN.md to fix issues and improve the design:
+    - Fix any issues you find
+    - Add missing details
+    - Improve clarity
+    - Move unresolved concerns to "Section 8: Open Questions"
+    - Append a new section to provide a brief summary of changes made
 
-#### 5. Scalability & Performance
-- [ ] Design handles expected load
-- [ ] Growth path is clear
-- [ ] No obvious bottlenecks
-- [ ] Caching strategy appropriate
-
-#### 6. Security
-- [ ] Authentication/authorization addressed
-- [ ] Sensitive data protected
-- [ ] Input validation planned
-- [ ] No obvious vulnerabilities
-
-#### 7. Maintainability
-- [ ] Follows existing patterns
-- [ ] Testable design
-- [ ] Observable (logging, metrics, tracing)
-- [ ] Documentation adequate
-
-#### 8. Simplicity
-- [ ] No unnecessary complexity
-- [ ] YAGNI principle followed
-- [ ] Alternatives genuinely considered
-- [ ] Simplest solution that works
-
-**Review Output:**
-
-Create `designs/{slug}/REVIEW.md` with:
-
-```markdown
-# Design Review: {Feature Name}
-
-**Reviewer:** Claude
-**Date:** {date}
-
-## Summary
-
-{Overall assessment: Ready / Needs Revision / Major Concerns}
-
-## Strengths
-- {What's good about this design}
-
-## Concerns
-
-### High Priority
-- [ ] {Must fix before implementation}
-
-### Medium Priority
-- [ ] {Should address, but not blocking}
-
-### Low Priority
-- [ ] {Nice to have improvements}
-
-## Questions for Author
-- {Questions that need answers}
-
-## Recommendation
-
-{Approve / Approve with changes / Request revision}
+    Be critical but constructive. The goal is a better design.
 ```
 
-**If concerns are found:**
-- Update DESIGN.md to address them
-- Or document why the concern is acceptable
+**Why a fresh sub-agent?**
+- Unbiased review (no context from design authoring)
+- Catches issues the author missed due to tunnel vision
+- Simulates real code review from another engineer
 
-**⏸ CHECKPOINT**: When review is complete, say "Design reviewed. Say 'continue' for Phase 4"
-
----
-
-## Phase 4: Implementation Roadmap
-
-Convert the approved design into an actionable implementation plan.
-
-Create `designs/{slug}/ROADMAP.md`:
-
-```markdown
-# Implementation Roadmap: {Feature Name}
-
-**Overall Progress:** `0%`
-**Design Doc:** [DESIGN.md](./DESIGN.md)
-
-## Prerequisites
-
-- [ ] 🟥 {Any setup needed before starting}
-
-## Phase 1: {Phase Name}
-
-**Goal:** {What this phase achieves}
-**Deliverable:** {Concrete output}
-
-- [ ] 🟥 **Task 1.1: {Task name}**
-  - Files: `path/to/file.py`
-  - Test: `{test command}`
-  - Acceptance: {How to verify it's done}
-
-- [ ] 🟥 **Task 1.2: {Task name}**
-  - Files: `path/to/file.py`
-  - Test: `{test command}`
-  - Acceptance: {How to verify it's done}
-
-**Phase 1 Checkpoint:** {How to verify phase is complete}
-
-## Phase 2: {Phase Name}
-
-{Same structure}
-
-## Phase 3: {Phase Name}
-
-{Same structure}
-
-## Rollout Tasks
-
-- [ ] 🟥 **Feature flag setup**
-- [ ] 🟥 **Monitoring/alerting**
-- [ ] 🟥 **Documentation**
-- [ ] 🟥 **Gradual rollout**
-
-## Post-Launch
-
-- [ ] 🟥 **Monitor metrics for {X days}**
-- [ ] 🟥 **Address feedback**
-- [ ] 🟥 **Remove feature flag**
+**After sub-agent completes:**
+1. Read the updated DESIGN.md
+2. Review the changes (use git diff if needed)
+3. If needed, make additional refinements
 
 ---
 
-## Status Key
-
-- 🟥 To Do
-- 🟨 In Progress
-- 🟩 Done
-```
-
-**Roadmap Requirements:**
-
-- Tasks should be TDD: tests before implementation
-- Each task should be independently verifiable
-- Phases should have clear checkpoints
-- High-risk tasks should come early (fail-fast)
-- Dependencies must be sequenced correctly
-
-**⏸ CHECKPOINT**: When roadmap is complete, say "Roadmap created. Design planning complete."
-
----
-
-## Output Summary
+## Complete
 
 When complete, the `designs/{slug}/` directory should contain:
 
 | File | Purpose |
 |------|---------|
-| `PROMPT.md` | Original feature request |
-| `QUESTIONS-*.md` | Clarification Q&A (if any) |
-| `ASSUMPTIONS.md` | Documented assumptions (if any) |
-| `DESIGN.md` | Comprehensive design document |
-| `REVIEW.md` | Design review feedback |
-| `ROADMAP.md` | Implementation plan |
+| `REQUIREMENTS.md` | Original request, assumptions, Q&A |
+| `DESIGN.md` | Comprehensive design document (reviewed and finalized) |
 
-Present a brief summary of the design to the user and ask if they want to:
-1. Dive deeper into any section
-2. Explore alternative approaches
-3. Proceed to implementation
+Say "Design complete. Ready for implementation: `designs/{slug}/DESIGN.md`", to ask for human review.

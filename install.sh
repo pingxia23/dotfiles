@@ -568,6 +568,12 @@ fi
 # Setup Claude commands (symlink directory)
 create_symlink "$DOTFILES_DIR/claude-commands" "$HOME/.claude/commands"
 
+# Setup Claude agents (symlink directory)
+create_symlink "$DOTFILES_DIR/claude-agents" "$HOME/.claude/agents"
+
+# Setup Claude skills (symlink directory)
+create_symlink "$DOTFILES_DIR/claude-skills" "$HOME/.claude/skills"
+
 echo ""
 echo "============================================="
 echo "Installation complete!"

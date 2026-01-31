@@ -1,5 +1,6 @@
 ---
-description: Commit, auto-fix linter errors, and push to GitHub
+name: commit-smart
+description: Smart commit workflow that handles linter errors, commits, pushes, and creates/updates PR
 ---
 
 Perform a smart commit workflow that handles linter errors automatically.
@@ -9,9 +10,16 @@ Perform a smart commit workflow that handles linter errors automatically.
 - NEVER force push
 - Maximum 2 automatic retry attempts before asking user
 
+## Step 0: Run tests
+- Run bzl tests for affected packages and ensure ALL pass - do not skip or comment out failed tests
+
 ## Step 1: Stage and Analyze Changes
 1. Run `git status` and `git diff` to understand all changes
-2. Stage all changes: `git add -A`
+2. Stage changes, excluding working artifacts:
+   ```bash
+   git add -A -- ':!designs/' ':!plans/' ':!research/'
+   ```
+   (Excludes designs/, plans/, and research/ directories - these are working artifacts, not code)
 
 ## Step 2: Generate Commit Message and Commit
 Based on the diff, generate an appropriate commit message that:
@@ -57,3 +65,7 @@ If push fails (e.g., remote has new commits), show the error and ask the user ho
 ## Step 4: Create Or Update PR in GitHub
 - If no PR exists, create one with `gh pr create`
 - If PR exists, update title/description with `gh pr edit`
+
+## Complete
+
+Smart commit workflow complete. Provide the PR link to the user.
