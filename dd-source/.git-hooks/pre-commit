@@ -21,6 +21,9 @@ success() { log "${GREEN}" "$1"; }
 warn() { log "${YELLOW}" "$1"; }
 error() { log "${RED}" "$1"; }
 
+# This will be set once in the main execution
+MERGE_BASE=""
+
 stage_generated_files() {
     local current_files=$(git diff --name-only)
     local original_files=$BEFORE_HOOK
@@ -42,10 +45,18 @@ stage_generated_files() {
 # Normal commit: all staged files
 get_my_branch_files() {
     if [[ -f .git/MERGE_HEAD ]]; then
-        local merge_base=$(git merge-base HEAD MERGE_HEAD)
-        git diff --name-only "$merge_base"..HEAD
+        git diff --name-only "$MERGE_BASE"..HEAD
     else
         git diff --name-only --staged
+    fi
+}
+
+diff_for_file() {
+    local file="$1"
+    if [[ -n "$MERGE_BASE" ]]; then
+        git diff -U0 "$MERGE_BASE"..HEAD -- "$file"
+    else
+        git diff --cached -U0 -- "$file"
     fi
 }
 
@@ -73,28 +84,18 @@ get_go_generate_files() {
 }
 
 get_go_import_dirs() {
-    local my_files=$(get_my_branch_files)
-    local dirs=""
+    get_my_branch_files | {
+        local dirs=""
+        while IFS= read -r file; do
+            [[ "$file" == *.go ]] || continue
+            [[ -f "$file" ]] || continue
 
-    process_go_file() {
-        local file=$1
-        local current_imports=$(go list -f '{{.Imports}}' "$file" 2>/dev/null || true)
-        local prev_imports=""
-
-        if git show HEAD~1:"$file" &>/dev/null; then
-            git show HEAD~1:"$file" > temp.go
-            prev_imports=$(go list -f '{{.Imports}}' temp.go 2>/dev/null || true)
-            rm temp.go
-        fi
-
-        [[ "$current_imports" != "$prev_imports" ]] && dirs+=" $(dirname "$file")"
+            if diff_for_file "$file" | grep -Eq '^[+-][[:space:]]*import[[:space:]]*(\\(|")|^[+-][[:space:]]*"[^"]+"'; then
+                dirs+=" $(dirname "$file")"
+            fi
+        done
+        echo "$dirs" | xargs -n1 2>/dev/null | sort -u | xargs
     }
-
-    while IFS= read -r file; do
-        [[ "$file" == *.go ]] && [[ -f "$file" ]] && process_go_file "$file"
-    done <<< "$my_files"
-
-    echo "$dirs" | xargs -n1 2>/dev/null | sort -u | xargs
 }
 
 get_bazel_dirs() {
@@ -152,31 +153,20 @@ get_assistant_python_files() {
 }
 
 get_python_import_dirs() {
-    local my_files=$(get_my_branch_files)
-    local dirs=""
-
-    process_python_file() {
-        local file=$1
-        [[ -f "$file" ]] || return
-        local current_imports=$(grep -E '^(import|from) ' "$file" 2>/dev/null | sort || true)
-        local prev_imports=""
-
-        if git show HEAD~1:"$file" &>/dev/null; then
-            prev_imports=$(git show HEAD~1:"$file" | grep -E '^(import|from) ' 2>/dev/null | sort || true)
-        fi
-
-        [[ "$current_imports" != "$prev_imports" ]] && dirs+=" $(dirname "$file")"
-    }
-
-    while IFS= read -r file; do
-        if [[ "$file" == *.py || "$file" == *.pyi ]]; then
-            if [[ "$file" != *_pb2.py && "$file" != *_pb2.pyi && "$file" != *_pb2_grpc.py && "$file" != *_pb2_grpc.pyi ]]; then
-                process_python_file "$file"
+    get_my_branch_files | {
+        local dirs=""
+        while IFS= read -r file; do
+            if [[ "$file" == *.py || "$file" == *.pyi ]]; then
+                if [[ "$file" != *_pb2.py && "$file" != *_pb2.pyi && "$file" != *_pb2_grpc.py && "$file" != *_pb2_grpc.pyi ]]; then
+                    [[ -f "$file" ]] || continue
+                    if diff_for_file "$file" | grep -Eq '^[+-][[:space:]]*(import|from)[[:space:]]'; then
+                        dirs+=" $(dirname "$file")"
+                    fi
+                fi
             fi
-        fi
-    done <<< "$my_files"
-
-    echo "$dirs" | xargs -n1 2>/dev/null | sort -u | xargs
+        done
+        echo "$dirs" | xargs -n1 2>/dev/null | sort -u | xargs
+    }
 }
 
 get_go_files() {
@@ -196,6 +186,15 @@ cd "$REPO_ROOT"
 
 BEFORE_HOOK=$(git diff --name-only)
 BEFORE_HOOK_STAGED=$(git diff --name-only --staged)
+
+# Cache merge-base once (used by get_my_branch_files/diff_for_file)
+if [[ -f .git/MERGE_HEAD ]]; then
+    MERGE_BASE=$(git merge-base HEAD MERGE_HEAD || true)
+    if [[ -z "$MERGE_BASE" ]]; then
+        error "❌ Could not determine merge-base; aborting pre-commit."
+        exit 1
+    fi
+fi
 
 # Show merge status if applicable
 if [[ -f .git/MERGE_HEAD ]]; then
@@ -280,7 +279,8 @@ if [[ -n "$python_files" ]]; then
     info "  🛠 Formatting $(echo "$python_files" | wc -w | tr -d ' ') Python files..."
 
     # Run ruff formatter
-    if bzl run //tools/format:format_ruff >/dev/null 2>&1; then
+    diff_source=$(get_my_branch_files)
+    if bzl run //tools/format:format_ruff -- --git-diff-file <(printf '%s\n' "$diff_source") >/dev/null 2>&1; then
         success "  ✅ Python files formatted successfully"
     else
         error "  ❌ Python formatting failed!"
@@ -288,7 +288,7 @@ if [[ -n "$python_files" ]]; then
     fi
 
     # Run ruff linter
-    if bzl run //tools/format:lint_ruff >/dev/null 2>&1; then
+    if bzl run //tools/format:lint_ruff -- --git-diff-file <(printf '%s\n' "$diff_source") >/dev/null 2>&1; then
         success "  ✅ Python linting passed"
     else
         error "  ❌ Python linting failed!"
