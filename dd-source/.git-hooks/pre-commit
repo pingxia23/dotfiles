@@ -127,6 +127,8 @@ get_python_files() {
         local files=""
         while IFS= read -r file; do
             if [[ "$file" == *.py || "$file" == *.pyi ]]; then
+                # Skip deleted files
+                [[ -f "$file" ]] || continue
                 # Exclude protobuf-generated files
                 if [[ "$file" != *_pb2.py && "$file" != *_pb2.pyi && "$file" != *_pb2_grpc.py && "$file" != *_pb2_grpc.pyi ]]; then
                     files+=" $file"
@@ -142,6 +144,8 @@ get_assistant_python_files() {
         local files=""
         while IFS= read -r file; do
             if [[ "$file" == domains/assistant/*.py || "$file" == domains/assistant/*.pyi ]]; then
+                # Skip deleted files
+                [[ -f "$file" ]] || continue
                 # Exclude protobuf-generated files
                 if [[ "$file" != *_pb2.py && "$file" != *_pb2.pyi && "$file" != *_pb2_grpc.py && "$file" != *_pb2_grpc.pyi ]]; then
                     files+=" $file"
@@ -278,9 +282,11 @@ python_files=$(get_python_files)
 if [[ -n "$python_files" ]]; then
     info "  🛠 Formatting $(echo "$python_files" | wc -w | tr -d ' ') Python files..."
 
-    # Run ruff formatter
-    diff_source=$(get_my_branch_files)
-    if bzl run //tools/format:format_ruff -- --git-diff-file <(printf '%s\n' "$diff_source") >/dev/null 2>&1; then
+    # Convert space-separated list to newline-separated for --git-diff-file
+    python_files_newline=$(echo "$python_files" | tr ' ' '\n')
+
+    # Run ruff formatter - use filtered python_files to exclude deleted files
+    if bzl run //tools/format:format_ruff -- --git-diff-file <(echo "$python_files_newline") >/dev/null 2>&1; then
         success "  ✅ Python files formatted successfully"
     else
         error "  ❌ Python formatting failed!"
@@ -288,7 +294,7 @@ if [[ -n "$python_files" ]]; then
     fi
 
     # Run ruff linter
-    if bzl run //tools/format:lint_ruff -- --git-diff-file <(printf '%s\n' "$diff_source") >/dev/null 2>&1; then
+    if bzl run //tools/format:lint_ruff -- --git-diff-file <(echo "$python_files_newline") >/dev/null 2>&1; then
         success "  ✅ Python linting passed"
     else
         error "  ❌ Python linting failed!"
