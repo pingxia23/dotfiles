@@ -305,11 +305,11 @@ warn "🔍 Checking Python types in domains/assistant..."
 assistant_python_files=$(get_assistant_python_files)
 if [[ -n "$assistant_python_files" ]]; then
     info "  🔎 Running mypy on domains/assistant..."
-    if bzl build --build_tag_filters=dd-mypy --config=mypy //domains/assistant/... 2>&1 | tee /tmp/mypy_output.txt | tail -5; then
+    if bzl build --build_tag_filters=dd-mypy,-latest --config=mypy //domains/assistant/... 2>&1 | tee /tmp/mypy_output.txt | tail -5; then
         success "  ✅ Python type checking passed"
     else
         error "  ❌ Python type checking failed!"
-        error "  Run: bzl build --build_tag_filters=dd-mypy --config=mypy //domains/assistant/..."
+        error "  Run: bzl build --build_tag_filters=dd-mypy,-latest --config=mypy //domains/assistant/..."
         cat /tmp/mypy_output.txt | grep -E "(error|Error)" | tail -20
         exit 1
     fi

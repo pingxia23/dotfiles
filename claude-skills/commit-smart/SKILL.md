@@ -1,6 +1,6 @@
 ---
 name: commit-smart
-description: Smart commit workflow that handles linter errors, commits, pushes, and creates/updates PR
+description: Smart commit workflow that handles linter errors, commits, pushes, and creates/updates PR. Use this workflow **ONLY WHEN** the code changes are within ~/dd folder or its subfolders.
 ---
 
 Perform a smart commit workflow that handles linter errors automatically.
