@@ -1,8 +1,13 @@
+---
+name: feature-design
+description: Feature design planning workflow that turns a feature request into clarified requirements, a structured design document, and a review pass. Use when asked to design a feature, write an architecture/design doc, plan a new system/component, or run a discovery/Q&A phase before implementation.
+---
+
 # Feature Design Planning Workflow
 
-**Feature:** $ARGUMENTS
+## Overview
 
----
+Guide a feature request from discovery through a formal design document and a review pass, producing `designs/{slug}/REQUIREMENTS.md` and `designs/{slug}/DESIGN.md`.
 
 ## Setup
 
@@ -82,6 +87,7 @@ Before designing, fully understand the problem space and constraints.
 
 ---
 
+
 ## Phase 2: Design Document
 
 Produce a comprehensive design document at `designs/{slug}/DESIGN.md`.
@@ -107,15 +113,17 @@ Every code reference MUST include file path and line number:
 - Line range: `path/to/file.py:42-58`
 - Function reference: `path/to/file.py:42` (the `function_name` function)
 
-**Diagram Guidelines:**
+Examples:
+```markdown
+Authentication is handled in `apps/apis/assistant_api/main.py:85-120`
+The token validation logic in `libs/py/request_context/auth.py:142` checks...
+See the `validate_request` function at `internal/middleware/auth.go:67`
+```
 
-Use Mermaid diagrams liberally:
-- `flowchart` - Architecture, data flow, component relationships
-- `sequenceDiagram` - API interactions, process flows
-- `erDiagram` - Data models, entity relationships
-- `stateDiagram-v2` - State machines, lifecycle
-- `classDiagram` - Class/module relationships
-- `journey` - User journeys
+**Design Guidelines:**
+- Follow established software engineering patterns (SOLID, DRY, separation of concerns)
+- Match existing patterns and conventions in the codebase
+- Prefer simplicity over cleverness
 
 **Design Document Structure:**
 
@@ -147,152 +155,49 @@ Use Mermaid diagrams liberally:
 Key files:
 - `path/to/file.py:10-50` - {description}
 
-### 2.2 User Journey
-{How do users interact with this feature?}
-
-```mermaid
-journey
-    title User Journey: {Feature}
-    section Current
-      Step 1: 3: User
-      Step 2: 2: User
-    section Proposed
-      Step 1: 5: User
-      Step 2: 5: User
-```
-
 ## 3. Proposed Design
-
-**Design Principles:**
-- Follow established software engineering patterns (SOLID, DRY, separation of concerns)
-- Match existing patterns and conventions in the codebase
-- Prefer simplicity over cleverness
 
 ### 3.1 Architecture Overview
 
-```mermaid
-flowchart TD
-    A[Component A] --> B[Component B]
-    B --> C[Component C]
-```
+{The overview of the design and the key design decisions}
 
 ### 3.2 Data Model
 
 {New or modified data structures}
 
-```mermaid
-erDiagram
-    Entity1 ||--o{ Entity2 : contains
-    Entity1 {
-        string id PK
-        string name
-    }
-```
+{Use mermaid diagram to show the relationships among data models}
 
 ### 3.3 API Design
 
-{New or modified APIs}
+{New or modified APIs, with details on the endpoint, request, resopnse format}
 
-#### Endpoint: `POST /api/v1/resource`
-
-**Request:**
-```json
-{
-  "field1": "value",
-  "field2": 123
-}
-```
-
-**Response:**
-```json
-{
-  "id": "abc123",
-  "status": "created"
-}
-```
-
-**Error Codes:**
-| Code | Description |
-|------|-------------|
-| 400  | Invalid input |
-| 409  | Resource already exists |
 
 ### 3.4 Component Design
 
 {Detailed design of each component}
 
-#### Component: {Name}
-
-**Responsibilities:**
-- {What it does}
-
-**Interfaces:**
-- {How other components interact with it}
-
-**Implementation Notes:**
-- {Key implementation details}
+{Use mermaid diagram to show the relationships among data models}
 
 ### 3.5 State Machine (if applicable)
 
-```mermaid
-stateDiagram-v2
-    [*] --> State1
-    State1 --> State2: event
-    State2 --> [*]
-```
+{Use mermid diagram to show the state transitions}
 
 ## 4. Non-functional Considerations
 
-### 4.1 Performance
-- Expected load: {requests/sec, data volume}
-- Latency requirements: {p50, p99 targets}
-- Scaling strategy: {horizontal, vertical, caching}
+{Consider performance, reliability, security, backward compatibility}
 
-### 4.2 Security
-- Authentication: {method}
-- Authorization: {who can do what}
-- Data sensitivity: {PII, encryption needs}
-
-### 4.3 Reliability
-- Failure modes: {what can go wrong}
-- Recovery strategy: {how to recover}
-- Monitoring: {key metrics to track}
-
-### 4.4 Backwards Compatibility
-- Breaking changes: {yes/no, what}
-- Migration strategy: {how to migrate}
+{Don't make this a laundary list. Only list the considerations that influenced the design decisions}
 
 ## 5. Alternatives Considered
+List all alternatives considered, their pros and cons and why not chosen.
 
-### Alternative 1: {Name}
+## 6. Implementation Roadmap
 
-**Description:** {Brief description}
+**Important**: this section needs to be very detailed and specific, including
+- The goal of this milestone 
+- The code changes 
+- How to test
 
-**Pros:**
-- {advantage}
-
-**Cons:**
-- {disadvantage}
-
-**Why not chosen:** {reason}
-
-### Alternative 2: {Name}
-
-{Same structure}
-
-## 6. Dependencies & Risks
-
-### 6.1 Dependencies
-| Dependency | Type | Risk Level | Mitigation |
-|------------|------|------------|------------|
-| Service X  | Hard | Medium     | Fallback to Y |
-
-### 6.2 Risks
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| Risk 1 | Medium | High | Strategy |
-
-## 7. Implementation Roadmap
 
 ### Prerequisites
 
@@ -313,11 +218,11 @@ stateDiagram-v2
 - High-risk milestones should come early (fail-fast)
 - Dependencies must be sequenced correctly
 
-## 8. Open Questions
+## 7. Open Questions
 
 - [ ] {Question that still needs answering}
 - [ ] {Another open question}
-
+```
 ---
 
 ## Phase 3: Design Review
@@ -329,9 +234,9 @@ Launch a **fresh sub-agent** to review the design with unbiased perspective.
 ```
 Task tool call:
   subagent_type: "general-purpose"
-  description: "Staff engineer design review"
+  description: "Design review"
   prompt: |
-    You are a staff engineer conducting a design review.
+    You are an experienced engineer conducting a design review.
 
     **Read these files:**
     1. designs/{slug}/REQUIREMENTS.md (original request, assumptions, Q&A)
