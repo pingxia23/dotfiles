@@ -26,18 +26,19 @@ Implement each milestone from Section 7 using dedicated subagents.
 - WAIT for it to complete before launching the next
 - Do NOT launch multiple milestone subagents in parallel
 
-**For each milestone N (sequentially, one at a time), launch a new milestone-implement subagent to implement:**
+**For each milestone N (sequentially, one at a time), launch a subagent to implement:**
 ```
 Task tool call:
-  subagent_type: "milestone-implement"
+  subagent_type: "general-purpose"
   description: "Implement milestone {N}: {milestone name}"
   prompt: |
-    Implement milestone {N} of this feature.
+    Implement milestone {N} from the design document.
 
-    DESIGN_PATH: {DESIGN_PATH}
-    MILESTONE_NUM: {N}
+    Design document: {DESIGN_PATH}
+    Milestone: {N}
 
-    Report the result back (SUCCESS or FAILED with reason).
+    Follow the **code-implement** workflow to implement this milestone.
+    Report: SUCCESS with commit hash and PR URL, or FAILED with reason.
 ```
 
 **After each milestone subagent completes:**

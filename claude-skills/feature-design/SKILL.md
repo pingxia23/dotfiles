@@ -191,7 +191,11 @@ Key files:
 ## 5. Alternatives Considered
 List all alternatives considered, their pros and cons and why not chosen.
 
-## 6. Implementation Roadmap
+## 6. Dependencies & Risks
+
+List all dependencies and risks
+
+## 7. Implementation Roadmap
 
 **Important**: this section needs to be very detailed and specific, including
 - The goal of this milestone 
@@ -218,7 +222,7 @@ List all alternatives considered, their pros and cons and why not chosen.
 - High-risk milestones should come early (fail-fast)
 - Dependencies must be sequenced correctly
 
-## 7. Open Questions
+## 8. Open Questions
 
 - [ ] {Question that still needs answering}
 - [ ] {Another open question}
