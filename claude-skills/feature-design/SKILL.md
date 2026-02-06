@@ -43,6 +43,7 @@ Before designing, fully understand the problem space and constraints.
 - **Scope boundaries**: What's in vs. out of scope?
 - **User personas**: Who uses this and how?
 - **Integration**: How does this interact with existing systems?
+- **Early testability constraints**: What test seams, fixtures, or harnesses must exist to verify the feature?
 - **Success criteria**: How do we know when it's done right?
 
 **Quality of questions matters:**
@@ -83,8 +84,6 @@ Before designing, fully understand the problem space and constraints.
 {Add more rounds as needed}
 ```
 
-**⏸ CHECKPOINT**: When you have no more questions, say "Discovery complete. Say 'continue' for Phase 2"
-
 ---
 
 
@@ -98,7 +97,7 @@ The design document has **8 sections**:
 3. Proposed Design (architecture, data model, API, components)
 4. Non-functional Considerations (performance, security, reliability)
 5. Alternatives Considered
-6. Dependencies & Risks
+6. Verification Strategy
 7. Implementation Roadmap
 8. Open Questions
 
@@ -161,6 +160,8 @@ Key files:
 
 {The overview of the design and the key design decisions}
 
+{If Posssible, use mermaid diagram to show the architecture}
+
 ### 3.2 Data Model
 
 {New or modified data structures}
@@ -191,36 +192,50 @@ Key files:
 ## 5. Alternatives Considered
 List all alternatives considered, their pros and cons and why not chosen.
 
-## 6. Dependencies & Risks
+## 6. Verification Strategy
 
-List all dependencies and risks
+Explain how the proposed design will be verified in code. Include:
+- Unit tests to add/modify (what behavior they verify)
+- Integration tests/fixtures/harnesses/e2e suites to add/modify (what end-to-end flows they verify)
+- Test data setup and any required test doubles or fakes
+- How to validate non-functional requirements (performance, reliability, security) where applicable
 
 ## 7. Implementation Roadmap
 
-**Important**: this section needs to be very detailed and specific, including
-- The goal of this milestone 
-- The code changes 
-- How to test
+**Important**: this section needs to be very detailed and specific, following the template defined for each milestone.
+**Important**: the first milestone shall **ALWAYS** be the integration tests milestone, based on Section 6 Verification Strategy. 
 
 
-### Prerequisites
+### Milestone: Integration Tests
 
-- {Any setup needed before starting, e.g., feature flag, dependencies}
+**Goal:** Add or update integration coverage for the full feature flow
+**Files:** {Integration test files, fixtures, harnesses, or e2e suites to create or modify}
+**Integration Tests:** {Specific integration tests to add/modify; include file paths and test names}
+**Verification:** {How to run the integration test suite(s)}
 
-### Milestone 1: {Milestone Name}
+
+### Milestone 2: {Milestone Name}
 
 **Goal:** {What this milestone achieves}
 **Files:** {Files to create or modify}
+**Unit Tests:** {Unit tests to add/modify for this milestone; include file paths and test names}
 **Verification:** {How to verify - test command or manual check}
 
 ### Milestone N: {Milestone Name}
 
 {Add as many milestones as needed}
 
+**Goal:** {What this milestone achieves}
+**Files:** {Files to create or modify}
+**Unit Tests:** {Unit tests to add/modify for this milestone; include file paths and test names}
+**Verification:** {How to verify - test command or manual check}
+
+
 **Roadmap Guidelines:**
 - Each milestone = one commit with all tests passing
 - High-risk milestones should come early (fail-fast)
 - Dependencies must be sequenced correctly
+- Always include the final integration-test milestone, even if integration tests are named as fixtures, harnesses, or e2e suites in this repo
 
 ## 8. Open Questions
 
@@ -231,61 +246,49 @@ List all dependencies and risks
 
 ## Phase 3: Design Review
 
-Launch a **fresh sub-agent** to review the design with unbiased perspective.
+Run an unbiased review pass.
 
-**Use the Task tool:**
+- If a fresh sub-agent or reviewer workflow is available, use it to review `REQUIREMENTS.md` and `DESIGN.md` and apply edits directly to `DESIGN.md`.
+- If no sub-agent is available, perform a self-review with the same checklist and update `DESIGN.md` accordingly.
 
+**Sub-agent trigger (when available):**
+Use the environment's sub-agent tool to run a separate reviewer. If the tool name is unknown, search the available tools list first. Use this prompt:
+
+```text
+You are an experienced engineer conducting a design review.
+
+**Read these files:**
+1. designs/{slug}/REQUIREMENTS.md (original request, assumptions, Q&A)
+2. designs/{slug}/DESIGN.md (the design to review)
+
+**Review checklist:**
+- Completeness: All requirements addressed? Edge cases handled?
+- Correctness: Design solves the problem? Assumptions valid?
+- Clarity: Understandable? Diagrams accurate? Terms defined?
+- Feasibility: Can be implemented? Dependencies available?
+- Scalability: Handles expected load? Growth path clear?
+- Security: Auth addressed? Data protected? Input validated?
+- Maintainability: Follows patterns? Testable? Observable?
+- Simplicity: No over-engineering? YAGNI followed?
+
+**Your task:**
+DIRECTLY EDIT DESIGN.md to fix issues and improve the design:
+- Fix any issues you find
+- Add missing details
+- Improve clarity
+- Move unresolved concerns to "Section 8: Open Questions"
+
+Be critical but constructive. The goal is a better design.
 ```
-Task tool call:
-  subagent_type: "general-purpose"
-  description: "Design review"
-  prompt: |
-    You are an experienced engineer conducting a design review.
 
-    **Read these files:**
-    1. designs/{slug}/REQUIREMENTS.md (original request, assumptions, Q&A)
-    2. designs/{slug}/DESIGN.md (the design to review)
-
-    **Review checklist:**
-    - Completeness: All requirements addressed? Edge cases handled?
-    - Correctness: Design solves the problem? Assumptions valid?
-    - Clarity: Understandable? Diagrams accurate? Terms defined?
-    - Feasibility: Can be implemented? Dependencies available?
-    - Scalability: Handles expected load? Growth path clear?
-    - Security: Auth addressed? Data protected? Input validated?
-    - Maintainability: Follows patterns? Testable? Observable?
-    - Simplicity: No over-engineering? YAGNI followed?
-
-    **Your task:**
-    DIRECTLY EDIT DESIGN.md to fix issues and improve the design:
-    - Fix any issues you find
-    - Add missing details
-    - Improve clarity
-    - Move unresolved concerns to "Section 8: Open Questions"
-    - Append a new section to provide a brief summary of changes made
-
-    Be critical but constructive. The goal is a better design.
-```
-
-**Why a fresh sub-agent?**
-- Unbiased review (no context from design authoring)
-- Catches issues the author missed due to tunnel vision
-- Simulates real code review from another engineer
-
-**After sub-agent completes:**
-1. Read the updated DESIGN.md
-2. Review the changes (use git diff if needed)
-3. If needed, make additional refinements
-
----
 
 ## Complete
 
-When complete, the `designs/{slug}/` directory should contain:
+When complete, ensure `designs/{slug}/` contains:
 
 | File | Purpose |
 |------|---------|
 | `REQUIREMENTS.md` | Original request, assumptions, Q&A |
 | `DESIGN.md` | Comprehensive design document (reviewed and finalized) |
 
-Say "Design complete. Ready for implementation: `designs/{slug}/DESIGN.md`", to ask for human review.
+Say: "Design complete. Ready for implementation: `designs/{slug}/DESIGN.md`".

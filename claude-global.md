@@ -10,17 +10,16 @@ These rules apply to all projects and working directories.
 ## Git
 - **Never change the current git branch name** unless I explicitly asked you to do so
 
-## Code Changes
 
-**Before Making Changes**
-1. Read the files being modified to understand existing patterns
-2. Create a clear implementation plan with steps (use TodoWrite for multi-step tasks)
-3. Include testing/verification in your plan
-
-**Before Committing**
+## Code Commit Rule
 1. Remove any temporary files created during development (e.g., plan files, test outputs)
-2. Run tests for affected packages and ensure ALL pass - do not skip or comment out failed tests
-3. Run linting/formatting if code files were modified
+2. **ALWAYS** use `commit-smart` skill to commit
+
+## Address Github PR comment Rule
+1. **ONLY** address unresolved comments
+
+## Python Code Rule
+1. **ALWAYS** perfer build-time import over run-time import
 
 # DD-SOURCE Repository Guidelines
 These are general guidelines when you work inside `~/dd/dd-source` folder or `~/go/src/github.com/DataDog/dd-source`

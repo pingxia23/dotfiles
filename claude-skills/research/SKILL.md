@@ -1,8 +1,13 @@
+---
+name: research
+description: Research and exploration workflow that investigates codebases, documents findings, and produces comprehensive research reports. Use when asked to research how something works, explore a codebase, understand system behavior, or investigate technical topics.
+---
+
 # Research & Exploration Workflow
 
-**Research Topic:** $ARGUMENTS
+## Overview
 
----
+Guide a research topic through clarification and deep exploration, producing `research/{slug}/FINDINGS.md` with comprehensive, well-cited findings.
 
 ## Setup
 
@@ -191,6 +196,13 @@ Use Mermaid diagrams to illustrate:
 - [ ] Executive summary captures the essential findings
 - [ ] Key files reference table is complete
 
-**Completion:**
+## Complete
 
-When FINDINGS.md is complete, present a brief summary highlighting the most important discoveries and ask if the user wants any clarifications or deeper dives into specific areas.
+When FINDINGS.md is complete, ensure `research/{slug}/` contains:
+
+| File | Purpose |
+|------|---------|
+| `QUESTIONS-*.md` | Clarification rounds (if any) |
+| `FINDINGS.md` | Comprehensive research findings |
+
+Present a brief summary highlighting the most important discoveries and ask if the user wants any clarifications or deeper dives into specific areas.

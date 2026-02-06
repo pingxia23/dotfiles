@@ -17,7 +17,7 @@ Perform a smart commit workflow that handles linter errors automatically.
 1. Run `git status` and `git diff` to understand all changes
 2. Stage changes, excluding working artifacts:
    ```bash
-   git add -A -- ':!designs/' ':!plans/' ':!research/'
+   git add -A -- ':(exclude)designs/' ':(exclude)plans/' ':(exclude)research/'
    ```
    (Excludes designs/, plans/, and research/ directories - these are working artifacts, not code)
 

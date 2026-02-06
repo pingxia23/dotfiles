@@ -69,3 +69,25 @@ export NVM_DIR="$HOME/.nvm"
 export PATH="$HOME/.local/bin:$PATH"
 
 alias claude="source ~/.zshrc && ddtool auth login --datacenter us1.ddbuild.io && claude --model opus --allow-dangerously-skip-permissions"
+
+# Trigger tribunal cron jobs with correct kube_cronjob tag
+trigger-tribunal() {
+  local experiment="${1:?Usage: trigger-tribunal <experiment-name>}"
+  local cronjob="assistant-evaluation-tribunal-${experiment}"
+  local job_name="tribunal-${experiment}-$(date +%s | tail -c 5)"  # Short name to fit 63 char limit
+  local context="general2.us1.prod.dog"
+  local namespace="rapid-assistant"
+
+  echo "Creating job ${job_name} from cronjob ${cronjob}..."
+
+  kubectl --context "${context}" -n "${namespace}" create job \
+    --from="cronjob/${cronjob}" "${job_name}" \
+    --dry-run=client -o yaml | \
+  yq eval ".spec.template.metadata.annotations[\"ad.datadoghq.com/tags\"] = \"{\\\"kube_cronjob\\\":\\\"${cronjob}\\\"}\"" - | \
+  kubectl --context "${context}" -n "${namespace}" apply -f -
+
+  echo "Job ${job_name} created."
+  echo ""
+  echo "Datadog logs:"
+  echo "  https://app.datadoghq.com/logs?query=kube_namespace%3A${namespace}%20kube_cronjob%3A${cronjob}"
+}
