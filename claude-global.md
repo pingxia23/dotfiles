@@ -3,23 +3,20 @@ These rules apply to all projects and working directories.
 
 ## GitHub
 - Always use `gh` for GitHub interactions
-- When pushing to GitHub:
-  - If no PR exists, create one with `gh pr create`
-  - If PR exists, update title/description with `gh pr edit`
 
 ## Git
 - **Never change the current git branch name** unless I explicitly asked you to do so
 
 
-## Code Commit Rule
+## Code Commit 
 1. Remove any temporary files created during development (e.g., plan files, test outputs)
 2. **ALWAYS** use `commit-smart` skill to commit
 
-## Address Github PR comment Rule
+## Address Github Pull Request Comments
 1. **ONLY** address unresolved comments
 
-## Python Code Rule
-1. **ALWAYS** perfer build-time import over run-time import
+## Python Code Style
+1. **ALWAYS** perfer top-level import than inline import
 
 # DD-SOURCE Repository Guidelines
 These are general guidelines when you work inside `~/dd/dd-source` folder or `~/go/src/github.com/DataDog/dd-source`
