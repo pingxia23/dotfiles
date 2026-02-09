@@ -14,7 +14,7 @@
     ],
     "deny": [],
     "ask": [],
-    "defaultMode": "acceptEdits"
+    "defaultMode": "bypassPermissions"
   },
   "model": "opus",
   "hooks": {},
