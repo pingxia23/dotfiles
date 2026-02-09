@@ -44,7 +44,7 @@ stage_generated_files() {
 # During merge: only files changed in our branch (not incoming merge files)
 # Normal commit: all staged files
 get_my_branch_files() {
-    if [[ -f .git/MERGE_HEAD ]]; then
+    if [[ -f "$(git rev-parse --git-dir)/MERGE_HEAD" ]]; then
         git diff --name-only "$MERGE_BASE"..HEAD
     else
         git diff --name-only --staged
@@ -192,7 +192,8 @@ BEFORE_HOOK=$(git diff --name-only)
 BEFORE_HOOK_STAGED=$(git diff --name-only --staged)
 
 # Cache merge-base once (used by get_my_branch_files/diff_for_file)
-if [[ -f .git/MERGE_HEAD ]]; then
+GIT_DIR="$(git rev-parse --git-dir)"
+if [[ -f "$GIT_DIR/MERGE_HEAD" ]]; then
     MERGE_BASE=$(git merge-base HEAD MERGE_HEAD || true)
     if [[ -z "$MERGE_BASE" ]]; then
         error "❌ Could not determine merge-base; aborting pre-commit."
@@ -201,7 +202,7 @@ if [[ -f .git/MERGE_HEAD ]]; then
 fi
 
 # Show merge status if applicable
-if [[ -f .git/MERGE_HEAD ]]; then
+if [[ -f "$GIT_DIR/MERGE_HEAD" ]]; then
     warn "🔀 Merge detected - only processing files from your branch"
 fi
 
