@@ -1,14 +1,3 @@
-# Path to your Oh My Zsh installation
-export ZSH="$HOME/.oh-my-zsh"
-
-# Theme
-ZSH_THEME="robbyrussell"
-
-# Plugins
-plugins=(git docker zsh-autosuggestions zsh-syntax-highlighting direnv)
-
-source $ZSH/oh-my-zsh.sh
-
 # Workspace indicator
 if [ -n "$WORKSPACE_NAME" ]; then
   export PS1="[ws:${WORKSPACE_NAME}] $PS1"
@@ -104,13 +93,14 @@ create-worktree() {
   fi
 
   local branch="ping.xia/$feature"
-  local path="$HOME/dd/$feature"
+  local target="$HOME/dd/$feature"
 
-  if [[ -d "$path" ]]; then
-    echo "Directory already exists: $path"
+  if [[ -d "$target" ]]; then
+    echo "Directory already exists: $target"
     return 1
   fi
 
-  git worktree add -b "$branch" "$path" && cd "$path"
+  git -C "$DD_SOURCE_ROOT" worktree add -b "$branch" "$target" && cd "$target"
 }
+
 
