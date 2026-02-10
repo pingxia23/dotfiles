@@ -100,7 +100,7 @@ create-worktree() {
     return 1
   fi
 
-  git -C "$DD_SOURCE_ROOT" worktree add -b "$branch" "$target" && cd "$target"
+  git -C "$DD_SOURCE_ROOT" worktree add --track -b "$branch" "$target" origin/main && cd "$target"
 
   # Create detached tmux session if tmux is available
   if command -v tmux >/dev/null 2>&1; then
