@@ -94,3 +94,23 @@ trigger-tribunal() {
   echo "Datadog logs:"
   echo "  https://app.datadoghq.com/logs?query=kube_namespace%3A${namespace}%20kube_cronjob%3A${cronjob}"
 }
+
+create-worktree() {
+  local feature="$1"
+
+  if [[ -z "$feature" ]]; then
+    echo "Usage: wt <feature-name>"
+    return 1
+  fi
+
+  local branch="ping.xia/$feature"
+  local path="$HOME/dd/$feature"
+
+  if [[ -d "$path" ]]; then
+    echo "Directory already exists: $path"
+    return 1
+  fi
+
+  git worktree add -b "$branch" "$path" && cd "$path"
+}
+
