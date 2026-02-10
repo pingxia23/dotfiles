@@ -88,7 +88,7 @@ create-worktree() {
   local feature="$1"
 
   if [[ -z "$feature" ]]; then
-    echo "Usage: wt <feature-name>"
+    echo "Usage: create-worktree <feature-name>"
     return 1
   fi
 
@@ -101,6 +101,37 @@ create-worktree() {
   fi
 
   git -C "$DD_SOURCE_ROOT" worktree add -b "$branch" "$target" && cd "$target"
+
+  # Create detached tmux session if tmux is available
+  if command -v tmux >/dev/null 2>&1; then
+    tmux new-session -d -s "$feature" -c "$target"
+    echo "Created tmux session: $feature"
+  fi
 }
 
+delete-worktree() {
+  local feature="$1"
+
+  if [[ -z "$feature" ]]; then
+    echo "Usage: delete-worktree <feature-name>"
+    return 1
+  fi
+
+  local target="$HOME/dd/$feature"
+
+  if [[ ! -d "$target" ]]; then
+    echo "Worktree directory does not exist: $target"
+    return 1
+  fi
+
+  # Kill tmux session if it exists
+  if command -v tmux >/dev/null 2>&1; then
+    tmux kill-session -t "$feature" 2>/dev/null
+  fi
+
+  # Force remove the git worktree
+  git -C "$DD_SOURCE_ROOT" worktree remove --force "$target"
+
+  echo "Worktree '$feature' removed"
+}
 
