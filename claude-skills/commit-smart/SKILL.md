@@ -63,8 +63,52 @@ git push
 If push fails (e.g., remote has new commits), show the error and ask the user how to proceed.
 
 ## Step 4: Create Or Update PR in GitHub
-- If no PR exists, create one with `gh pr create`
-- If PR exists, update title/description with `gh pr edit`
+
+### PR Description Schema
+Generate a PR description following this structure:
+
+```
+## Problem
+<Why this change is needed - the business/technical problem being solved>
+
+## Approach
+<High-level solution and key design decisions>
+
+## Tests
+<High-level summary of test coverage>
+
+## Breaking Changes (if applicable)
+<List any breaking changes and migration steps>
+
+## Related
+<Links to related PRs, issues, or tickets>
+```
+
+### Example
+
+```
+## Problem
+`BaseTool.requires_approval` is a static `ClassVar[bool]`, but `CallDatadogAPITool` needs
+to support both read (no approval) and write (approval required) operations. The current
+workaround of splitting into two tools (`call_datadog_api` and `call_datadog_write_api`)
+confuses the LLM with redundant tool choices.
+
+## Approach
+Replace the boolean with a tri-state `ApprovalRequirement` enum: `NO`, `YES`, and `RUNTIME`.
+When set to `RUNTIME`, the tool implements `requires_approval_with_args(tool_args)` to
+determine approval dynamically based on HTTP method and endpoint.
+
+## Tests
+Added `TestApprovalRequirement` covering all three enum states and runtime resolution.
+
+## Related
+- Fixes #12345
+- Related to #352441
+```
+
+### Commands
+- If no PR exists: `gh pr create --title "<title>" --body "<description>"`
+- If PR exists: `gh pr edit --body "<description>"`
 
 ## Complete
 
