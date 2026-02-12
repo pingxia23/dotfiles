@@ -1,0 +1,4 @@
+interface:
+  display_name: "Commit Smart"
+  short_description: "Safe commit, push, and PR workflow"
+  default_prompt: "Use $commit-smart to run tests, commit safely, push, and create or update the PR."

@@ -1,115 +1,113 @@
 ---
 name: commit-smart
-description: Smart commit workflow that handles linter errors, commits, pushes, and creates/updates PR. Use this workflow **ONLY WHEN** the code changes are within ~/dd folder or its subfolders.
+description: "Deterministic workflow to stage changes, run bzl tests, commit with hooks, push, and create or update GitHub PRs. Trigger this skill whenever the user asks to commit (for example: 'commit', 'commit this', 'please commit') and the current working directory is under ~/dd."
 ---
 
-Perform a smart commit workflow that handles linter errors automatically.
+Perform a deterministic smart-commit workflow.
 
-## Important Rules
-- NEVER use `--no-verify` to skip hooks
+## Hard Rules
+- NEVER use `--no-verify`
 - NEVER force push
-- Maximum 2 automatic retry attempts before asking user
+- NEVER rename or switch branches unless the user explicitly asks
+- For pre-commit hook failures, inspect, fix, and retry until commit succeeds
 
-## Step 0: Run tests
-- Run bzl tests for affected packages and ensure ALL pass - do not skip or comment out failed tests
+## Step 0: Preflight
+1. Confirm repository scope:
+   - Continue only if `pwd` is under `~/dd`.
+   - If outside `~/dd`, stop and tell the user this skill is out of scope.
+2. Confirm git state:
+   - `git rev-parse --is-inside-work-tree`
+   - `branch=$(git symbolic-ref --short HEAD)`
+   - If branch is detached, stop and report the issue.
+3. Inspect workspace:
+   - `git status --short`
+   - `git diff --name-only --diff-filter=U`
+   - If unresolved conflicts exist, stop and report the issue.
 
-## Step 1: Stage and Analyze Changes
-1. Run `git status` and `git diff` to understand all changes
-2. Stage changes, excluding working artifacts:
+## Step 1: Run Tests For Affected Packages
+1. Build candidate directories from changed files:
+   - Use `git diff --name-only` and `git diff --cached --name-only`.
+   - Keep unique parent directories.
+   - Keep only directories that contain `BUILD.bazel`.
+2. Discover test targets sequentially (never parallelize `bzl` commands):
+   - For each directory `d`, run: `bzl query "tests(//${d}:*)"`.
+   - Union all returned targets.
+3. Execute tests:
+   - If target list is non-empty: `bzl test <targets...>`.
+   - If target list is empty: run `bzl test //...`.
+4. Do not skip or comment out failing tests.
+5. Never use `--test_filter`.
+
+## Step 2: Stage And Review Changes
+1. Stage changes while excluding working artifacts:
    ```bash
    git add -A -- ':(exclude)designs/' ':(exclude)plans/' ':(exclude)research/'
    ```
-   (Excludes designs/, plans/, and research/ directories - these are working artifacts, not code)
+2. Review staged contents before commit:
+   - `git diff --cached --name-status`
+3. If nothing is staged, stop and inform the user.
 
-## Step 2: Generate Commit Message and Commit
-Based on the diff, generate an appropriate commit message that:
-- Summarizes the nature of the changes (feature, fix, refactor, etc.)
-- Focuses on the "why" not the "what"
-- Follows the repository's existing commit message style
+## Step 3: Compose Commit Message
+1. Inspect recent style:
+   - `git log -n 20 --pretty=%s`
+2. Write a message that:
+   - Matches local style.
+   - Explains why the change is needed.
+   - Uses a concise subject and optional body.
+3. Commit using HEREDOC:
+   ```bash
+   git commit -m "$(cat <<'EOF'
+   <subject>
 
-Commit using HEREDOC format:
-```bash
-git commit -m "$(cat <<'EOF'
-Your commit message here
-EOF
-)"
-```
+   <optional body>
+   EOF
+   )"
+   ```
 
-## Step 3: Handle Pre-commit Hook Failures
-If the commit fails:
+## Step 4: Fix Pre-commit Failures Until Commit Succeeds
+If `git commit` fails due to hooks:
+  1. Parse hook output and identify the failing check.
+  2. Fix issues in code/config/message, re-stage, retry.
+  4. Repeat until `git commit` succeeds.
+  5. Stop only for external blockers (auth/network/tool outage), and report exact output.
 
-### Auto-fixable (retry automatically):
-- Hook output shows files were reformatted/modified
-- Hook ran gazelle and updated BUILD files
-- These are auto-staged by the hook, just retry the commit
+## Step 5: Push
+1. Push after successful commit:
+   - `git push`
+2. If push fails, stop and show exact error output.
 
-### Requires User Input (STOP and ask using AskUserQuestion):
-- **Mypy type errors** - errors containing "error:" with line numbers and type messages
-- **Unfixable lint errors** - ruff errors that remain after formatting
-- **Build failures** - bazel/bzl build errors
-- **After 2 failed retry attempts** - something unexpected is wrong
+## Step 6: Create Or Update PR
+1. Confirm GitHub auth if needed:
+   - `gh auth status`
+2. Detect whether a PR already exists for the current branch:
+   - `pr_url=$(gh pr view --head "$branch" --json url --jq '.url' 2>/dev/null)`
+3. Build PR body with this schema:
+   ```
+   ## Problem
+   <why this change is needed>
 
-When stopping for user input:
-1. Show the exact error output
-2. Explain what type of error it is
-3. Ask if they want you to attempt a fix or handle it manually
+   ## Approach
+   <key implementation choices>
 
-## Push to GitHub
-After successful commit:
-```bash
-git push
-```
+   ## Tests
+   <what was run and results>
 
-If push fails (e.g., remote has new commits), show the error and ask the user how to proceed.
+   ## Breaking Changes (if applicable)
+   <breaking behavior and migration>
 
-## Step 4: Create Or Update PR in GitHub
+   ## Related
+   <issues/PR links>
+   ```
+4. Apply PR command:
+   - If `pr_url` is empty:
+     - `gh pr create --title "<title>" --body "<description>"`
+   - Else:
+     - `gh pr edit --body "<description>"`
+5. Return final PR link to the user.
 
-### PR Description Schema
-Generate a PR description following this structure:
-
-```
-## Problem
-<Why this change is needed - the business/technical problem being solved>
-
-## Approach
-<High-level solution and key design decisions>
-
-## Tests
-<High-level summary of test coverage>
-
-## Breaking Changes (if applicable)
-<List any breaking changes and migration steps>
-
-## Related
-<Links to related PRs, issues, or tickets>
-```
-
-### Example
-
-```
-## Problem
-`BaseTool.requires_approval` is a static `ClassVar[bool]`, but `CallDatadogAPITool` needs
-to support both read (no approval) and write (approval required) operations. The current
-workaround of splitting into two tools (`call_datadog_api` and `call_datadog_write_api`)
-confuses the LLM with redundant tool choices.
-
-## Approach
-Replace the boolean with a tri-state `ApprovalRequirement` enum: `NO`, `YES`, and `RUNTIME`.
-When set to `RUNTIME`, the tool implements `requires_approval_with_args(tool_args)` to
-determine approval dynamically based on HTTP method and endpoint.
-
-## Tests
-Added `TestApprovalRequirement` covering all three enum states and runtime resolution.
-
-## Related
-- Fixes #12345
-- Related to #352441
-```
-
-### Commands
-- If no PR exists: `gh pr create --title "<title>" --body "<description>"`
-- If PR exists: `gh pr edit --body "<description>"`
-
-## Complete
-
-Smart commit workflow complete. Provide the PR link to the user.
+## Completion Checklist
+- Tests passed
+- Commit succeeded with hooks enabled
+- Push succeeded
+- PR created or updated
+- PR link shared with user
