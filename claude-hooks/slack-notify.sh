@@ -8,7 +8,7 @@ if [ "$(uname -s)" = "Darwin" ]; then
   exit 0
 fi
 
-WEBHOOK_URL="${CLAUDE_SLACK_WEBHOOK_URL:?CLAUDE_SLACK_WEBHOOK_URL not set}"
+WEBHOOK_URL="${AI_SLACK_WEBHOOK_URL:?AI_SLACK_WEBHOOK_URL not set}"
 
 # Read hook input from stdin
 INPUT=$(cat)
