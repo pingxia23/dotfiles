@@ -574,6 +574,26 @@ create_symlink "$DOTFILES_DIR/claude-agents" "$HOME/.claude/agents"
 # Setup Claude skills (symlink directory)
 create_symlink "$DOTFILES_DIR/claude-skills" "$HOME/.claude/skills"
 
+# Setup Codex configuration (symlinked)
+echo "Setting up Codex configuration..."
+if [ -f "$DOTFILES_DIR/claude-global.md" ]; then
+  create_symlink "$DOTFILES_DIR/claude-global.md" "$HOME/.codex/AGENTS.md"
+else
+  echo "  claude-global.md not found in dotfiles directory"
+fi
+
+if [ -d "$DOTFILES_DIR/claude-skills" ]; then
+  create_symlink "$DOTFILES_DIR/claude-skills" "$HOME/.codex/skills/custom"
+else
+  echo "  claude-skills directory not found in dotfiles directory"
+fi
+
+if [ -f "$DOTFILES_DIR/codex-config.toml" ]; then
+  create_symlink "$DOTFILES_DIR/codex-config.toml" "$HOME/.codex/config.toml"
+else
+  echo "  codex-config.toml not found in dotfiles directory"
+fi
+
 echo ""
 echo "============================================="
 echo "Installation complete!"
