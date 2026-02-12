@@ -574,6 +574,9 @@ create_symlink "$DOTFILES_DIR/claude-agents" "$HOME/.claude/agents"
 # Setup Claude skills (symlink directory)
 create_symlink "$DOTFILES_DIR/claude-skills" "$HOME/.claude/skills"
 
+# Setup Claude hooks (symlink directory)
+create_symlink "$DOTFILES_DIR/claude-hooks" "$HOME/.claude/hooks"
+
 # Setup Codex configuration (symlinked)
 echo "Setting up Codex configuration..."
 if [ -f "$DOTFILES_DIR/claude-global.md" ]; then

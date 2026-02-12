@@ -17,7 +17,19 @@
     "defaultMode": "bypassPermissions"
   },
   "model": "opus",
-  "hooks": {},
+  "hooks": {
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/slack-notify.sh",
+            "async": true
+          }
+        ]
+      }
+    ]
+  },
   "enabledPlugins": {
     "feature@datadog-claude-plugins": true,
     "python-code-reviewer@datadog-claude-plugins": true,
