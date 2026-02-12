@@ -1,208 +1,118 @@
 ---
 name: research
-description: Research and exploration workflow that investigates codebases, documents findings, and produces comprehensive research reports. Use when asked to research how something works, explore a codebase, understand system behavior, or investigate technical topics.
+description: Codebase investigation workflow for explaining system behavior across multiple files with verified file:line evidence. Use for architecture or root-cause research, not routine code edits.
 ---
 
-# Research & Exploration Workflow
+# Codebase Research Workflow
 
-## Overview
+## Purpose
 
-Guide a research topic through clarification and deep exploration, producing `research/{slug}/FINDINGS.md` with comprehensive, well-cited findings.
+Use this skill for multi-file investigation and explanation of system behavior. Optimize for accurate, evidence-backed findings with output depth proportional to task complexity.
 
-## Setup
+## Trigger Guidance
 
-1. Derive a kebab-case slug from the research topic (e.g., "How does auth work" → `auth-flow`)
-2. Create directory: `research/{slug}/`
+Use this skill when:
 
----
+- User asks how a subsystem works across files or services
+- User asks for architecture or data-flow mapping
+- User asks for root-cause investigation that needs execution-path tracing
+- User asks for comprehensive findings with code citations
 
-## Phase 1: Clarification (If Needed)
+Do not use this skill when:
 
-Before diving into exploration, assess whether the research topic is clear or needs clarification.
+- Task is a straightforward implementation or fix request
+- Task is a single-file refactor or mechanical edit
+- User asks generic Q&A that does not require repository exploration
 
-**If the topic is clear and specific:**
-- Skip directly to Phase 2 (Exploration)
-- No questions needed
+## Output Modes
 
-**If the topic is ambiguous or broad:**
-- Write questions to `research/{slug}/QUESTIONS-1.md`
-- Wait for user answers before proceeding
+Choose one mode during intake:
 
-**What to clarify:**
+| Signal | Mode |
+|---|---|
+| Narrow question and likely <= 5 key files | `quick` |
+| Cross-cutting behavior, unclear boundaries, or > 5 files | `deep` |
+| User explicitly asks for a report or document | `deep` |
 
-- **Key Research Questions**: What specific questions does the user want answered?
-- **Scope boundaries**: What should be included vs. excluded?
-- **Depth**: High-level overview or detailed implementation analysis?
-- **Focus areas**: Which parts of the system matter most?
+Mode overrides:
 
-**Quality of questions matters:**
+- If user asks for "just a short answer" or "no files", force `quick`.
+- If user asks for a written artifact under `research/`, force `deep`.
 
-- Ask about specific technical areas (e.g., "Should I focus on the auth flow or the data layer?")
-- Ask about boundaries (e.g., "Should I include the test infrastructure in this research?")
-- Ask about depth (e.g., "Do you want a high-level overview or detailed implementation analysis?")
-- Ask about deliverables (e.g., "What questions do you want answered in the findings?")
-- Be thorough - 3-5 well-thought-out questions is better than vague ones
+Mode precedence (highest first):
 
-**ITERATIVE Q&A:**
+1. Explicit artifact requirement (`research/{slug}/FINDINGS.md`) -> `deep`
+2. Explicit brevity/no-file request -> `quick`
+3. Otherwise use the signal matrix
 
-- ASK AS MANY ROUNDS OF QUESTIONS AS YOU NEED
-- QUESTIONS-1, wait for answers, then QUESTIONS-2 if needed, etc.
-- Only proceed to exploration when confident you understand the scope
-- It's BETTER to ask too many questions than to make assumptions
+If the prompt contains conflicting instructions (for example, "short answer" and "write FINDINGS.md"), ask one clarifying question. If unanswered, default to `deep` and keep the final summary concise.
 
-**Questions File Template:**
+## Workflow
 
-When creating QUESTIONS-*.md files, use this format:
+### Phase 0: Intake
 
-```markdown
-<!-- INSTRUCTIONS FOR ANSWERING QUESTIONS -->
-<!--
-- Answer each question inline below the question
-- You can edit the questions if they're unclear
-- Add your answers under each question
-- When done, save the file and let me know
--->
+1. Restate the research objective in one sentence.
+2. Choose `quick` or `deep` mode.
+3. Capture explicit scope and assumptions.
 
-## Q1: Your first question here
+### Phase 1: Clarification (chat-first)
 
-## Q2: Your second question here
+- Ask 1-3 high-impact questions only when needed.
+- Use `references/questioning-guide.md` to pick questions.
+- If user does not answer, proceed with explicit assumptions.
+- Create `research/{slug}/QUESTIONS-*.md` only when the user explicitly requests async file-based Q&A.
 
----
+### Phase 2: Exploration and evidence collection
 
-## Key Questions You Want Answered
+- Start from likely entrypoints and trace outward through calls and dependencies.
+- Prefer fast search commands (`rg --files`, `rg "pattern"`).
+- Keep an evidence ledger where each claim maps to inspected `file:line`.
+- Track three buckets:
+  - Observed facts
+  - Inferences from observed facts
+  - Unknown or unverified areas
+- Stop condition for `quick`: once the objective is answered with sufficient cited evidence, stop exploring and synthesize.
+- Stop condition for `deep`: cover all primary subsystems needed to answer the core research questions.
+- No-evidence condition: if relevant code cannot be found after targeted entrypoint and keyword search, report what was searched, mark findings `Unverified`, and provide next search directions.
 
-What specific questions should this research answer? List them here:
+Before synthesis, apply `references/evidence-rules.md`.
 
-1.
-2.
-3.
+### Phase 3: Synthesis and delivery
 
----
+Quick mode output (chat):
 
-## Anything else you'd like to mention?
+1. Objective
+2. Key findings with `file:line` citations, labeled `Observed`, `Inferred`, or `Unverified`
+3. Open questions or uncertainty
+4. Suggested next checks
 
-**Additional context or clarifications:**
+Deep mode output (`research/{slug}/FINDINGS.md`):
 
+1. Create `research/{slug}/` using kebab-case topic slug
+2. Fill `research/{slug}/FINDINGS.md` using `references/findings-template.md`
+3. Include architecture mapping and detailed findings with citations
+4. Add a diagram only if it materially improves understanding
+5. Ensure each major finding is labeled `Observed`, `Inferred`, or `Unverified`
 
-<!-- Save this file when you're done -->
-```
+## Evidence Standards
 
----
+- Never cite a file or line that was not inspected in the current session.
+- Every substantive claim must be cited or labeled `Unverified`.
+- If evidence is missing or conflicting, state that directly and provide next checks.
+- Never present inference as observed fact.
 
-## Phase 2: Exploration & Synthesis
+## Completion Checklist
 
-Now dive deep into the codebase and produce a comprehensive findings report.
-
-**Exploration Process:**
-
-- Trace code paths systematically from entry points
-- Document component relationships and dependencies
-- Identify patterns, conventions, and architectural decisions
-- Note any surprising or non-obvious behavior
-- Use Read, Glob, Grep tools extensively
-
-**CRITICAL: Citation Requirements**
-
-Every code reference MUST include file path and line number in this format:
-- Single line: `path/to/file.py:42`
-- Line range: `path/to/file.py:42-58`
-- Function reference: `path/to/file.py:42` (the `function_name` function)
-
-Examples:
-```markdown
-Authentication is handled in `apps/apis/assistant_api/main.py:85-120`
-The token validation logic in `libs/py/request_context/auth.py:142` checks...
-See the `validate_request` function at `internal/middleware/auth.go:67`
-```
-
-**Create `research/{slug}/FINDINGS.md` with this structure:**
-
-```markdown
-# Research Findings: {Topic}
-
-## Original Prompt
-
-{The exact $ARGUMENTS text}
-
-## Executive Summary
-
-{2-3 sentence overview of key findings}
-
-## Architecture Overview
-
-{High-level description of how the system works}
-
-```mermaid
-flowchart TD
-    A[Component A] --> B[Component B]
-    B --> C[Component C]
-```
-
-## Detailed Findings
-
-### {Section 1: Key Area}
-
-{Detailed explanation with file:line citations}
-
-Key files:
-- `path/to/main/file.py:10-50` - {description}
-- `path/to/other/file.py:100` - {description}
-
-### {Section 2: Another Key Area}
-
-{Continue with more sections as needed}
-
-## Answers to Research Questions
-
-### Q1: {Question from clarification or derived during exploration}
-
-**Answer:** {Detailed answer with citations}
-
-### Q2: {Next question}
-
-**Answer:** {Detailed answer with citations}
-
-## Key Insights
-
-- {Insight 1}
-- {Insight 2}
-- {Continue as needed}
-
-## Recommendations (if applicable)
-
-- {Any suggestions for improvements or further investigation}
-
-## Appendix: Key Files Reference
-
-| File | Lines | Purpose |
-|------|-------|---------|
-| `path/to/file.py` | 10-50 | Description |
-| `path/to/file.py` | 100-150 | Description |
-```
-
-**Diagram Guidelines:**
-
-Use Mermaid diagrams to illustrate:
-- Architecture/component relationships (flowchart)
-- Data flow (flowchart or sequenceDiagram)
-- Class/module relationships (classDiagram)
-- State machines (stateDiagram-v2)
-
-**Quality Checklist:**
-
-- [ ] All code references include file:line citations
-- [ ] All research questions are answered
-- [ ] At least one diagram illustrating architecture/flow
-- [ ] Executive summary captures the essential findings
-- [ ] Key files reference table is complete
-
-## Complete
-
-When FINDINGS.md is complete, ensure `research/{slug}/` contains:
-
-| File | Purpose |
-|------|---------|
-| `QUESTIONS-*.md` | Clarification rounds (if any) |
-| `FINDINGS.md` | Comprehensive research findings |
-
-Present a brief summary highlighting the most important discoveries and ask if the user wants any clarifications or deeper dives into specific areas.
+- [ ] Output depth matches request complexity
+- [ ] Objective is answered
+- [ ] Claims are cited or marked `Unverified`
+- [ ] Assumptions and unknowns are explicit
+- [ ] Suggested next checks are provided when uncertainty remains
+- [ ] Mode decision and any overrides are explicitly stated
+
+## Reference Files
+
+- `references/questioning-guide.md`
+- `references/evidence-rules.md`
+- `references/findings-template.md`
+- `references/examples.md`

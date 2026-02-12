@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Research"
+  short_description: "Investigate codebases with cited findings"
+  default_prompt: "Use $research to investigate how this subsystem works end-to-end with file:line evidence."
