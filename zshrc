@@ -109,6 +109,11 @@ create-worktree() {
   fi
 }
 
+# Ensure workspace SSH key is loaded for git commit signing
+if [ -f "$HOME/.ssh/id_ed25519" ]; then
+  ssh-add -l 2>/dev/null | grep -q "$(ssh-keygen -lf "$HOME/.ssh/id_ed25519.pub" 2>/dev/null | awk '{print $2}')" || ssh-add "$HOME/.ssh/id_ed25519" 2>/dev/null
+fi
+
 delete-worktree() {
   local feature="$1"
 
