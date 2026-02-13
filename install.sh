@@ -252,25 +252,8 @@ install_cargo() {
 setup_vim() {
   echo "Setting up Vim configuration..."
 
-  # Symlink vimrc (skip if already symlinked to our file)
-  if [ -L "$HOME/.vimrc" ]; then
-    CURRENT_LINK=$(readlink "$HOME/.vimrc")
-    if [ "$CURRENT_LINK" = "$DOTFILES_DIR/vimrc" ]; then
-      echo "~/.vimrc already symlinked to dotfiles"
-    else
-      echo "~/.vimrc is a symlink to something else: $CURRENT_LINK"
-      echo "Backing up and replacing..."
-      mv "$HOME/.vimrc" "$HOME/.vimrc.backup"
-      ln -s "$DOTFILES_DIR/vimrc" "$HOME/.vimrc"
-    fi
-  elif [ -f "$HOME/.vimrc" ]; then
-    echo "Backing up existing ~/.vimrc to ~/.vimrc.backup"
-    mv "$HOME/.vimrc" "$HOME/.vimrc.backup"
-    ln -s "$DOTFILES_DIR/vimrc" "$HOME/.vimrc"
-  else
-    ln -s "$DOTFILES_DIR/vimrc" "$HOME/.vimrc"
-  fi
-  echo "~/.vimrc symlinked to dotfiles/vimrc"
+  # Symlink vimrc
+  create_symlink "$DOTFILES_DIR/vimrc" "$HOME/.vimrc"
 
   # Create vim undo directory
   mkdir -p "$HOME/.vim/undodir"
@@ -320,10 +303,14 @@ setup_dd_source() {
     chmod +x "$DD_SOURCE_DIR/.git/hooks/pre-commit"
   fi
 
-  # Copy git config template
+  # Copy git config template (only if config doesn't exist)
   if [ -d "$DD_SOURCE_DIR/.git" ] && [ -f "$DOTFILES_DIR/dd-source/.git-config-template" ]; then
-    cp "$DOTFILES_DIR/dd-source/.git-config-template" "$DD_SOURCE_DIR/.git/config"
-    echo "  Copied git config template"
+    if [ ! -f "$DD_SOURCE_DIR/.git/config" ]; then
+      cp "$DOTFILES_DIR/dd-source/.git-config-template" "$DD_SOURCE_DIR/.git/config"
+      echo "  Copied git config template"
+    else
+      echo "  .git/config already exists, skipping template copy"
+    fi
   fi
 
   # direnv allow (idempotent)
@@ -384,20 +371,20 @@ setup_dd_source_root_venv() {
   fi
 }
 
-# Install VSCode extensions (idempotent - already installed extensions are skipped)
+# Install VSCode extensions (only installs if not already installed)
 install_vscode_extensions() {
-  # Check for code or cursor CLI
-  local CODE_CMD=""
-  if command_exists code; then
-    CODE_CMD="code"
-  elif command_exists cursor; then
-    CODE_CMD="cursor"
-  else
-    echo "VSCode/Cursor CLI not found, skipping extension installation..."
+  local CODE_CMD="cursor"
+
+  if ! command_exists "$CODE_CMD"; then
+    echo "$CODE_CMD CLI not found, skipping extension installation..."
     return 0
   fi
 
   echo "Installing VSCode extensions..."
+
+  # Get list of installed extensions
+  local INSTALLED_EXTENSIONS
+  INSTALLED_EXTENSIONS=$($CODE_CMD --list-extensions 2>/dev/null || echo "")
 
   local EXTENSIONS=(
     "charliermarsh.ruff"
@@ -411,11 +398,15 @@ install_vscode_extensions() {
   )
 
   for ext in "${EXTENSIONS[@]}"; do
-    echo "  Installing $ext..."
-    $CODE_CMD --install-extension "$ext" --force 2>/dev/null || true
+    if echo "$INSTALLED_EXTENSIONS" | grep -qi "^${ext}$"; then
+      echo "  $ext already installed"
+    else
+      echo "  Installing $ext..."
+      $CODE_CMD --install-extension "$ext" 2>/dev/null || true
+    fi
   done
 
-  echo "VSCode extensions installed"
+  echo "VSCode extensions done"
 }
 
 # Setup Git configuration (only if not already configured)
@@ -534,7 +525,8 @@ setup_gitconfig_if_not_exist
 setup_dd_source
 
 # Setup root Python venv for dd-source
-setup_dd_source_root_venv
+# NOTE: Disabled - run manually when needed due to potential issues with requirements.txt
+# setup_dd_source_root_venv
 
 # Install VSCode extensions
 install_vscode_extensions
