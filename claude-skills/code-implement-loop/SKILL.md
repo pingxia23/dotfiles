@@ -7,7 +7,7 @@ description: Implement code changes strictly from a user-provided `.md` plan/des
 
 ## Overview
 
-Implement a task in a deterministic sequence: strict `.md` plan intake -> TODO breakdown -> implementation -> commit-smart -> iterative review/fix loop. Keep the loop focused on unresolved feedback and stop only on approval or max-rounds blocked output.
+Implement a task in a deterministic sequence: strict `.md` plan intake -> TODO breakdown -> implementation (uncommitted) -> iterative review/fix loop -> single commit-smart. Keep the loop focused on unresolved feedback and stop only on approval or max-rounds blocked output.
 
 ## Workflow
 
@@ -50,6 +50,7 @@ For each TODO:
    - `bzl run //:gazelle`
 4. Run targeted verification.
 5. Keep changes scoped to the current TODO.
+6. DO NOT COMMIT during implementation; keep all changes uncommitted for the review loop.
 
 Repo constraints:
 
@@ -57,20 +58,11 @@ Repo constraints:
 - Never use `bzl test --test_filter`.
 - Never run multiple `bzl` commands in parallel.
 
-### 5) Commit with commit-smart
-
-When implementation changes are ready, invoke `commit-smart` to:
-
-- run affected tests,
-- stage changes with exclusions,
-- commit with hooks enabled,
-- push,
-- create or update PR.
-
-### 6) Run Ralph Wiggum review/fix loop
+### 5) Run Ralph Wiggum review/fix loop
 
 Run a bounded loop with at most 5 rounds.
 Each round must use a new reviewer sub-agent (fresh context).
+DO NOT COMMIT inside this loop.
 
 Defaults:
 
@@ -83,8 +75,7 @@ Fixed reviewer prompt:
 You are a fresh reviewer in a Ralph Wiggum implementation loop.
 
 Review inputs:
-- PR URL: {pr_url}
-- PR diff (from `gh pr diff`): {pr_diff}
+- Working tree diff (from `git diff`): {working_diff}
 - Goal: {task_goal}
 - Previously unresolved findings ledger: {unresolved_findings_ledger}
 
@@ -99,7 +90,7 @@ or
   - concrete fix recommendation
 
 Rules:
-- report unresolved issues only from the current PR state
+- report unresolved issues only from the current working-tree state
 - do not repeat resolved findings from prior rounds
 - keep feedback actionable and specific
 - if there are no unresolved issues, return APPROVED
@@ -107,27 +98,30 @@ Rules:
 
 Per round:
 
-1. Resolve PR link for this round:
-   - `pr_url=$(gh pr view --json url -q '.url')`
+1. Capture current uncommitted diff for this round:
+   - `working_diff=$(git diff)`
 2. Launch a new reviewer sub-agent with fresh context:
    - Review inputs must include:
-     - `pr_url`
-     - `gh pr diff`
+     - `working_diff`
      - task goal
      - unresolved findings ledger
+   - The sub-agent model must use the same model as the main agent.
 3. If `APPROVED`, emit `<promise>IMPLEMENTATION_COMPLETE</promise>` and stop.
 4. If `NEEDS_CHANGES`:
    - fix unresolved items only,
    - rerun verification,
-   - run `commit-smart` to commit/push round changes,
-   - update PR/comments describing what was addressed.
+   - keep changes uncommitted for the next round.
 5. If not approved after `MAX_ROUNDS`, emit blocked status with unresolved list and attempted fixes.
+
+### 6) Commit once after approval with commit-smart
+
+After the review loop returns `APPROVED`, invoke `commit-smart` to commit and push changes.
 
 ### 7) Return final status
 
 Success format:
 
-`SUCCESS: Implementation complete | Commit: {hash} | PR: {url} | Review rounds: {n} | <promise>IMPLEMENTATION_COMPLETE</promise>`
+`SUCCESS: Implementation complete | PR: {url}`
 
 Blocked format:
 
