@@ -19,17 +19,13 @@ MESSAGE=$(echo "$INPUT" | jq -r '.message // "No message"')
 # Gather context
 WORKING_DIR=$(pwd)
 GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "N/A")
-MODEL_NAME="${CLAUDE_MODEL:-unknown}"
-HOSTNAME=$(hostname)
 
 # Build Slack payload
 PAYLOAD=$(jq -n \
   --arg text "*Claude Code Notification*" \
   --arg msg "$MESSAGE" \
-  --arg model "$MODEL_NAME" \
   --arg branch "$GIT_BRANCH" \
   --arg dir "$WORKING_DIR" \
-  --arg host "$HOSTNAME" \
   '{
     blocks: [
       {
@@ -43,10 +39,8 @@ PAYLOAD=$(jq -n \
       {
         type: "context",
         elements: [
-          { type: "mrkdwn", text: ("*Model:* " + $model) },
           { type: "mrkdwn", text: ("*Branch:* " + $branch) },
-          { type: "mrkdwn", text: ("*Dir:* " + $dir) },
-          { type: "mrkdwn", text: ("*Host:* " + $host) }
+          { type: "mrkdwn", text: ("*Dir:* " + $dir) }
         ]
       }
     ]
