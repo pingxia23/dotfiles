@@ -7,7 +7,7 @@ Use clarification only when ambiguity would materially change findings.
 Ask clarification questions if any of these are true:
 
 - Scope is ambiguous (multiple plausible subsystems)
-- Success criteria are unclear (what "good research output" means)
+- Success criteria are unclear (what "good exploration output" means)
 - Depth is unclear (`quick` vs `deep`)
 - Time or focus constraints are implied but not explicit
 
@@ -31,7 +31,7 @@ If the request is already specific and bounded, skip questions and start explora
 
 - "Should this focus on the runtime flow only, or also include deployment/configuration paths?"
 - "Which answer matters most: where logic lives, how data flows, or why behavior changed?"
-- "Do you want a quick cited summary or a full report under `research/{slug}/FINDINGS.md`?"
+- "Do you want a quick cited summary or a full report under `exploration/{slug}/FINDINGS.md`?"
 
 ## Poor question patterns
 

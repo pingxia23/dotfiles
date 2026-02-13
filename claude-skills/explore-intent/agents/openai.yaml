@@ -1,0 +1,4 @@
+interface:
+  display_name: "Explore Intent"
+  short_description: "Explore code and clarify intent with cited evidence"
+  default_prompt: "Use explore-intent to investigate this subsystem, clarify ambiguous intent, and return file:line-supported findings."

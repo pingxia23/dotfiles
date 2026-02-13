@@ -1,28 +1,30 @@
 ---
-name: research
-description: Codebase investigation workflow for explaining system behavior across multiple files with verified file:line evidence. Use for architecture or root-cause research, not routine code edits.
+name: explore-intent
+description: General exploration and intent-clarification workflow for investigating codebases with file:line evidence and producing either quick cited summaries or deep exploration reports.
 ---
 
-# Codebase Research Workflow
+# Explore and Clarify Workflow
 
 ## Purpose
 
-Use this skill for multi-file investigation and explanation of system behavior. Optimize for accurate, evidence-backed findings with output depth proportional to task complexity.
+Use this skill for repository exploration plus user-intent clarification before design or implementation.
+Optimize for accurate, evidence-backed findings with output depth proportional to task complexity.
 
 ## Trigger Guidance
 
 Use this skill when:
 
-- User asks how a subsystem works across files or services
-- User asks for architecture or data-flow mapping
-- User asks for root-cause investigation that needs execution-path tracing
-- User asks for comprehensive findings with code citations
+- The user asks how a subsystem works across files or services
+- The user asks for architecture or data-flow mapping
+- The user needs exploration before design or implementation planning
+- The user asks for root-cause investigation that needs execution-path tracing
+- The user asks for comprehensive findings with code citations
 
 Do not use this skill when:
 
-- Task is a straightforward implementation or fix request
-- Task is a single-file refactor or mechanical edit
-- User asks generic Q&A that does not require repository exploration
+- The task is straightforward implementation with already clear requirements
+- The task is a single-file refactor or mechanical edit
+- The user asks generic Q&A that does not require repository exploration
 
 ## Output Modes
 
@@ -37,11 +39,11 @@ Choose one mode during intake:
 Mode overrides:
 
 - If user asks for "just a short answer" or "no files", force `quick`.
-- If user asks for a written artifact under `research/`, force `deep`.
+- If user asks for a written artifact under `exploration/`, force `deep`.
 
 Mode precedence (highest first):
 
-1. Explicit artifact requirement (`research/{slug}/FINDINGS.md`) -> `deep`
+1. Explicit artifact requirement (`exploration/{slug}/FINDINGS.md`) -> `deep`
 2. Explicit brevity/no-file request -> `quick`
 3. Otherwise use the signal matrix
 
@@ -51,16 +53,16 @@ If the prompt contains conflicting instructions (for example, "short answer" and
 
 ### Phase 0: Intake
 
-1. Restate the research objective in one sentence.
+1. Restate the exploration objective in one sentence.
 2. Choose `quick` or `deep` mode.
 3. Capture explicit scope and assumptions.
 
 ### Phase 1: Clarification (chat-first)
 
-- Ask 1-3 high-impact questions only when needed.
+- Ask 1-3 high-impact questions per round when needed.
 - Use `references/questioning-guide.md` to pick questions.
 - If user does not answer, proceed with explicit assumptions.
-- Create `research/{slug}/QUESTIONS-*.md` only when the user explicitly requests async file-based Q&A.
+- Create `exploration/{slug}/QUESTIONS-*.md` only when the user explicitly requests async file-based Q&A.
 
 ### Phase 2: Exploration and evidence collection
 
@@ -72,7 +74,7 @@ If the prompt contains conflicting instructions (for example, "short answer" and
   - Inferences from observed facts
   - Unknown or unverified areas
 - Stop condition for `quick`: once the objective is answered with sufficient cited evidence, stop exploring and synthesize.
-- Stop condition for `deep`: cover all primary subsystems needed to answer the core research questions.
+- Stop condition for `deep`: cover all primary subsystems needed to answer the core exploration questions.
 - No-evidence condition: if relevant code cannot be found after targeted entrypoint and keyword search, report what was searched, mark findings `Unverified`, and provide next search directions.
 
 Before synthesis, apply `references/evidence-rules.md`.
@@ -86,10 +88,10 @@ Quick mode output (chat):
 3. Open questions or uncertainty
 4. Suggested next checks
 
-Deep mode output (`research/{slug}/FINDINGS.md`):
+Deep mode output (`exploration/{slug}/FINDINGS.md`):
 
-1. Create `research/{slug}/` using kebab-case topic slug
-2. Fill `research/{slug}/FINDINGS.md` using `references/findings-template.md`
+1. Create `exploration/{slug}/` using kebab-case topic slug
+2. Fill `exploration/{slug}/FINDINGS.md` using `references/findings-template.md`
 3. Include architecture mapping and detailed findings with citations
 4. Add a diagram only if it materially improves understanding
 5. Ensure each major finding is labeled `Observed`, `Inferred`, or `Unverified`
@@ -115,4 +117,3 @@ Deep mode output (`research/{slug}/FINDINGS.md`):
 - `references/questioning-guide.md`
 - `references/evidence-rules.md`
 - `references/findings-template.md`
-- `references/examples.md`

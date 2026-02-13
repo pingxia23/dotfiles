@@ -1,0 +1,4 @@
+interface:
+  display_name: "Feature Design"
+  short_description: "Create decision-complete feature DESIGN docs with phased milestones"
+  default_prompt: "Use $feature-design to explore the repo, clarify requirements, and produce designs/{slug}/DESIGN.md with strict citations and implementation phases."

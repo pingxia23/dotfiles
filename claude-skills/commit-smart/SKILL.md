@@ -41,7 +41,7 @@ Perform a deterministic smart-commit workflow.
 ## Step 2: Stage And Review Changes
 1. Stage changes while excluding working artifacts:
    ```bash
-   git add -A -- ':(exclude)designs/' ':(exclude)plans/' ':(exclude)research/'
+   git add -A -- ':(exclude)designs/' ':(exclude)plans/' ':(exclude)exploration/'
    ```
 2. Review staged contents before commit:
    - `git diff --cached --name-status`

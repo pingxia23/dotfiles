@@ -1,9 +1,9 @@
-# Deep Findings Template
+# Deep Exploration Findings Template
 
-Use this template for `deep` mode output in `research/{slug}/FINDINGS.md`.
+Use this template for `deep` mode output in `exploration/{slug}/FINDINGS.md`.
 
 ```markdown
-# Research Findings: {Topic}
+# Exploration Findings: {Topic}
 
 ## Original Prompt
 
@@ -39,7 +39,7 @@ Use this template for `deep` mode output in `research/{slug}/FINDINGS.md`.
 - Evidence: `path/to/file.py:80-140`
 - Impact: {why this matters}
 
-## Answers to Research Questions
+## Answers to Exploration Questions
 
 ### Q1: {question}
 

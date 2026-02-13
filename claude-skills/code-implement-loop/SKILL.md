@@ -24,7 +24,7 @@ Implement a task in a deterministic sequence: strict `.md` plan intake -> TODO b
 - If input is missing or not a `.md` file, stop and return:
   - `FAILED: plan/design .md file is required`
 - Use the provided `.md` file as the only implementation source.
-- Do not run research in this skill.
+- Do not run explore-intent in this skill.
 
 
 ### 3) Create decision-complete TODOs
