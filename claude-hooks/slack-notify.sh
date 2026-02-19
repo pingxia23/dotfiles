@@ -22,7 +22,6 @@ GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "N/A")
 
 # Build Slack payload
 PAYLOAD=$(jq -n \
-  --arg text "*Claude Code Notification*" \
   --arg msg "$MESSAGE" \
   --arg branch "$GIT_BRANCH" \
   --arg dir "$WORKING_DIR" \
@@ -30,7 +29,7 @@ PAYLOAD=$(jq -n \
     blocks: [
       {
         type: "header",
-        text: { type: "plain_text", text: "Claude Code Notification", emoji: true }
+        text: { type: "plain_text", text: ("Claude Code Notification From Branch " + $branch), emoji: true }
       },
       {
         type: "section",
@@ -39,7 +38,6 @@ PAYLOAD=$(jq -n \
       {
         type: "context",
         elements: [
-          { type: "mrkdwn", text: ("*Branch:* " + $branch) },
           { type: "mrkdwn", text: ("*Dir:* " + $dir) }
         ]
       }

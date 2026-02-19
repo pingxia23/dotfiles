@@ -25,18 +25,21 @@ Perform a deterministic smart-commit workflow.
    - If unresolved conflicts exist, stop and report the issue.
 
 ## Step 1: Run Tests For Affected Packages
-1. Build candidate directories from changed files:
-   - Use `git diff --name-only` and `git diff --cached --name-only`.
+1. Check if any code files are changed:
+   - Use `git diff --name-only` and `git diff --cached --name-only` to get all changed files.
+   - Code file extensions include: `.py`, `.go`, `.c`, `.cc`, `.cpp`, `.h`, `.hpp`, `.java`, `.js`, `.ts`, `.tsx`, `.jsx`, `.rs`, `.rb`, `.swift`, `.kt`, `.scala`, `.sh`, `.bash`.
+   - If NO code files are changed (only config, docs, markdown, yaml, json, etc.), **skip all testing** and proceed directly to Step 2.
+2. Build candidate directories from changed code files:
    - Keep unique parent directories.
    - Keep only directories that contain `BUILD.bazel`.
-2. Discover test targets sequentially (never parallelize `bzl` commands):
+3. Discover test targets sequentially (never parallelize `bzl` commands):
    - For each directory `d`, run: `bzl query "tests(//${d}:*)"`.
    - Union all returned targets.
-3. Execute tests:
+4. Execute tests:
    - If target list is non-empty: `bzl test <targets...>`.
    - If target list is empty: run `bzl test //...`.
-4. Do not skip or comment out failing tests.
-5. Never use `--test_filter`.
+5. Do not skip or comment out failing tests.
+6. Never use `--test_filter`.
 
 ## Step 2: Stage And Review Changes
 1. Stage changes while excluding working artifacts:

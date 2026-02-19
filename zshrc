@@ -10,15 +10,6 @@ export EDITOR='vim'
 alias ls='ls --color=auto'
 alias k="kubectl"
 
-# Datadog cluster aliases
-alias stg="ddtool clusters use gizmo.us1.staging.dog"
-alias us1="ddtool clusters use general2.us1.prod.dog"
-alias eu1="ddtool clusters use spirou.eu1.prod.dog"
-alias us3="ddtool clusters use zekrom.us3.prod.dog"
-alias us5="ddtool clusters use hypno.us5.prod.dog"
-alias ap1="ddtool clusters use nidorino.ap1.prod.dog"
-alias ap2="ddtool clusters use espathra.ap2.prod.dog"
-
 # Go setup
 export GOPATH="$HOME/go"
 export PATH="$GOPATH/bin:$PATH"
