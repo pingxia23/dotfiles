@@ -83,7 +83,10 @@ If `git commit` fails due to hooks:
    - `gh auth status`
 2. Detect whether a PR already exists for the current branch:
    - `pr_url=$(gh pr view --head "$branch" --json url --jq '.url' 2>/dev/null)`
-3. Build PR body with this schema:
+3. Read latest commit context:
+   - `latest_commit_body=$(git log -1 --pretty=%B)`
+   - `git show --name-status --format=fuller --no-color HEAD`
+4. Build PR body for new PRs with this schema:
    ```
    ## Problem
    <why this change is needed>
@@ -100,12 +103,50 @@ If `git commit` fails due to hooks:
    ## Related
    <issues/PR links>
    ```
-4. Apply PR command:
-   - If `pr_url` is empty:
+5. Create PR path (`pr_url` is empty):
+   - Create a new PR from the template body:
      - `gh pr create --title "<title>" --body "<description>"`
-   - Else:
-     - `gh pr edit --body "<description>"`
-5. Return final PR link to the user.
+6. Update PR path (`pr_url` exists):
+   1. Read current PR body first (this is the source of truth for prior status):
+      - `current_body=$(gh pr view --head "$branch" --json body --jq '.body')`
+   2. Decide section updates from latest commit:
+      - `## Problem`: NEVER update after PR creation.
+      - `## Approach`: update only when latest commit changes implementation strategy/behavioral approach.
+      - `## Breaking Changes (if applicable)`: update when latest commit introduces/removes incompatible behavior or migration impact.
+      - `## Tests`: update only when NEW test files are added in latest commit.
+        - Detect added test files from status `A` in latest commit, then filter by test-file naming/path conventions (e.g. `*_test.*`, `test_*.*`, `*.spec.*`, `*.test.*`, or files under `tests/` / `test/`).
+   3. If no qualifying section updates are needed:
+      - Skip PR body edit.
+   4. If one or more qualifying updates are needed:
+      - Update only those section bodies.
+      - Keep all other sections and custom text unchanged.
+      - `gh pr edit --body "<updated_description>"`
+7. Examples:
+   - CI fix commit (no approach/breaking/new-test-file change, so no description update):
+     ```text
+     Fix flaky CI retry in pre-commit
+
+     This commit only stabilizes CI behavior.
+     ```
+   - Behavior change commit (update `## Approach` section):
+     ```text
+     Switch merge strategy from full overwrite to section-preserving updates
+
+     Preserve prior PR status and update only impacted sections.
+     ```
+   - Breaking change commit (update `## Breaking Changes (if applicable)` section):
+     ```text
+     Remove legacy config key and require the new key
+
+     Existing config must migrate to the new key name.
+     ```
+   - New test files added (update `## Tests` section):
+     ```text
+     Add regression coverage for PR description updater
+
+     Added: tools/pr/tests/test_pr_description_update.py
+     ```
+8. Return final PR link to the user.
 
 ## Completion Checklist
 - Tests passed
