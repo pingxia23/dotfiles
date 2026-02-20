@@ -1,6 +1,6 @@
 ---
 name: commit-smart
-description: "Deterministic workflow to stage changes, run bzl tests, commit with hooks, push, and create or update GitHub PRs. Trigger this skill whenever the user asks to commit (for example: 'commit', 'commit this', 'please commit') and the current working directory is under ~/dd (or its resolved symlink target)."
+description: "Deterministic workflow to stage changes, run bzl tests when applicable, commit with hooks, push, and create or update GitHub PRs. Trigger this skill whenever the user asks to commit (for example: 'commit', 'commit this', 'please commit')."
 ---
 
 Perform a deterministic smart-commit workflow.
@@ -14,8 +14,8 @@ Perform a deterministic smart-commit workflow.
 ## Step 0: Preflight
 1. Confirm repository scope:
    - Resolve the actual path: `dd_root="$(readlink -f ~/dd)"`
-   - Continue only if `pwd -P` starts with `$dd_root`.
-   - If outside, stop and tell the user this skill is out of scope.
+   - Compute scope flag:
+     - If `pwd -P` starts with `$dd_root`, set `in_dd_scope=true`; otherwise `in_dd_scope=false`.
 2. Confirm git state:
    - `git rev-parse --is-inside-work-tree`
    - `branch=$(git symbolic-ref --short HEAD)`
@@ -26,6 +26,9 @@ Perform a deterministic smart-commit workflow.
    - If unresolved conflicts exist, stop and report the issue.
 
 ## Step 1: Run Tests For Affected Packages
+0. Scope gate:
+   - Apply this step ONLY when `in_dd_scope=true`.
+   - If `in_dd_scope=false`, skip Step 1 and proceed to Step 2.
 1. Check if any code files are changed:
    - Use `git diff --name-only` and `git diff --cached --name-only` to get all changed files.
    - Code file extensions include: `.py`, `.go`, `.c`, `.cc`, `.cpp`, `.h`, `.hpp`, `.java`, `.js`, `.ts`, `.tsx`, `.jsx`, `.rs`, `.rb`, `.swift`, `.kt`, `.scala`, `.sh`, `.bash`.
@@ -149,7 +152,7 @@ If `git commit` fails due to hooks:
 8. Return final PR link to the user.
 
 ## Completion Checklist
-- Tests passed
+- Tests passed (or correctly skipped when out of `~/dd` scope or no applicable code-test targets)
 - Commit succeeded with hooks enabled
 - Push succeeded
 - PR created or updated
