@@ -94,9 +94,9 @@ create-worktree() {
   git -C "$DD_SOURCE_ROOT" worktree add --track -b "$branch" "$target" origin/main && cd "$target"
 
   # Set up Python virtual environment for assistant domain
-  if ! make -C "$target/domains/assistant" setup; then
-    echo "Warning: .venv setup failed. Run 'make setup' in domains/assistant manually."
-  fi
+  # if ! make -C "$target/domains/assistant" setup; then
+  #   echo "Warning: .venv setup failed. Run 'make setup' in domains/assistant manually."
+  # fi
 
   # Create detached tmux session if tmux is available
   if command -v tmux >/dev/null 2>&1; then
