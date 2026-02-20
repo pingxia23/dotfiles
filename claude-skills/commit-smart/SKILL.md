@@ -1,6 +1,6 @@
 ---
 name: commit-smart
-description: "Deterministic workflow to stage changes, run bzl tests, commit with hooks, push, and create or update GitHub PRs. Trigger this skill whenever the user asks to commit (for example: 'commit', 'commit this', 'please commit') and the current working directory is under ~/dd."
+description: "Deterministic workflow to stage changes, run bzl tests, commit with hooks, push, and create or update GitHub PRs. Trigger this skill whenever the user asks to commit (for example: 'commit', 'commit this', 'please commit') and the current working directory is under ~/dd (or its resolved symlink target)."
 ---
 
 Perform a deterministic smart-commit workflow.
@@ -13,8 +13,9 @@ Perform a deterministic smart-commit workflow.
 
 ## Step 0: Preflight
 1. Confirm repository scope:
-   - Continue only if `pwd` is under `~/dd`.
-   - If outside `~/dd`, stop and tell the user this skill is out of scope.
+   - Resolve the actual path: `dd_root="$(readlink -f ~/dd)"`
+   - Continue only if `pwd -P` starts with `$dd_root`.
+   - If outside, stop and tell the user this skill is out of scope.
 2. Confirm git state:
    - `git rev-parse --is-inside-work-tree`
    - `branch=$(git symbolic-ref --short HEAD)`
