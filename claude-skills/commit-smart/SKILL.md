@@ -29,17 +29,15 @@ Perform a deterministic smart-commit workflow.
    - Use `git diff --name-only` and `git diff --cached --name-only` to get all changed files.
    - Code file extensions include: `.py`, `.go`, `.c`, `.cc`, `.cpp`, `.h`, `.hpp`, `.java`, `.js`, `.ts`, `.tsx`, `.jsx`, `.rs`, `.rb`, `.swift`, `.kt`, `.scala`, `.sh`, `.bash`.
    - If NO code files are changed (only config, docs, markdown, yaml, json, etc.), **skip all testing** and proceed directly to Step 2.
-2. Build candidate directories from changed code files:
-   - Keep unique parent directories.
-   - Keep only directories that contain `BUILD.bazel`.
-3. Discover test targets sequentially (never parallelize `bzl` commands):
-   - For each directory `d`, run: `bzl query "tests(//${d}:*)"`.
-   - Union all returned targets.
-4. Execute tests:
-   - If target list is non-empty: `bzl test <targets...>`.
-   - If target list is empty: run `bzl test //...`.
-5. Do not skip or comment out failing tests.
-6. Never use `--test_filter`.
+2. Discover test targets:
+   - Run: `./discover-test-targets.sh` (relative to this skill's directory: `~/dotfiles/claude-skills/commit-smart/`)
+   - The script walks up from each changed file to find the nearest `BUILD.bazel` directory,
+     checks for sibling `tests/` directories, and queries bzl for test targets.
+3. Execute tests:
+   - If the script outputs targets: `bzl test --test_output=summary <targets...>`.
+   - If no targets found: skip testing (no test targets associated with changed files).
+4. Do not skip or comment out failing tests.
+5. Never use `--test_filter`.
 
 ## Step 2: Stage And Review Changes
 1. Stage changes while excluding working artifacts:
