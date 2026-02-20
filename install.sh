@@ -518,6 +518,9 @@ install_gh
 # Setup Vim configuration
 setup_vim
 
+# Setup tmux configuration (symlinked)
+create_symlink "$DOTFILES_DIR/tmux.conf" "$HOME/.tmux.conf"
+
 # Setup Git configuration
 setup_gitconfig_if_not_exist
 
