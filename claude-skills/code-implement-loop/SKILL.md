@@ -1,13 +1,13 @@
 ---
 name: code-implement-loop
-description: Implement code changes strictly from a user-provided `.md` plan/design file. Use when asked to make code changes or implement a feature from an explicit plan document.
+description: Implement code changes from a user-provided `.md` plan/design file or direct user instructions. Use when asked to make code changes, implement a feature from an explicit plan document, or implement changes described inline.
 ---
 
 # Code Implement Loop
 
 ## Overview
 
-Implement a task in a deterministic sequence: strict `.md` plan intake -> TODO breakdown -> implementation (uncommitted) -> iterative review/fix loop -> single commit-smart. Keep the loop focused on unresolved feedback and stop only on approval or max-rounds blocked output.
+Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> TODO breakdown -> implementation (uncommitted) -> iterative review/fix loop -> single commit-smart. Keep the loop focused on unresolved feedback and stop only on approval or max-rounds blocked output.
 
 ## Workflow
 
@@ -18,12 +18,19 @@ Implement a task in a deterministic sequence: strict `.md` plan intake -> TODO b
 - Address unresolved PR comments/findings only.
 - Never use destructive cleanup commands (`git reset --hard`, `git checkout -- .`, `git clean -fd`).
 
-### 2) Input contract (strict)
+### 2) Input contract
 
-- Require exactly one `.md` plan/design path as input.
-- If input is missing or not a `.md` file, stop and return:
-  - `FAILED: plan/design .md file is required`
-- Use the provided `.md` file as the only implementation source.
+Accept one of the following as the implementation source:
+
+1. **`.md` file path** — a path to a plan/design document.
+2. **Direct user instructions** — inline text describing the changes to implement.
+
+Resolution order:
+
+- If the argument is a path ending in `.md`, use that file as the implementation source.
+- Otherwise, treat the entire user input as direct implementation instructions.
+- If input is completely empty (no file path and no instructions), stop and return:
+  - `FAILED: provide a .md plan file or describe the changes to implement`
 - Do not run explore-intent in this skill.
 
 
