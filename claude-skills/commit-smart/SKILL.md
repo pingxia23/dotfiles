@@ -12,14 +12,16 @@ Perform a deterministic smart-commit workflow.
 - For pre-commit hook failures, inspect, fix, and retry until commit succeeds
 
 ## Step 0: Preflight
-1. Confirm repository scope:
-   - Resolve the actual path: `dd_root="$(readlink -f ~/dd)"`
-   - Compute scope flag:
-     - If `pwd -P` starts with `$dd_root`, set `in_dd_scope=true`; otherwise `in_dd_scope=false`.
-2. Confirm git state:
+1. Confirm git state:
    - `git rev-parse --is-inside-work-tree`
+   - `worktree_path="$(pwd -P)"`
    - `branch=$(git symbolic-ref --short HEAD)`
-   - If branch is detached, stop and report the issue.
+   - `repo=$(git remote get-url origin | sed -E 's#.*github\.com[:/]##; s#\.git$##')`
+2. Confirm repository scope:
+   - Resolve the actual path safely:
+     - `dd_root="$(readlink -f ~/dd 2>/dev/null || true)"`
+   - Compute scope flag:
+     - If `dd_root` is non-empty AND `worktree_path` starts with `$dd_root`, set `in_dd_scope=true`; otherwise `in_dd_scope=false`.
 3. Inspect workspace:
    - `git status --short`
    - `git diff --name-only --diff-filter=U`
@@ -34,7 +36,8 @@ Perform a deterministic smart-commit workflow.
    - Code file extensions include: `.py`, `.go`, `.c`, `.cc`, `.cpp`, `.h`, `.hpp`, `.java`, `.js`, `.ts`, `.tsx`, `.jsx`, `.rs`, `.rb`, `.swift`, `.kt`, `.scala`, `.sh`, `.bash`.
    - If NO code files are changed (only config, docs, markdown, yaml, json, etc.), **skip all testing** and proceed directly to Step 2.
 2. Discover test targets:
-   - Run: `./discover-test-targets.sh` (relative to this skill's directory: `~/dotfiles/claude-skills/commit-smart/`)
+   - Run via absolute path so it works from any repo/worktree location:
+     - `"$HOME/dotfiles/claude-skills/commit-smart/discover-test-targets.sh"`
    - The script walks up from each changed file to find the nearest `BUILD.bazel` directory,
      checks for sibling `tests/` directories, and queries bzl for test targets.
 3. Execute tests:
@@ -46,7 +49,7 @@ Perform a deterministic smart-commit workflow.
 ## Step 2: Stage And Review Changes
 1. Stage changes while excluding working artifacts:
    ```bash
-   git add -A -- ':(exclude)designs/' ':(exclude)plans/' ':(exclude)exploration/'
+   git add -A -- ':(top,exclude)designs/' ':(top,exclude)plans/' ':(top,exclude)exploration/'
    ```
 2. Review staged contents before commit:
    - `git diff --cached --name-status`
@@ -73,8 +76,8 @@ Perform a deterministic smart-commit workflow.
 If `git commit` fails due to hooks:
   1. Parse hook output and identify the failing check.
   2. Fix issues in code/config/message, re-stage, retry.
-  4. Repeat until `git commit` succeeds.
-  5. Stop only for external blockers (auth/network/tool outage), and report exact output.
+  3. Repeat until `git commit` succeeds.
+  4. Stop only for external blockers (auth/network/tool outage), and report exact output.
 
 ## Step 5: Push
 1. Push after successful commit:
@@ -84,12 +87,13 @@ If `git commit` fails due to hooks:
 ## Step 6: Create Or Update PR
 1. Confirm GitHub auth if needed:
    - `gh auth status`
-2. Detect whether a PR already exists for the current branch:
-   - `pr_url=$(gh pr view --head "$branch" --json url --jq '.url' 2>/dev/null)`
-3. Read latest commit context:
+2. IMPORTANT: Pass `--repo "$repo"` to all `gh pr` commands in this step to avoid cwd/worktree/symlink repo-resolution failures.
+3. Detect whether a PR already exists for the current branch:
+   - `pr_url=$(gh pr list --repo "$repo" --head "$branch" --state open --json url --jq '.[0].url' 2>/dev/null)`
+4. Read latest commit context:
    - `latest_commit_body=$(git log -1 --pretty=%B)`
    - `git show --name-status --format=fuller --no-color HEAD`
-4. Build PR body for new PRs with this schema:
+5. Build PR body for new PRs with this schema:
    ```
    ## Problem
    <why this change is needed>
@@ -106,12 +110,12 @@ If `git commit` fails due to hooks:
    ## Related
    <issues/PR links>
    ```
-5. Create PR path (`pr_url` is empty):
+6. Create PR path (`pr_url` is empty):
    - Create a new PR from the template body:
-     - `gh pr create --title "<title>" --body "<description>"`
-6. Update PR path (`pr_url` exists):
+     - `gh pr create --repo "$repo" --head "$branch" --title "<title>" --body "<description>"`
+7. Update PR path (`pr_url` exists):
    1. Read current PR body first (this is the source of truth for prior status):
-      - `current_body=$(gh pr view --head "$branch" --json body --jq '.body')`
+      - `current_body=$(gh pr view "$pr_url" --repo "$repo" --json body --jq '.body')`
    2. Decide section updates from latest commit:
       - `## Problem`: NEVER update after PR creation.
       - `## Approach`: update only when latest commit changes implementation strategy/behavioral approach.
@@ -123,8 +127,8 @@ If `git commit` fails due to hooks:
    4. If one or more qualifying updates are needed:
       - Update only those section bodies.
       - Keep all other sections and custom text unchanged.
-      - `gh pr edit --body "<updated_description>"`
-7. Examples:
+      - `gh pr edit "$pr_url" --repo "$repo" --body "<updated_description>"`
+8. Examples:
    - CI fix commit (no approach/breaking/new-test-file change, so no description update):
      ```text
      Fix flaky CI retry in pre-commit
@@ -149,7 +153,7 @@ If `git commit` fails due to hooks:
 
      Added: tools/pr/tests/test_pr_description_update.py
      ```
-8. Return final PR link to the user.
+9. Return final PR link to the user.
 
 ## Completion Checklist
 - Tests passed (or correctly skipped when out of `~/dd` scope or no applicable code-test targets)
