@@ -4,3 +4,4 @@ model_supports_reasoning_summaries = true
 approval_policy = "never"
 sandbox_mode = "danger-full-access"
 personality = "pragmatic"
+notify = ["/home/bits/dotfiles/codex-notify.sh"]
