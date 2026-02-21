@@ -1,0 +1,4 @@
+interface:
+  display_name: "Implement Orchestrator"
+  short_description: "Route plan to direct or staged implementation"
+  default_prompt: "Use implement-orchestrator to route this planning outcome to direct implementation or staged milestone execution."
