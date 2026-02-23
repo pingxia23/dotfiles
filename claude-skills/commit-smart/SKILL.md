@@ -75,9 +75,17 @@ Perform a deterministic smart-commit workflow.
 ## Step 4: Fix Pre-commit Failures Until Commit Succeeds
 If `git commit` fails due to hooks:
   1. Parse hook output and identify the failing check.
-  2. Fix issues in code/config/message, re-stage, retry.
-  3. Repeat until `git commit` succeeds.
-  4. Stop only for external blockers (auth/network/tool outage), and report exact output.
+  2. If hook output includes `No space left on device` and Bazel/bzl paths:
+     - In dd-scope, clean stale Bazel output bases before retrying:
+       - `"$HOME/dotfiles/claude-skills/commit-smart/cleanup-stale-bazel-output-bases.sh" --apply`
+       - This script is intentionally fast and non-thorough (small batch per run).
+       - If commit still fails for disk space, run it again and retry commit.
+     - Then re-run the same commit command.
+     - Do NOT use `--no-verify`.
+     - Do NOT use `bzl clean` for this issue.
+  3. Fix issues in code/config/message, re-stage, retry.
+  4. Repeat until `git commit` succeeds.
+  5. Stop only for external blockers (auth/network/tool outage), and report exact output.
 
 ## Step 5: Push
 1. Push after successful commit:
