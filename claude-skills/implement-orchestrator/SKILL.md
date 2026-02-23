@@ -8,7 +8,7 @@ description: Orchestrate implementation from a planning outcome by routing narro
 ## Overview
 
 Implement a planning-to-implementation router:
-- Route narrow plans directly to `code-implement-loop`.
+- Route narrow plans directly to `code-implement-loop` as a strict pass-through mode.
 - Route large or ambiguous plans through `designs/{slug}/IMPLEMENTATION.md`, then execute milestones sequentially with fresh sub-agents that each use `code-implement-loop`.
 
 ## Hard Rules
@@ -55,9 +55,14 @@ Normalization rules:
 ### 3) Narrow route behavior
 
 If route is `narrow`:
-1. Hand off the original plan source directly to the `code-implement-loop` skill.
-2. Do not generate an implementation doc.
-3. Return final status from `code-implement-loop`.
+1. Treat `implement-orchestrator` as an alias for `code-implement-loop`.
+2. Pass the original plan source to `code-implement-loop` unchanged.
+3. Do not perform additional orchestration steps in narrow mode:
+   - no implementation doc generation
+   - no milestone decomposition
+   - no sub-agent milestone loop
+   - no extra commit-boundary checks in this skill
+4. Return the final status from `code-implement-loop` directly.
 
 ### 4) Large route behavior
 
