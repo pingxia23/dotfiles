@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Discover bzl test targets for changed files in a git repo.
+# Discover bzl test targets for changed files in the current repository checkout
+# (primary checkout or linked worktree).
+# Intended for use by the commit-smart skill.
 # Uses git diff to find changed code files, walks up to find the nearest
 # BUILD.bazel directory, and queries bzl for test targets.
 #
@@ -10,6 +12,14 @@ set -euo pipefail
 # Exit:   0 always (no targets is not an error).
 
 CODE_EXTENSIONS='\.py$|\.go$|\.c$|\.cc$|\.cpp$|\.h$|\.hpp$|\.java$|\.js$|\.ts$|\.tsx$|\.jsx$|\.rs$|\.rb$|\.swift$|\.kt$|\.scala$|\.sh$|\.bash$'
+
+# Normalize to git top-level so changed file paths and package discovery work
+# when invoked from any subdirectory or git worktree.
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
+if [[ -z "$repo_root" ]]; then
+    exit 0
+fi
+cd "$repo_root"
 
 # Walk up from a file to find the nearest directory with BUILD.bazel or BUILD.
 # Reuses pattern from ~/dotfiles/dd-source/.git-hooks/pre-commit:64-74
