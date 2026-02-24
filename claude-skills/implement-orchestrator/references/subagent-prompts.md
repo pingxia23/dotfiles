@@ -32,7 +32,7 @@ or
 - BLOCKED: {reason} | Unresolved: {summary}
 ```
 
-## Large-route orchestration note
+## Orchestration note
 
 After each milestone:
 1. Record completion status and key verification results.

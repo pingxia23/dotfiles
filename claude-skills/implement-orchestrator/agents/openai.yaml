@@ -1,4 +1,4 @@
 interface:
   display_name: "Implement Orchestrator"
-  short_description: "Route plan to direct or staged implementation"
-  default_prompt: "Use implement-orchestrator to route this planning outcome to direct implementation or staged milestone execution."
+  short_description: "Convert plan into implementation steps"
+  default_prompt: "Use implement-orchestrator to convert this planning outcome into implementation steps and execute each step with code-implement-loop."
