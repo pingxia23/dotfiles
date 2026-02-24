@@ -31,7 +31,8 @@ Perform a deterministic smart-commit workflow.
    - `git diff --name-only --diff-filter=U`
    - If unresolved conflicts exist, stop and report the issue.
 
-## Step 1: Run Tests For Affected Packages
+## Step 1: Run Tests For Affected Packages (Disabled - handled by pre-commit)
+<!--
 0. Scope gate:
    - Apply this step ONLY when `in_dd_scope=true`.
    - If `in_dd_scope=false`, skip Step 1 and proceed to Step 2.
@@ -49,6 +50,7 @@ Perform a deterministic smart-commit workflow.
    - If no targets found: skip testing (no test targets associated with changed files).
 4. Do not skip or comment out failing tests.
 5. Never use `--test_filter`.
+-->
 
 ## Step 2: Stage And Review Changes
 1. Stage changes while excluding working artifacts:

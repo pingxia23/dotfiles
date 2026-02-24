@@ -365,5 +365,20 @@ else
     info "  🕵 No Python files in domains/assistant to type-check"
 fi
 
+# --------------------------- Assistant Tests (domains/assistant) --------------------------- #
+warn "🔍 Running tests in domains/assistant..."
+if [[ -n "$assistant_python_files" ]]; then
+    info "  🧪 Running: bzl test //domains/assistant/..."
+    if bzl test //domains/assistant/...; then
+        success "  ✅ domains/assistant tests passed"
+    else
+        error "  ❌ domains/assistant tests failed!"
+        error "  Run: bzl test //domains/assistant/..."
+        exit 1
+    fi
+else
+    info "  🕵 No Python files in domains/assistant to test"
+fi
+
 
 success "✅ All pre-commit checks completed successfully! 🎉"
