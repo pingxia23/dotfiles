@@ -7,7 +7,7 @@ description: Implement code changes from a user-provided `.md` plan/design file 
 
 ## Overview
 
-Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> TODO breakdown -> implementation (uncommitted) -> iterative review/fix loop -> single commit-smart. Keep the loop focused on unresolved feedback and stop only on approval or max-rounds blocked output.
+Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> TODO breakdown -> implementation (uncommitted) -> iterative review/fix loop -> mandatory single commit-smart. Keep the loop focused on unresolved feedback and stop only on reviewer approval + commit-smart completion, or max-rounds blocked output.
 
 ## Workflow
 
@@ -17,6 +17,8 @@ Implement a task in a deterministic sequence: plan intake (`.md` file or direct 
 - Use `gh` for all GitHub interactions.
 - Address unresolved PR comments/findings only.
 - Never use destructive cleanup commands (`git reset --hard`, `git checkout -- .`, `git clean -fd`).
+- Approval definition: `approval` means `APPROVED` from the Ralph reviewer sub-agent loop, never user confirmation.
+- Autonomy rule: do not ask the user for approval or extra checkpoints during normal flow; only ask the user when blocked/stuck/failing.
 
 ### 2) Input contract
 
@@ -113,16 +115,21 @@ Per round:
      - task goal
      - unresolved findings ledger
    - The sub-agent model must use the same model as the main agent.
-3. If `APPROVED`, emit `<promise>IMPLEMENTATION_COMPLETE</promise>` and stop.
+3. If `APPROVED` (reviewer sub-agent status, not user approval), emit `<promise>IMPLEMENTATION_COMPLETE</promise>` and stop.
 4. If `NEEDS_CHANGES`:
    - fix unresolved items only,
    - rerun verification,
    - keep changes uncommitted for the next round.
 5. If not approved after `MAX_ROUNDS`, emit blocked status with unresolved list and attempted fixes.
 
-### 6) Commit once after approval with commit-smart
+### 6) Mandatory commit-smart after approval
 
-After the review loop returns `APPROVED`, invoke `commit-smart` to commit and push changes.
+After the review loop returns `APPROVED`, immediately invoke `commit-smart` to commit and push changes.
+
+Rules:
+- Do not ask the user for additional confirmation before running `commit-smart`.
+- Do not end the workflow as success until `commit-smart` has completed.
+- If `commit-smart` fails, report blocked status with the failure reason and attempted remediation.
 
 ### 7) Return final status
 
@@ -133,3 +140,7 @@ Success format:
 Blocked format:
 
 `BLOCKED: Not approved after {MAX_ROUNDS} rounds | PR: {url} | Unresolved: {summary} | Attempts: {summary}`
+
+or
+
+`BLOCKED: commit-smart failed | PR: {url} | Error: {summary} | Attempts: {summary}`
