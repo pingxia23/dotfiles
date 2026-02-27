@@ -117,12 +117,6 @@ If `git commit` fails due to hooks:
 
    ## Tests
    <what was run and results>
-
-   ## Breaking Changes (if applicable)
-   <breaking behavior and migration>
-
-   ## Related
-   <issues/PR links>
    ```
 6. Create PR path (`pr_url` is empty):
    - Create a new PR from the template body:
@@ -133,7 +127,6 @@ If `git commit` fails due to hooks:
    2. Decide section updates from latest commit:
       - `## Problem`: NEVER update after PR creation.
       - `## Approach`: update only when latest commit changes implementation strategy/behavioral approach.
-      - `## Breaking Changes (if applicable)`: update when latest commit introduces/removes incompatible behavior or migration impact.
       - `## Tests`: update only when NEW test files are added in latest commit.
         - Detect added test files from status `A` in latest commit, then filter by test-file naming/path conventions (e.g. `*_test.*`, `test_*.*`, `*.spec.*`, `*.test.*`, or files under `tests/` / `test/`).
    3. If no qualifying section updates are needed:
@@ -143,7 +136,7 @@ If `git commit` fails due to hooks:
       - Keep all other sections and custom text unchanged.
       - `gh pr edit "$pr_url" --repo "$repo" --body "<updated_description>"`
 8. Examples:
-   - CI fix commit (no approach/breaking/new-test-file change, so no description update):
+   - CI fix commit (no approach/new-test-file change, so no description update):
      ```text
      Fix flaky CI retry in pre-commit
 
@@ -154,12 +147,6 @@ If `git commit` fails due to hooks:
      Switch merge strategy from full overwrite to section-preserving updates
 
      Preserve prior PR status and update only impacted sections.
-     ```
-   - Breaking change commit (update `## Breaking Changes (if applicable)` section):
-     ```text
-     Remove legacy config key and require the new key
-
-     Existing config must migrate to the new key name.
      ```
    - New test files added (update `## Tests` section):
      ```text
