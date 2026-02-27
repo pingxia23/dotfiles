@@ -91,6 +91,11 @@ create-worktree() {
     return 1
   fi
 
+  if ! git -C "$DD_SOURCE_ROOT" fetch origin main; then
+    echo "Failed to fetch origin/main for $DD_SOURCE_ROOT"
+    return 1
+  fi
+
   git -C "$DD_SOURCE_ROOT" worktree add --track -b "$branch" "$target" origin/main && cd "$target"
 
   # Set up Python virtual environment for assistant domain
