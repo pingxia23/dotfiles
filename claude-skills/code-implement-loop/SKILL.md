@@ -67,16 +67,65 @@ Repo constraints:
 - Never use `bzl test --test_filter`.
 - Never run multiple `bzl` commands in parallel.
 
-### 5) Run Ralph Wiggum review/fix loop
+### 5) Run Ralph Wiggum PR-aware review/fix loop
 
 Run a bounded loop with at most 5 rounds.
 Each round must use a new reviewer sub-agent (fresh context).
 DO NOT COMMIT inside this loop.
 
+Review scope policy:
+
+- Use PR-aware review scope by default (full prospective PR delta), not local incremental `git diff` only.
+- This skill should follow PR-grade base/head behavior for higher review quality.
+- Re-review the full prospective PR delta on every round (not unresolved-only incremental review).
+  - Meaning: if round 1 reports findings A/B/C and you fix A, round 2 still reviews the whole `merge_base..current` delta instead of only A/B/C hunks. This catches fix-induced regressions.
+
 Defaults:
 
 - `MAX_ROUNDS = 5`
 - completion token: `<promise>IMPLEMENTATION_COMPLETE</promise>`
+- review quality bar: high bug-risk focus (`correctness`, `regression`, `security`, `compat`, `performance`, `tests`); do not block on pure style nits.
+
+Pre-loop context setup:
+
+1. Normalize checkout context through shared helper (works in repo root, subfolder, or linked worktree):
+   - `eval "$("$HOME/dotfiles/scripts/git-context.sh")"`
+   - The helper must provide: `inside_worktree`, `worktree_root`, `worktree_path`, `branch`, `repo`, `in_dd_scope`.
+   - If helper exits non-zero, stop and report blocked status with helper stderr.
+   - `cd "$worktree_root"` so all commands run from a stable root.
+2. Resolve review base branch (PR base fallback to default branch):
+   - `base_branch="$(gh pr list --repo "$repo" --head "$branch" --state open --json baseRefName --jq '.[0].baseRefName' 2>/dev/null || true)"`
+   - If empty: `base_branch="$(gh repo view --repo "$repo" --json defaultBranchRef -q '.defaultBranchRef.name' 2>/dev/null || true)"`
+   - If still empty: fallback `base_branch=main`
+3. Ensure base ref is available locally:
+   - `git fetch origin "$base_branch" --quiet` (best effort; continue if already present)
+4. Compute merge-base:
+   - `merge_base="$(git merge-base HEAD "origin/$base_branch" 2>/dev/null || true)"`
+   - If empty, stop and report blocked status with explicit base-resolution failure.
+5. Detect open PR for current branch (best effort):
+   - `pr_url="$(gh pr list --repo "$repo" --head "$branch" --state open --json url --jq '.[0].url' 2>/dev/null || true)"`
+   - Default value: `unresolved_pr_feedback='[]'`
+   - If `pr_url` is non-empty, ingest unresolved review threads/comments:
+     - `pr_number="$(gh pr view "$pr_url" --repo "$repo" --json number --jq '.number' 2>/dev/null || true)"`
+     - `owner="${repo%%/*}"; repo_name="${repo##*/}"`
+     - If `pr_number` is non-empty:
+       - `unresolved_pr_feedback="$(gh api graphql -f query='query($owner:String!, $name:String!, $number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){nodes{isResolved isOutdated comments(first:30){nodes{author{login} path line body}}}}}}}' -F owner="$owner" -F name="$repo_name" -F number="$pr_number" 2>/dev/null | jq -c '[.data.repository.pullRequest.reviewThreads.nodes[]? | select((.isResolved|not) and (.isOutdated|not)) | .comments.nodes[]? | {author:.author.login,path,line,body}]' || echo '[]')"`
+   - If unavailable or `gh` query fails, continue in degraded mode (`unresolved_pr_feedback='[]'`) and note it in loop logs.
+
+Per-round review context pack (rebuild every round):
+
+1. Full prospective PR diff from merge base to current working tree:
+   - `review_diff=$(git diff --binary "$merge_base")`
+2. Changed-file status list:
+   - `changed_files=$(git diff --name-status "$merge_base")`
+3. Changed-file full-content context:
+   - Include current contents of changed files from working tree (truncate deterministically to first 400 lines per file).
+   - For deleted files, include patch hunks and prior path metadata only.
+4. Verification evidence:
+   - Include latest targeted test/build command outputs and pass/fail summaries run during this loop.
+5. Unresolved feedback evidence:
+   - `unresolved_findings_ledger` from prior rounds.
+   - unresolved PR comments/threads (when retrievable).
 
 Fixed reviewer prompt:
 
@@ -84,43 +133,50 @@ Fixed reviewer prompt:
 You are a fresh reviewer in a Ralph Wiggum implementation loop.
 
 Review inputs:
-- Working tree diff (from `git diff`): {working_diff}
+- Full prospective PR diff against merge base: {review_diff}
+- Changed files with status: {changed_files}
+- Current full content for changed files: {changed_file_context}
 - Goal: {task_goal}
+- Verification outputs summary: {verification_summary}
 - Previously unresolved findings ledger: {unresolved_findings_ledger}
+- Unresolved PR comments/threads: {unresolved_pr_feedback}
 
 Return only:
 - APPROVED
 or
 - NEEDS_CHANGES with prioritized unresolved items (critical -> minor). For each item include:
   - finding_id
-  - severity
+  - severity (critical|high|medium|low)
+  - category (correctness|regression|security|compat|performance|tests)
   - file:line
   - issue
-  - concrete fix recommendation
+  - evidence
+  - concrete_fix
 
 Rules:
+- focus on bug risk and behavioral correctness; do not report pure style nits
 - report unresolved issues only from the current working-tree state
 - do not repeat resolved findings from prior rounds
+- tie every finding to concrete evidence from the provided inputs
 - keep feedback actionable and specific
 - if there are no unresolved issues, return APPROVED
 ```
 
 Per round:
 
-1. Capture current uncommitted diff for this round:
-   - `working_diff=$(git diff)`
+1. Rebuild the full review context pack listed above.
 2. Launch a new reviewer sub-agent with fresh context:
-   - Review inputs must include:
-     - `working_diff`
-     - task goal
-     - unresolved findings ledger
+   - Review inputs must include the full context pack.
    - The sub-agent model must use the same model as the main agent.
-3. If `APPROVED` (reviewer sub-agent status, not user approval), emit `<promise>IMPLEMENTATION_COMPLETE</promise>` and stop.
-4. If `NEEDS_CHANGES`:
+3. Validate reviewer output schema:
+   - If output is malformed (missing required fields for `NEEDS_CHANGES`), rerun reviewer once with a schema reminder.
+   - If still malformed, stop and return blocked status with the invalid payload summary.
+4. If `APPROVED` (reviewer sub-agent status, not user approval), emit `<promise>IMPLEMENTATION_COMPLETE</promise>` and stop.
+5. If `NEEDS_CHANGES`:
    - fix unresolved items only,
-   - rerun verification,
+   - rerun targeted verification,
    - keep changes uncommitted for the next round.
-5. If not approved after `MAX_ROUNDS`, emit blocked status with unresolved list and attempted fixes.
+6. If not approved after `MAX_ROUNDS`, emit blocked status with unresolved list and attempted fixes.
 
 ### 6) Mandatory commit-smart after approval
 

@@ -13,19 +13,13 @@ Perform a deterministic smart-commit workflow.
 
 ## Step 0: Preflight
 1. Confirm git state:
-   - `inside_worktree="$(git rev-parse --is-inside-work-tree 2>/dev/null || true)"`
-   - `inside_worktree=true` is expected both in the primary checkout (for example `~/dd/dd-source`) and in any linked worktree.
-   - If `inside_worktree != true`, stop and report: `Not inside a repository checkout; run commit-smart from the primary checkout or a linked worktree.`
-   - `worktree_root="$(git rev-parse --show-toplevel)"`
-   - `worktree_path="$(pwd -P)"`
-   - `branch=$(git symbolic-ref --short HEAD)`
-   - `repo=$(git remote get-url origin | sed -E 's#.*github\.com[:/]##; s#\.git$##')`
+   - Load shared git/worktree context:
+     - `eval "$("$HOME/dotfiles/scripts/git-context.sh")"`
+   - The helper must provide: `inside_worktree`, `worktree_root`, `worktree_path`, `branch`, `repo`, `in_dd_scope`.
+   - If helper exits non-zero, stop and report its stderr as the blocker.
    - `cd "$worktree_root"` so all subsequent commands run from the repo root even if invoked from nested cwd.
 2. Confirm repository scope:
-   - Resolve the actual path safely:
-     - `dd_root="$(readlink -f ~/dd 2>/dev/null || true)"`
-   - Compute scope flag:
-     - If `dd_root` is non-empty AND `worktree_root` starts with `$dd_root`, set `in_dd_scope=true`; otherwise `in_dd_scope=false`.
+   - Use `in_dd_scope` from shared helper output.
 3. Inspect workspace:
    - `git status --short`
    - `git diff --name-only --diff-filter=U`
