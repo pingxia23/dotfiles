@@ -8,3 +8,6 @@ notify = ["/home/bits/dotfiles/codex-notify.sh"]
 
 [features]
 multi_agent = true
+
+[mcp_servers.atlassian]
+url = "https://mcp.atlassian.com/v1/mcp"
