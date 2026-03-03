@@ -145,21 +145,10 @@ Per round:
    - Review inputs must include the full context pack.
    - The sub-agent model must use the same model as the main agent.
 3. Validate reviewer output schema:
-   - Required top-level keys:
-     - `findings` (array)
-     - `overall_correctness` (`patch is correct` | `patch is incorrect`)
-     - `overall_explanation` (string)
-     - `overall_confidence_score` (number in `[0.0, 1.0]`)
-   - Required finding keys (for each finding):
-     - `title` (string)
-     - `body` (string)
-     - `confidence_score` (number in `[0.0, 1.0]`)
-     - `priority` (`0|1|2|3`, optional)
-     - `code_location.absolute_file_path` (string)
-     - `code_location.line_range.start` (int)
-     - `code_location.line_range.end` (int)
-   - If output is malformed, rerun reviewer once with a schema reminder.
-   - If still malformed, stop and return blocked status with the invalid payload summary.
+   - Parse output as strict JSON (no markdown fences or extra prose).
+   - Validate exactly against the `OUTPUT FORMAT` schema in `references/reviewer-prompt-codex-cli.md` (single source of truth).
+   - If output is malformed or schema-invalid, rerun reviewer once with a schema reminder.
+   - If still invalid, stop and return blocked status with the invalid payload summary and validator errors.
 4. Evaluate approval gate:
    - If `findings` is empty and `overall_correctness` is `patch is correct`, emit `<promise>IMPLEMENTATION_COMPLETE</promise>` and stop.
    - If `findings` is empty and `overall_correctness` is `patch is incorrect`, rerun reviewer once for consistency; if still inconsistent, stop and return blocked status with both payloads summarized.
