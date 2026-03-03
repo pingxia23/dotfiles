@@ -17,7 +17,7 @@ Implement a task in a deterministic sequence: plan intake (`.md` file or direct 
 - Use `gh` for all GitHub interactions.
 - Address unresolved PR comments/findings only.
 - Never use destructive cleanup commands (`git reset --hard`, `git checkout -- .`, `git clean -fd`).
-- Approval definition: `approval` means `APPROVED` from the Ralph reviewer sub-agent loop, never user confirmation.
+- Approval definition: `approval` means reviewer JSON reports `findings=[]` and `overall_correctness="patch is correct"`, never user confirmation.
 - Autonomy rule: do not ask the user for approval or extra checkpoints during normal flow; only ask the user when blocked/stuck/failing.
 
 ### 2) Input contract
@@ -70,7 +70,7 @@ Repo constraints:
 ### 5) Run Ralph Wiggum PR-aware review/fix loop
 
 Run a bounded loop with at most 5 rounds.
-Each round must use a new reviewer sub-agent (fresh context).
+Each round must use a **new reviewer sub-agent** (fresh context).
 DO NOT COMMIT inside this loop.
 
 Review scope policy:
@@ -125,42 +125,18 @@ Per-round review context pack (rebuild every round):
    - Include latest targeted test/build command outputs and pass/fail summaries run during this loop.
 5. Unresolved feedback evidence:
    - `unresolved_findings_ledger` from prior rounds.
+   - ledger key format: `title + code_location.absolute_file_path + code_location.line_range.start`.
    - unresolved PR comments/threads (when retrievable).
 
 Fixed reviewer prompt:
 
-```text
-You are a fresh reviewer in a Ralph Wiggum implementation loop.
-
-Review inputs:
-- Full prospective PR diff against merge base: {review_diff}
-- Changed files with status: {changed_files}
-- Current full content for changed files: {changed_file_context}
-- Goal: {task_goal}
-- Verification outputs summary: {verification_summary}
-- Previously unresolved findings ledger: {unresolved_findings_ledger}
-- Unresolved PR comments/threads: {unresolved_pr_feedback}
-
-Return only:
-- APPROVED
-or
-- NEEDS_CHANGES with prioritized unresolved items (critical -> minor). For each item include:
-  - finding_id
-  - severity (critical|high|medium|low)
-  - category (correctness|regression|security|compat|performance|tests)
-  - file:line
-  - issue
-  - evidence
-  - concrete_fix
-
-Rules:
-- focus on bug risk and behavioral correctness; do not report pure style nits
-- report unresolved issues only from the current working-tree state
-- do not repeat resolved findings from prior rounds
-- tie every finding to concrete evidence from the provided inputs
-- keep feedback actionable and specific
-- if there are no unresolved issues, return APPROVED
-```
+- Canonical reviewer prompt file:
+  - `references/reviewer-prompt-codex-cli.md`
+- Inject round context into that prompt using placeholders:
+  - `{review_diff}`, `{changed_files}`, `{changed_file_context}`,
+    `{task_goal}`, `{verification_summary}`,
+    `{unresolved_findings_ledger}`, `{unresolved_pr_feedback}`.
+- The reviewer must return strict JSON only (no prose, no markdown fences), matching the schema in the prompt file.
 
 Per round:
 
@@ -169,18 +145,34 @@ Per round:
    - Review inputs must include the full context pack.
    - The sub-agent model must use the same model as the main agent.
 3. Validate reviewer output schema:
-   - If output is malformed (missing required fields for `NEEDS_CHANGES`), rerun reviewer once with a schema reminder.
+   - Required top-level keys:
+     - `findings` (array)
+     - `overall_correctness` (`patch is correct` | `patch is incorrect`)
+     - `overall_explanation` (string)
+     - `overall_confidence_score` (number in `[0.0, 1.0]`)
+   - Required finding keys (for each finding):
+     - `title` (string)
+     - `body` (string)
+     - `confidence_score` (number in `[0.0, 1.0]`)
+     - `priority` (`0|1|2|3`, optional)
+     - `code_location.absolute_file_path` (string)
+     - `code_location.line_range.start` (int)
+     - `code_location.line_range.end` (int)
+   - If output is malformed, rerun reviewer once with a schema reminder.
    - If still malformed, stop and return blocked status with the invalid payload summary.
-4. If `APPROVED` (reviewer sub-agent status, not user approval), emit `<promise>IMPLEMENTATION_COMPLETE</promise>` and stop.
-5. If `NEEDS_CHANGES`:
-   - fix unresolved items only,
+4. Evaluate approval gate:
+   - If `findings` is empty and `overall_correctness` is `patch is correct`, emit `<promise>IMPLEMENTATION_COMPLETE</promise>` and stop.
+   - If `findings` is empty and `overall_correctness` is `patch is incorrect`, rerun reviewer once for consistency; if still inconsistent, stop and return blocked status with both payloads summarized.
+5. If `findings` is non-empty:
+   - fix unresolved items only, prioritized by `priority` ascending (`0` -> `3`; unknown priority after known priorities),
    - rerun targeted verification,
+   - update `unresolved_findings_ledger` with still-open findings only (drop resolved findings),
    - keep changes uncommitted for the next round.
 6. If not approved after `MAX_ROUNDS`, emit blocked status with unresolved list and attempted fixes.
 
 ### 6) Mandatory commit-smart after approval
 
-After the review loop returns `APPROVED`, immediately invoke `commit-smart` to commit and push changes.
+After the review loop returns approval (empty findings + correct patch verdict), immediately invoke `commit-smart` to commit and push changes.
 
 Rules:
 - Do not ask the user for additional confirmation before running `commit-smart`.
