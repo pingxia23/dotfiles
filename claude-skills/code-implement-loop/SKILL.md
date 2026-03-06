@@ -1,6 +1,6 @@
 ---
 name: code-implement-loop
-description: Implement code changes from a user-provided `.md` plan/design file or direct user instructions. Use when asked to make code changes, implement a feature from an explicit plan document, or implement changes described inline.
+description: Trigger this skill when implementation should start: if Codex/Claude proposes a plan and the user says to implement it, or if the user explicitly invokes this skill. Accepted implementation input sources are: a Codex/Claude-proposed plan, a user-provided `.md` plan/design file, or user-provided inline implementation instructions.
 ---
 
 # Code Implement Loop
