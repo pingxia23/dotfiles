@@ -1,6 +1,6 @@
 ---
 name: code-implement-loop
-description: Trigger this skill when implementation should start: if Codex/Claude proposes a plan and the user says to implement it, or if the user explicitly invokes this skill. Accepted implementation input sources are: a Codex/Claude-proposed plan, a user-provided `.md` plan/design file, or user-provided inline implementation instructions.
+description: "Trigger this skill when implementation should start: if Codex/Claude proposes a plan and the user says to implement it, or if the user explicitly invokes this skill. Accepted implementation input sources are: a Codex/Claude-proposed plan, a user-provided `.md` plan/design file, or user-provided inline implementation instructions."
 ---
 
 # Code Implement Loop
