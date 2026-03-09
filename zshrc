@@ -50,8 +50,8 @@ export PATH="$HOME/.local/bin:$PATH"
 
 alias claude="ddtool auth login --datacenter us1.ddbuild.io && claude --model opus --allow-dangerously-skip-permissions"
 
-alias codex_normal="ddtool auth login --datacenter us1.ddbuild.io && codex -m gpt-5.4-codex -c 'model_reasoning_effort=\"high\"' --dangerously-bypass-approvals-and-sandbox"
-alias codex_high="ddtool auth login --datacenter us1.ddbuild.io && codex -m gpt-5.4-codex -c 'model_reasoning_effort=\"xhigh\"' --dangerously-bypass-approvals-and-sandbox"
+alias codex_normal="ddtool auth login --datacenter us1.ddbuild.io && codex -m gpt-5.4 -c 'model_reasoning_effort=\"high\"' --dangerously-bypass-approvals-and-sandbox"
+alias codex_high="ddtool auth login --datacenter us1.ddbuild.io && codex -m gpt-5.4 -c 'model_reasoning_effort=\"xhigh\"' --dangerously-bypass-approvals-and-sandbox"
 
 # Trigger tribunal cron jobs with correct kube_cronjob tag
 trigger-tribunal() {
@@ -74,6 +74,16 @@ trigger-tribunal() {
   echo "Datadog logs:"
   echo "  https://app.datadoghq.com/logs?query=kube_namespace%3A${namespace}%20kube_cronjob%3A${cronjob}"
 }
+
+# Ensure workspace SSH key is loaded for git commit signing
+if [ -f "$HOME/.ssh/id_ed25519" ]; then
+  ssh-add -l 2>/dev/null | grep -q "$(ssh-keygen -lf "$HOME/.ssh/id_ed25519.pub" 2>/dev/null | awk '{print $2}')" || ssh-add "$HOME/.ssh/id_ed25519" 2>/dev/null
+fi
+
+eval "$(codex completion zsh)"
+
+
+######################## functions ###################
 
 create-worktree() {
   local feature="$1"
@@ -109,11 +119,6 @@ create-worktree() {
     echo "Created tmux session: $feature"
   fi
 }
-
-# Ensure workspace SSH key is loaded for git commit signing
-if [ -f "$HOME/.ssh/id_ed25519" ]; then
-  ssh-add -l 2>/dev/null | grep -q "$(ssh-keygen -lf "$HOME/.ssh/id_ed25519.pub" 2>/dev/null | awk '{print $2}')" || ssh-add "$HOME/.ssh/id_ed25519" 2>/dev/null
-fi
 
 delete-worktree() {
   local feature="$1"
