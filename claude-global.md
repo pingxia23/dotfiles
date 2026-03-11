@@ -18,6 +18,11 @@ These rules apply to all projects and working directories.
 ## Python Code Style
 1. **ALWAYS** perfer top-level import than inline import
 
+## Skill Routing Override
+
+- If the latest assistant response proposed an implementation plan and the user replies with `implement this`, `implement it`, `implement the proposed plan`, `carry out the plan`, or equivalent, treat that reply as an explicit invocation of `code-implement-loop`.
+- This override takes precedence over generic default behavior such as "assume the user wants implementation."
+
 # DD-SOURCE Repository Guidelines
 These are general guidelines when you work inside `~/dd/dd-source` folder or `~/go/src/github.com/DataDog/dd-source`
 

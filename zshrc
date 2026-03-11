@@ -50,8 +50,9 @@ export PATH="$HOME/.local/bin:$PATH"
 
 alias claude="ddtool auth login --datacenter us1.ddbuild.io && claude --model opus --allow-dangerously-skip-permissions"
 
-alias codex_normal="ddtool auth login --datacenter us1.ddbuild.io && codex -m gpt-5.4 -c 'model_reasoning_effort=\"high\"' --dangerously-bypass-approvals-and-sandbox"
-alias codex_high="ddtool auth login --datacenter us1.ddbuild.io && codex -m gpt-5.4 -c 'model_reasoning_effort=\"xhigh\"' --dangerously-bypass-approvals-and-sandbox"
+alias codex_normal="ddtool auth login --datacenter us1.ddbuild.io && codex -c 'model_reasoning_effort=\"medium\"' --dangerously-bypass-approvals-and-sandbox"
+alias codex_high="ddtool auth login --datacenter us1.ddbuild.io && codex -c 'model_reasoning_effort=\"high\"' --dangerously-bypass-approvals-and-sandbox"
+alias codex_xhigh="ddtool auth login --datacenter us1.ddbuild.io && codex -c 'model_reasoning_effort=\"xhigh\"' --dangerously-bypass-approvals-and-sandbox"
 
 # Trigger tribunal cron jobs with correct kube_cronjob tag
 trigger-tribunal() {
