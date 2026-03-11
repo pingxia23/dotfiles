@@ -14,3 +14,9 @@ url = "https://mcp.atlassian.com/v1/mcp"
 
 [tui]
 theme = "catppuccin-macchiato"
+
+[projects."/Users/ping.xia/dotfiles"]
+trust_level = "trusted"
+
+[notice.model_migrations]
+"gpt-5.3-codex" = "gpt-5.4"

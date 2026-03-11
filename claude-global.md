@@ -20,7 +20,7 @@ These rules apply to all projects and working directories.
 
 ## Skill Routing Override
 
-- If the latest assistant response proposed an implementation plan and the user replies with `implement this`, `implement it`, `implement the proposed plan`, `carry out the plan`, or equivalent, treat that reply as an explicit invocation of `code-implement-loop`.
+- If the current working directory is within `~/dd` (or its resolved absolute path), and the latest assistant response proposed an implementation plan and the user replies with `implement this`, `implement it`, `implement the proposed plan`, `carry out the plan`, or equivalent, treat that reply as an explicit invocation of `code-implement-loop`.
 - This override takes precedence over generic default behavior such as "assume the user wants implementation."
 
 # DD-SOURCE Repository Guidelines
@@ -46,4 +46,3 @@ This repo uses `bzl` to build and test packages.
 - NEVER clear the bazel cache. `bzl clean` will NOT solve your problem.
 - Do not use `bzl test` with the `--test_filter` flag; there is a bug that may cause the test case you're selecting to be skipped.
 - Never run multiple `bzl` commands in parallel (lockfile conflicts)
-
