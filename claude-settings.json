@@ -31,11 +31,7 @@
     ]
   },
   "enabledPlugins": {
-    "feature@datadog-claude-plugins": true,
-    "python-code-reviewer@datadog-claude-plugins": true,
-    "skills@datadog-claude-plugins": true,
-    "bits-remote-agent@datadog-claude-plugins": true,
-    "hookify@claude-plugins-official": true,
+    "slack@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": true
   },

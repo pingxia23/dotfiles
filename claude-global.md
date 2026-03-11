@@ -3,6 +3,7 @@ These rules apply to all projects and working directories.
 
 ## GitHub
 - Always use `gh` for GitHub interactions
+- Never resolve Github PR comments
 
 ## Git
 - **Never change the current git branch name** unless I explicitly asked you to do so
