@@ -4,6 +4,7 @@ These rules apply to all projects and working directories.
 ## GitHub
 - Always use `gh` for GitHub interactions
 - Never resolve Github PR comments
+- **ONLY** address unresolved comments
 
 ## Git
 - **Never change the current git branch name** unless I explicitly asked you to do so
@@ -13,8 +14,6 @@ These rules apply to all projects and working directories.
 1. Remove any temporary files created during development (e.g., plan files, test outputs)
 2. **ALWAYS** use `commit-smart` skill to commit
 
-## Address Github Pull Request Comments
-1. **ONLY** address unresolved comments
 
 ## Python Code Style
 1. **ALWAYS** perfer top-level import than inline import

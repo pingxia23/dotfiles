@@ -18,5 +18,11 @@ theme = "catppuccin-macchiato"
 [projects."/Users/ping.xia/dotfiles"]
 trust_level = "trusted"
 
+[projects."/Users/ping.xia/go/src/github.com/DataDog/dd-source"]
+trust_level = "trusted"
+
+[projects."/Users/ping.xia"]
+trust_level = "trusted"
+
 [notice.model_migrations]
 "gpt-5.3-codex" = "gpt-5.4"
