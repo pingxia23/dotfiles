@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codebase Deep Dive"
+  short_description: "Extract architecture decisions and key features"
+  default_prompt: "Use $codebase-deep-dive to analyze this codebase and write rearch-{name}.md with key system decisions and features."

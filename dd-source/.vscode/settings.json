@@ -256,7 +256,7 @@
 	"python.analysis.autoSearchPaths": true,
 	// "python.analysis.autoImportCompletions": true,
 	"python.analysis.typeCheckingMode": "basic",
-	"python.analysis.diagnosticMode": "workspace",
+	"python.analysis.diagnosticMode": "openFilesOnly",
 	"python.analysis.indexing": true,
 	"python.analysis.userFileIndexingLimit": 20000,
 	"python.analysis.useLibraryCodeForTypes": true,
