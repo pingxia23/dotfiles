@@ -365,15 +365,30 @@ else
     info "  🕵 No Python files in domains/assistant to type-check"
 fi
 
+# --------------------------- Python Mypy Coverage (domains/assistant) --------------------------- #
+warn "🔍 Checking mypy coverage in domains/assistant..."
+if [[ -n "$assistant_python_files" ]]; then
+    info "  🔎 Running mypy coverage check in domains/assistant..."
+    if bzl run //domains/assistant/scripts:check_mypy_coverage; then
+        success "  ✅ Mypy coverage check passed"
+    else
+        error "  ❌ Mypy coverage check failed!"
+        error "  Run: bzl run //domains/assistant/scripts:check_mypy_coverage"
+        exit 1
+    fi
+else
+    info "  🕵 No Python files in domains/assistant to check for mypy coverage"
+fi
+
 # --------------------------- Assistant Tests (domains/assistant) --------------------------- #
 warn "🔍 Running tests in domains/assistant..."
 if [[ -n "$assistant_python_files" ]]; then
-    info "  🧪 Running: bzl test //domains/assistant/..."
-    if bzl test //domains/assistant/...; then
+    info "  🧪 Running: bzl test --build_tests_only //domains/assistant/...:all"
+    if bzl test --build_tests_only //domains/assistant/...:all; then
         success "  ✅ domains/assistant tests passed"
     else
         error "  ❌ domains/assistant tests failed!"
-        error "  Run: bzl test //domains/assistant/..."
+        error "  Run: bzl test --build_tests_only //domains/assistant/...:all"
         exit 1
     fi
 else

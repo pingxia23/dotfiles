@@ -75,11 +75,7 @@
 			"+libs/go",
 			"+domains/rapid",
 			"+domains/api_platform",
-			"+domains/ai_platform",
-			"+domains/aaa",
-			"+domains/oncall",
-			"+domains/assistant",
-			"+**/shared"
+			"+domains/ai_platform"
 		],
 		"analyses": {
 			"unusedparams": false,
