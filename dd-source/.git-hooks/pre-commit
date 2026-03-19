@@ -248,7 +248,7 @@ else
         targets+=" //$dir/..."
     done
     info "  🚀 Running: bzl run //:snapshot --$targets"
-    bzl run //:snapshot --$targets >/dev/null 2>&1
+    bzl run //:snapshot --$targets
 fi
 
 # --------------------------- Go Generate Handling --------------------------- #
@@ -260,7 +260,7 @@ else
     warn "  🚀 Found '//go:generate' directives. Running generation..."
     for file in $generate_files; do
         info "  🚀 Generating: $file"
-        go generate "$file" >/dev/null 2>&1
+        go generate "$file"
     done
 fi
 
@@ -278,7 +278,7 @@ all_dirs=$(echo "$import_dirs $python_import_dirs $bazel_dirs $embed_dirs" | xar
 if [[ -n "$all_dirs" ]]; then
     warn "  🚀 Updating build files..."
     info "  🚀 Running: bzl run //:gazelle -- $all_dirs"
-    if bzl run //:gazelle -- $all_dirs >/dev/null 2>&1; then
+    if bzl run //:gazelle -- $all_dirs; then
         success "  ✅ Build files updated"
         git add -u $all_dirs/*.bazel 2>/dev/null || true
     else
@@ -317,7 +317,8 @@ if [[ -n "$python_files" ]]; then
     python_files_changed_before=$(git diff --name-only -- $python_files | sort)
 
     # Run ruff formatter - use filtered python_files to exclude deleted files
-    if bzl run //tools/format:format_ruff -- --git-diff-file <(echo "$python_files_newline") >/dev/null 2>&1; then
+    info "  🚀 Running: bzl run //tools/format:format_ruff -- --git-diff-file <python file list>"
+    if bzl run //tools/format:format_ruff -- --git-diff-file <(echo "$python_files_newline"); then
         python_files_changed_after=$(git diff --name-only -- $python_files | sort)
         newly_formatted_files=$(
             comm -13 \
@@ -336,7 +337,8 @@ if [[ -n "$python_files" ]]; then
     fi
 
     # Run ruff linter
-    if bzl run //tools/format:lint_ruff -- --git-diff-file <(echo "$python_files_newline") >/dev/null 2>&1; then
+    info "  🚀 Running: bzl run //tools/format:lint_ruff -- --git-diff-file <python file list>"
+    if bzl run //tools/format:lint_ruff -- --git-diff-file <(echo "$python_files_newline"); then
         success "  ✅ Python linting passed"
     else
         error "  ❌ Python linting failed!"
