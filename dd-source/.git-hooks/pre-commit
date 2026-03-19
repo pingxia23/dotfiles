@@ -307,17 +307,29 @@ fi
 stage_generated_files
 
 # --------------------------- Python Formatting --------------------------- #
-warn "🔍 Formatting Python files..."
+warn "🔍 Checking Python formatting..."
 python_files=$(get_python_files)
 if [[ -n "$python_files" ]]; then
-    info "  🛠 Formatting $(echo "$python_files" | wc -w | tr -d ' ') Python files..."
+    info "  🔎 Checking $(echo "$python_files" | wc -w | tr -d ' ') Python files..."
 
     # Convert space-separated list to newline-separated for --git-diff-file
     python_files_newline=$(echo "$python_files" | tr ' ' '\n')
+    python_files_changed_before=$(git diff --name-only -- $python_files | sort)
 
     # Run ruff formatter - use filtered python_files to exclude deleted files
     if bzl run //tools/format:format_ruff -- --git-diff-file <(echo "$python_files_newline") >/dev/null 2>&1; then
-        success "  ✅ Python files formatted successfully"
+        python_files_changed_after=$(git diff --name-only -- $python_files | sort)
+        newly_formatted_files=$(
+            comm -13 \
+                <(printf '%s\n' "$python_files_changed_before") \
+                <(printf '%s\n' "$python_files_changed_after") \
+            | sed '/^$/d'
+        )
+        if [[ -n "$newly_formatted_files" ]]; then
+            success "  ✅ Applied formatting to $(echo "$newly_formatted_files" | wc -l | tr -d ' ') Python files"
+        else
+            success "  ✅ No Python formatting changes needed"
+        fi
     else
         error "  ❌ Python formatting failed!"
         exit 1

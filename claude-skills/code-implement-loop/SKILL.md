@@ -69,7 +69,7 @@ Repo constraints:
 
 ### 5) Run Ralph Wiggum PR-aware review/fix loop
 
-Run a bounded loop with at most 5 rounds.
+Run a bounded loop with at most 3 rounds.
 Each round must use a **new reviewer sub-agent** (fresh context).
 DO NOT COMMIT inside this loop.
 
@@ -82,7 +82,7 @@ Review scope policy:
 
 Defaults:
 
-- `MAX_ROUNDS = 5`
+- `MAX_ROUNDS = 3`
 - completion token: `<promise>IMPLEMENTATION_COMPLETE</promise>`
 - review quality bar: high bug-risk focus (`correctness`, `regression`, `security`, `compat`, `performance`, `tests`); do not block on pure style nits.
 

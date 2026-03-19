@@ -146,6 +146,25 @@ delete-worktree() {
   # Force remove the git worktree
   git -C "$DD_SOURCE_ROOT" worktree remove --force "$target"
 
+  # Delete Bazel output bases that belong to this worktree.
+  local deleted=0
+  local search_root=""
+  local marker=""
+  local output_base=""
+  local workspace_path=""
+  for search_root in "$HOME/.cache/bazel" "$HOME/Library/Caches/bazel"; do
+    [[ -d "$search_root" ]] || continue
+    while IFS= read -r -d '' marker; do
+      workspace_path="$(cat "$marker" 2>/dev/null || true)"
+      [[ "$workspace_path" == "$target" ]] || continue
+      output_base="$(dirname "$marker")"
+      chmod -R u+w "$output_base" 2>/dev/null || true
+      rm -rf -- "$output_base"
+      echo "Deleted Bazel output base: $output_base"
+      deleted=$((deleted + 1))
+    done < <(find "$search_root" -mindepth 2 -maxdepth 3 -type f -name DO_NOT_BUILD_HERE -print0 2>/dev/null)
+  done
+  ((deleted > 0)) || echo "No Bazel output base found for: $target"
+
   echo "Worktree '$feature' removed"
 }
-
