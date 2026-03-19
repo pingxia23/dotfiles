@@ -46,3 +46,4 @@ This repo uses `bzl` to build and test packages.
 - NEVER clear the bazel cache. `bzl clean` will NOT solve your problem.
 - Do not use `bzl test` with the `--test_filter` flag; there is a bug that may cause the test case you're selecting to be skipped.
 - Never run multiple `bzl` commands in parallel (lockfile conflicts)
+- Always print `bzl` output 
