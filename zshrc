@@ -56,6 +56,8 @@ alias codex_normal="ddtool auth login --datacenter us1.ddbuild.io && codex -c 'm
 alias codex_high="ddtool auth login --datacenter us1.ddbuild.io && codex -c 'model_reasoning_effort=\"high\"' --dangerously-bypass-approvals-and-sandbox"
 alias codex_xhigh="ddtool auth login --datacenter us1.ddbuild.io && codex -c 'model_reasoning_effort=\"xhigh\"' --dangerously-bypass-approvals-and-sandbox"
 
+export MCP_OAUTH_CALLBACK_PORT=41111
+
 # Trigger tribunal cron jobs with correct kube_cronjob tag
 trigger-tribunal() {
   local experiment="${1:?Usage: trigger-tribunal <experiment-name>}"
