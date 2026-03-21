@@ -85,7 +85,7 @@ If `git commit` fails due to hooks:
      - Do not require the disk-pressure string and Bazel path text to appear on the same line.
   4. If the failure matches the Bazel disk-pressure case:
      - In dd-scope, run:
-       - `CURRENT_WORKSPACE_ROOT="$worktree_root" "$HOME/dotfiles/claude-skills/commit-smart/cleanup-stale-bazel-output-bases.sh" --apply`
+       - `CURRENT_WORKSPACE_ROOT="$worktree_root" "$HOME/dotfiles/scripts/cleanup-stale-bazel-output-bases.sh"`
      - If the retry still fails with the same disk-pressure signals, run the cleanup helper again and retry again.
      - Repeat until either:
        - the commit succeeds
