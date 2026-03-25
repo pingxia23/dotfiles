@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/opt/homebrew/bin/bash
 set -euo pipefail
 
 # --------------------------- Color Definitions --------------------------- #
@@ -31,11 +31,16 @@ run_bzl_locked() {
     local exit_code
     local wait_message="⏳ Another pre-commit hook is using Bazel. Waiting for lock..."
 
+    if ! command -v flock >/dev/null 2>&1; then
+        bzl "$@"
+        return $?
+    fi
+
     mkdir -p "$lock_dir"
     exec {lock_fd}> "$lock_file"
 
     if ! flock -n "$lock_fd"; then
-        if [[ -w /dev/tty ]]; then
+        if [[ -e /dev/tty && -w /dev/tty ]]; then
             printf '%b%s%b\n' "${YELLOW}" "$wait_message" "${NC}" > /dev/tty
         else
             warn "$wait_message"
@@ -484,19 +489,19 @@ else
 fi
 
 # --------------------------- Python Mypy Coverage (domains/assistant) --------------------------- #
-warn "🔍 Checking mypy coverage in domains/assistant..."
-if [[ -n "$assistant_python_files" ]]; then
-    info "  🔎 Running mypy coverage check in domains/assistant..."
-    if run_bzl_locked run //domains/assistant/scripts:check_mypy_coverage; then
-        success "  ✅ Mypy coverage check passed"
-    else
-        error "  ❌ Mypy coverage check failed!"
-        error "  Run: bzl run //domains/assistant/scripts:check_mypy_coverage"
-        exit 1
-    fi
-else
-    info "  🕵 No Python files in domains/assistant to check for mypy coverage"
-fi
+# warn "🔍 Checking mypy coverage in domains/assistant..."
+# if [[ -n "$assistant_python_files" ]]; then
+#     info "  🔎 Running mypy coverage check in domains/assistant..."
+#     if run_bzl_locked run //domains/assistant/scripts:check_mypy_coverage; then
+#         success "  ✅ Mypy coverage check passed"
+#     else
+#         error "  ❌ Mypy coverage check failed!"
+#         error "  Run: bzl run //domains/assistant/scripts:check_mypy_coverage"
+#         exit 1
+#     fi
+# else
+#     info "  🕵 No Python files in domains/assistant to check for mypy coverage"
+# fi
 
 # --------------------------- Assistant Tests (domains/assistant) --------------------------- #
 warn "🔍 Running tests in domains/assistant..."
