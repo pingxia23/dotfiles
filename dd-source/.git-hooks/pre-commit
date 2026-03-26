@@ -225,75 +225,6 @@ get_assistant_python_packages() {
     }
 }
 
-get_assistant_test_targets() {
-    local targets=""
-    local fallback="false"
-    local file
-
-    for file in $(get_assistant_python_files); do
-        local target=""
-        local rest=""
-        local subtree_name=""
-        local subtree_dir=""
-
-        case "$file" in
-            domains/assistant/apps/*)
-                rest="${file#domains/assistant/apps/}"
-                subtree_name="${rest%%/*}"
-                if [[ "$rest" != "$subtree_name" && -n "$subtree_name" ]]; then
-                    subtree_dir="domains/assistant/apps/$subtree_name"
-                else
-                    fallback="true"
-                fi
-                ;;
-            domains/assistant/libs/*)
-                rest="${file#domains/assistant/libs/}"
-                subtree_name="${rest%%/*}"
-                if [[ "$rest" != "$subtree_name" && -n "$subtree_name" ]]; then
-                    subtree_dir="domains/assistant/libs/$subtree_name"
-                else
-                    fallback="true"
-                fi
-                ;;
-            domains/assistant/shared/*)
-                rest="${file#domains/assistant/shared/}"
-                subtree_name="${rest%%/*}"
-                if [[ "$rest" != "$subtree_name" && -n "$subtree_name" ]]; then
-                    subtree_dir="domains/assistant/shared/$subtree_name"
-                else
-                    fallback="true"
-                fi
-                ;;
-            domains/assistant/scripts/*)
-                subtree_dir="domains/assistant/scripts"
-                ;;
-            domains/assistant/*)
-                fallback="true"
-                ;;
-        esac
-
-        if [[ -n "$subtree_dir" ]]; then
-            if dir_has_bazel_tests "$subtree_dir"; then
-                target="//$subtree_dir/...:all"
-            else
-                fallback="true"
-            fi
-        fi
-
-        if [[ -n "$target" ]]; then
-            targets+="$target"$'\n'
-        elif [[ "$file" == domains/assistant/* ]]; then
-            fallback="true"
-        fi
-    done
-
-    if [[ "$fallback" == "true" ]]; then
-        echo "//domains/assistant/...:all"
-    else
-        echo "$targets" | sed '/^$/d' | sort -u
-    fi
-}
-
 get_python_import_dirs() {
     get_my_branch_files | {
         local dirs=""
@@ -506,12 +437,7 @@ fi
 # --------------------------- Assistant Tests (domains/assistant) --------------------------- #
 warn "🔍 Running tests in domains/assistant..."
 if [[ -n "$assistant_python_files" ]]; then
-    assistant_test_targets=$(get_assistant_test_targets)
-
-    if [[ -z "$assistant_test_targets" ]]; then
-        info "  🕵 No assistant test targets resolved. Falling back to full assistant test sweep."
-        assistant_test_targets="//domains/assistant/...:all"
-    fi
+    assistant_test_targets="//domains/assistant/...:all"
 
     info "  🧪 Running: bzl test --build_tests_only $assistant_test_targets"
     if run_bzl_locked test --build_tests_only $assistant_test_targets; then

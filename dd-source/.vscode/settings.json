@@ -75,7 +75,8 @@
 			"+libs/go",
 			"+domains/rapid",
 			"+domains/api_platform",
-			"+domains/ai_platform"
+			"+domains/ai_platform",
+			"+domains/mcp_services"
 		],
 		"analyses": {
 			"unusedparams": false,
