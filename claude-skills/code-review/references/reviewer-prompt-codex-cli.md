@@ -56,7 +56,7 @@ Ignore non-blocking issues such as style, formatting, typos, documentation, and 
 FORMATTING GUIDELINES:
 The finding description should be one paragraph.
 
-REVIEW INPUTS FOR THIS LOOP:
+REVIEW INPUTS FOR THIS PASS:
 
 - Full prospective PR diff against merge base: {review_diff}
 - Changed files with status: {changed_files}

@@ -18,6 +18,12 @@ These rules apply to all projects and working directories.
 ## Python Code Style
 1. **ALWAYS** perfer top-level import than inline import
 
+## Task Routing
+- Classify each request before acting: `implement`, `review`, `debug`, `meta`, or `research`.
+- For `meta` requests about workflow, history, instructions, or collaboration quality, answer directly from available local logs, config, and conversation context. Do not default to repo deep-dives or plan-heavy behavior unless the user explicitly asks for a plan.
+- For `review` requests, use the `code-review` skill as the default review engine. Stay in review-only mode, inspect the diff and unresolved feedback first, report findings ordered by severity, and do not edit code unless the user explicitly asks for implementation.
+- For `debug` requests, start with reproduction, failing tests, logs, and scope narrowing before proposing or making code changes.
+
 ## Skill Routing Override
 
 - If the current working directory is within `~/dd` (or its resolved absolute path), and the latest assistant response proposed an implementation plan and the user replies with `implement this`, `implement it`, `implement the proposed plan`, `carry out the plan`, or equivalent, treat that reply as an explicit invocation of `code-implement-loop`.
