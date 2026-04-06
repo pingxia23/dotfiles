@@ -592,6 +592,18 @@ else
   echo "  codex-config.toml not found in dotfiles directory"
 fi
 
+if [ -d "$DOTFILES_DIR/codex-hooks" ]; then
+  create_symlink "$DOTFILES_DIR/codex-hooks" "$HOME/.codex/hooks"
+else
+  echo "  codex-hooks directory not found in dotfiles directory"
+fi
+
+if [ -f "$DOTFILES_DIR/codex-hooks/hooks.json" ]; then
+  create_symlink "$DOTFILES_DIR/codex-hooks/hooks.json" "$HOME/.codex/hooks.json"
+else
+  echo "  codex-hooks/hooks.json not found in dotfiles directory"
+fi
+
 echo ""
 echo "============================================="
 echo "Installation complete!"

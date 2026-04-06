@@ -4,10 +4,10 @@ model_supports_reasoning_summaries = true
 approval_policy = "never"
 sandbox_mode = "danger-full-access"
 personality = "pragmatic"
-notify = ["/home/bits/dotfiles/codex-notify.sh"]
 service_tier = "fast"
 
 [features]
+codex_hooks = true
 multi_agent = true
 
 [mcp_servers.atlassian]
