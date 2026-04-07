@@ -62,8 +62,8 @@ if [[ -f "$DIGEST_FILE" && ! -s "$DIGEST_FILE" ]]; then
   rm -f "$DIGEST_FILE"
 fi
 
-if ! command -v codex >/dev/null 2>&1; then
-  echo "${LOG_PREFIX} codex CLI is not installed or not on PATH."
+if ! command -v claude >/dev/null 2>&1; then
+  echo "${LOG_PREFIX} claude CLI is not installed or not on PATH."
   exit 1
 fi
 
@@ -82,7 +82,7 @@ Create a self-contained, technically detailed digest of the most valuable discus
 DATE AND FILE RULES
 
 - Yesterday's date: ${YESTERDAY}
-- Output file: ${DIGEST_FILE}
+- Write the digest to: ${OUTPUT_FILE}
 
 STEP 1 — IDEMPOTENCY CHECK
 
@@ -204,12 +204,12 @@ For successful digests only, at the very end add one blank line and then exactly
 
 - [ ] Review AI slack digest 📅 ${YESTERDAY}
 
-IMPORTANT: Output ONLY the final markdown content. No preamble, no code fences, no commentary.
-IMPORTANT: Successful output must be exactly one of these forms:
+IMPORTANT: Write ONLY the final markdown content to ${OUTPUT_FILE}. No preamble, no code fences, no commentary.
+IMPORTANT: The file must be exactly one of these forms:
 - The exact text: Nothing interesting yesterday.
 - A markdown digest that starts with ## on the first line and ends with the exact review checkbox line above.
-IMPORTANT: If any API call fails (authentication errors, 401/403, token errors, MCP tool failures, missing tools, browsing failures, etc.), return an EMPTY final message. Do not write error messages, do not write partial digests, do not write explanations.
-IMPORTANT: Never output raw error text or payloads such as:
+IMPORTANT: If any API call fails (authentication errors, 401/403, token errors, MCP tool failures, missing tools, browsing failures, etc.), do NOT write ${OUTPUT_FILE}. Do not write error messages, do not write partial digests, do not write explanations.
+IMPORTANT: Never write raw error text or payloads such as:
 - Failed to authenticate
 - API Error
 - Unauthorized
@@ -218,16 +218,19 @@ IMPORTANT: Never output raw error text or payloads such as:
 - [{"status":401, ...}]
 PROMPT_EOF
 
-# --- Run codex ---
-echo "${LOG_PREFIX} Invoking codex..."
-if ! codex exec \
-  --skip-git-repo-check \
-  --dangerously-bypass-approvals-and-sandbox \
-  --ephemeral \
-  -C "$HOME" \
-  -o "$OUTPUT_FILE" \
-  - < "$PROMPT_FILE"; then
-  echo "${LOG_PREFIX} Codex invocation failed; digest not created."
+# --- Run claude ---
+echo "${LOG_PREFIX} Invoking claude..."
+if ! claude -p "$(cat "$PROMPT_FILE")" \
+  --model sonnet \
+  --no-session-persistence \
+  --allowedTools "Read,Write,Edit,Bash,Glob,Grep,WebFetch,WebSearch,mcp__plugin_slack_slack__*" \
+  > /dev/null; then
+  echo "${LOG_PREFIX} Claude invocation failed; digest not created."
+  exit 1
+fi
+
+if [[ ! -f "$OUTPUT_FILE" || ! -s "$OUTPUT_FILE" ]]; then
+  echo "${LOG_PREFIX} Claude did not write the digest file; digest not created."
   exit 1
 fi
 

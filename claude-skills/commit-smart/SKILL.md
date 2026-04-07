@@ -6,7 +6,6 @@ description: "Deterministic workflow to stage changes, run bzl tests when applic
 Perform a deterministic smart-commit workflow.
 
 ## Hard Rules
-- NEVER use `--no-verify`
 - NEVER force push
 - NEVER rename or switch branches unless the user explicitly asks
 - For pre-commit hook failures, inspect, fix, and retry until commit succeeds
@@ -91,7 +90,7 @@ If `git commit` fails due to hooks:
        - the commit succeeds
        - the disk-pressure markers disappear and a different concrete failure remains
        - the cleanup helper reports no reclaim candidates left and the same disk-pressure failure still occurs
-     - Do NOT use `--no-verify`.
+     - Do NOT use `--no-verify` UNLESS the user explicitly asks you to use it
      - Do NOT use `bzl clean` for this issue.
   5. If the failure is not a Bazel disk-pressure case, fix issues in code/config/message, re-stage, retry.
   6. Repeat until `git commit` succeeds.
