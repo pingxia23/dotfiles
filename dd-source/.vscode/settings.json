@@ -76,7 +76,7 @@
 			"+domains/rapid",
 			"+domains/api_platform",
 			"+domains/ai_platform",
-			"+domains/mcp_services"
+			"+domains/odp/apps/apis/lassie-ng"
 		],
 		"analyses": {
 			"unusedparams": false,
