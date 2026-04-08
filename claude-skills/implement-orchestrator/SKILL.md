@@ -1,6 +1,6 @@
 ---
 name: implement-orchestrator
-description: Orchestrate implementation from a planning outcome through a persisted implementation document at `designs/{slug}/IMPLEMENTATION.md`, followed by milestone-by-milestone sub-agent execution. Use when a user provides a plan and asks for automatic staged delivery.
+description: Orchestrate implementation from a planning outcome through a persisted implementation document at `$HOME/dotfiles/implementation_plan/{slug}/IMPLEMENTATION.md`, followed by milestone-by-milestone sub-agent execution. Use when a user provides a plan and asks for automatic staged delivery.
 ---
 
 # Implement Orchestrator
@@ -8,7 +8,7 @@ description: Orchestrate implementation from a planning outcome through a persis
 ## Overview
 
 Implement a planning-to-implementation orchestrator:
-- Always generate `designs/{slug}/IMPLEMENTATION.md`.
+- Always generate `$HOME/dotfiles/implementation_plan/{slug}/IMPLEMENTATION.md`.
 - Always convert the plan into dependency-ordered implementation steps.
 - Always execute steps sequentially with fresh sub-agents, and each step is implemented by invoking `code-implement-loop` from a structured milestone payload derived from the implementation doc.
 - Always require each milestone sub-agent to return the final `code-implement-loop` output verbatim.
@@ -50,7 +50,7 @@ Normalization rules:
 ### 2) Build implementation doc
 
 1. Derive slug from plan title (kebab-case).
-2. Create `designs/{slug}/IMPLEMENTATION.md`.
+2. Create `$HOME/dotfiles/implementation_plan/{slug}/IMPLEMENTATION.md`.
 3. Fill the document using `references/implementation-doc-template.md`.
 4. Ensure the roadmap satisfies:
    - Milestone 1 is always `Integration Tests`.
@@ -61,32 +61,35 @@ Normalization rules:
 
 ### 3) Execute milestones
 
-For each milestone in `designs/{slug}/IMPLEMENTATION.md`, in order:
-1. Launch a fresh sub-agent.
-2. Build a structured milestone payload with these fields:
+For each milestone in `$HOME/dotfiles/implementation_plan/{slug}/IMPLEMENTATION.md`, in order:
+1. Build a structured milestone payload with these fields:
    - `implementation_doc_path`
    - `milestone_name`
    - `milestone_block`
-   - `code_implement_loop_input`
-3. Set `code_implement_loop_input` to a single direct instruction that is good input for `code-implement-loop`:
-   - reference the implementation doc path,
-   - identify the milestone by name,
-   - include the exact milestone block,
-   - state that only this milestone should be implemented
-4. Render the sub-agent prompt from `references/subagent-prompts.md` using that payload.
-5. Require the sub-agent to execute `code-implement-loop`, not to implement the milestone directly.
-6. Require the sub-agent to return the final output from `code-implement-loop` verbatim:
+2. Render the milestone into a sub-agent prompt with:
+    ```bash
+rendered_prompt="$(
+  python scripts/render_subagent_prompt.py \
+    --implementation-doc-path "$implementation_doc_path" \
+    --milestone-name "$milestone_name" \
+    --milestone-block "$milestone_block"
+)"
+```
+3. Use the rendered prompt `rendered_prompt` to launch a fresh sub-agent.
+   - never use mini models for the sub-agent
+
+4. The sub-agent should return the final output from `code-implement-loop` verbatim:
    - success must match `SUCCESS: Implementation complete | PR: {url}`
    - blocked must match one of the `code-implement-loop` blocked formats
    - any wrapped, summarized, or commit-only success response is a failure to follow the contract
-7. Enforce commit boundary per milestone:
+5. Enforce commit boundary per milestone:
    - capture `base_sha=$(git rev-parse HEAD)` before launch,
    - after success capture `head_sha=$(git rev-parse HEAD)`,
    - require exactly one new commit: `git rev-list --count ${base_sha}..${head_sha}` equals `1`
-8. Wait for sub-agent completion and validate both:
+6. Wait for sub-agent completion and validate both:
    - the returned `code-implement-loop` output contract
    - the commit-boundary check
-9. Stop immediately if a milestone is blocked, returns a non-contract output, or commit-boundary validation fails.
+7. Stop immediately if a milestone is blocked, returns a non-contract output, or commit-boundary validation fails.
 
 ### 4) Test drive
 
@@ -120,4 +123,3 @@ Failed input/parse:
 ## Reference Files
 
 - `references/implementation-doc-template.md`
-- `references/subagent-prompts.md`

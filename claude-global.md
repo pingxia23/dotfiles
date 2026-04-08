@@ -1,6 +1,9 @@
 # Global Rules
 These rules apply to all projects and working directories.
 
+## Handle CLI command failures
+- Proactively resolve CLI-related failures instead of asking the user to fix them. For example, if a CLI version is too old to be usable, install or upgrade to a newer version yourself rather than telling the user to do it.
+
 ## GitHub
 - Always use `gh` for GitHub interactions
 - Never resolve Github PR comments
@@ -18,11 +21,6 @@ These rules apply to all projects and working directories.
 ## Python Code Style
 1. **ALWAYS** perfer top-level import than inline import
 
-## Task Routing
-- Classify each request before acting: `implement`, `review`, `debug`, `meta`, or `research`.
-- For `meta` requests about workflow, history, instructions, or collaboration quality, answer directly from available local logs, config, and conversation context. Do not default to repo deep-dives or plan-heavy behavior unless the user explicitly asks for a plan.
-- For `review` requests, use the `code-review` skill as the default review engine. Stay in review-only mode, inspect the diff and unresolved feedback first, report findings ordered by severity, and do not edit code unless the user explicitly asks for implementation.
-- For `debug` requests, start with reproduction, failing tests, logs, and scope narrowing before proposing or making code changes.
 
 ## Skill Routing Override
 
