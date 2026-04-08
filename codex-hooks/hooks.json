@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$HOME/dotfiles/claude-hooks/slack-notify.sh\"",
+            "command": "bash \"$HOME/.codex/hooks/stop-notify.sh\"",
             "timeout": 10
           }
         ]
