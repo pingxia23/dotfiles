@@ -16,18 +16,12 @@ Inputs:
 - Milestone name: {milestone_name}
 - Milestone content:
 {milestone_block}
+- Converted `code-implement-loop` input:
+{code_implement_loop_input}
 
 Execution requirements:
-- Convert the milestone into direct input for `code-implement-loop`.
-- Use this exact implementation source for `code-implement-loop`:
-
-  Implement milestone `{milestone_name}` from `{implementation_doc_path}`.
-  Use the milestone block below as the sole implementation source.
-  Implement only this milestone and do not work on other milestones.
-
-  {milestone_block}
-
-- Execute `code-implement-loop` with that converted input. Do not bypass the skill and do not implement the milestone directly.
+- Treat the structured inputs above as canonical. Do not re-derive or rewrite them.
+- Execute `code-implement-loop` with `code_implement_loop_input`. Do not bypass the skill and do not implement the milestone directly.
 - Respect repository guardrails (no branch rename, no destructive git cleanup).
 - If using GitHub commands inside a git worktree, resolve `owner/repo` from this worktree and pass `--repo <owner/repo>` to `gh` commands.
 - Run milestone verification commands exactly as written.
