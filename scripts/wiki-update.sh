@@ -7,19 +7,14 @@ WIKI_ROOT="$VAULT_ROOT/wiki"
 WIKI_SOURCES_DIR="$WIKI_ROOT/sources"
 WIKI_TOPICS_DIR="$WIKI_ROOT/topics"
 REVIEW_SCRIPT="$HOME/dotfiles/scripts/wiki-review.py"
-RUN_LOG_DIR="$WIKI_ROOT/logs"
-RUN_LOG_FILE="$RUN_LOG_DIR/wiki-update.log"
-ERR_LOG_FILE="$RUN_LOG_DIR/wiki-update.err"
 LOG_PREFIX="[wiki-update]"
 
 log() {
-  mkdir -p "$RUN_LOG_DIR"
-  printf '%s %s\n' "$LOG_PREFIX" "$1" >> "$RUN_LOG_FILE"
+  printf '%s %s\n' "$LOG_PREFIX" "$1"
 }
 
 log_error() {
-  mkdir -p "$RUN_LOG_DIR"
-  printf '%s %s\n' "$LOG_PREFIX" "$1" >> "$ERR_LOG_FILE"
+  printf '%s %s\n' "$LOG_PREFIX" "$1" >&2
 }
 
 usage() {
@@ -49,8 +44,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if ! command -v codex >/dev/null 2>&1; then
-  log_error "codex CLI is not installed or not on PATH."
+if ! command -v claude >/dev/null 2>&1; then
+  log_error "claude CLI is not installed or not on PATH."
   exit 1
 fi
 
@@ -117,8 +112,7 @@ for scope_entry in "${REVIEW_SCOPE_ENTRIES[@]}"; do
 done
 
 PROMPT_FILE=$(mktemp /tmp/wiki-update-prompt.XXXXXX)
-LAST_MESSAGE_FILE=$(mktemp /tmp/wiki-update-last-message.XXXXXX)
-trap 'rm -f "$PROMPT_FILE" "$LAST_MESSAGE_FILE"' EXIT
+trap 'rm -f "$PROMPT_FILE"' EXIT
 
 {
   echo "$PROMPT_TITLE"
@@ -138,21 +132,21 @@ trap 'rm -f "$PROMPT_FILE" "$LAST_MESSAGE_FILE"' EXIT
   for scope_entry in "${REVIEW_SCOPE_ENTRIES[@]}"; do
     echo "- ${scope_entry}"
   done
-  echo
-  echo "At the end, output a short summary of the files you changed."
 } > "$PROMPT_FILE"
 
-codex exec \
-  --skip-git-repo-check \
-  --dangerously-bypass-approvals-and-sandbox \
-  -m gpt-5.4 \
-  -c 'model_reasoning_effort="medium"' \
-  -c 'service_tier="fast"' \
-  -C "$VAULT_ROOT" \
-  -o "$LAST_MESSAGE_FILE" \
-  - < "$PROMPT_FILE" \
-  > >(tee -a "$RUN_LOG_FILE") \
-  2> >(tee -a "$ERR_LOG_FILE" >&2)
+log "Invoking claude..."
+if ! (
+  cd "$VAULT_ROOT" &&
+  claude -p "$(cat "$PROMPT_FILE")" \
+    --model claude-opus-4-6 \
+    --effort medium \
+    --allow-dangerously-skip-permissions \
+    --no-session-persistence
+  > /dev/null
+) ; then
+  log_error "Claude invocation failed."
+  exit 1
+fi
 
 RECORD_ARGS=(
   python3 "$REVIEW_SCRIPT"
@@ -168,8 +162,4 @@ for scope_entry in "${REVIEW_SCOPE_ENTRIES[@]}"; do
 done
 
 "${RECORD_ARGS[@]}"
-
-log "Codex summary:"
-while IFS= read -r line; do
-  log "$line"
-done < "$LAST_MESSAGE_FILE"
+log "Wiki update completed."
