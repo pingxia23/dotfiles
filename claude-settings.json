@@ -28,13 +28,24 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ~/.claude/hooks/exitplan-stop-gate.mjs",
+            "timeout": 900
+          }
+        ]
+      }
     ]
   },
   "enabledPlugins": {
     "slack@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
-    "claude-md-management@claude-plugins-official": true,
-    "codex@openai-codex": true
+    "claude-md-management@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "openai-codex": {
