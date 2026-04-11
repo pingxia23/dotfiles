@@ -5,7 +5,7 @@ set -euo pipefail
 CHANNEL_ID="C08V7DFTUMS"
 DIGEST_DIR="$HOME/Documents/obsidian/Digests"
 LOG_PREFIX="[slack-digest]"
-DIGEST_REVIEW_FOOTER="- [ ] Review AI slack digest 📅 ${YESTERDAY:-}"
+DIGEST_REVIEW_FOOTER="- [ ] Review AI slack digest ${YESTERDAY:-} 📅 ${YESTERDAY:-}"
 
 contains_rejected_output() {
   local file="$1"
@@ -46,7 +46,7 @@ else
 fi
 
 DIGEST_FILE="${DIGEST_DIR}/${YESTERDAY}-ai-slack-digest.md"
-DIGEST_REVIEW_FOOTER="- [ ] Review AI slack digest 📅 ${YESTERDAY}"
+DIGEST_REVIEW_FOOTER="- [ ] Review AI slack digest ${YESTERDAY} 📅 ${YESTERDAY}"
 
 echo "${LOG_PREFIX} Generating digest for ${YESTERDAY}"
 echo "${LOG_PREFIX} Time range: ${OLDEST} - ${LATEST}"
@@ -105,15 +105,9 @@ STEP 3 — READ LINKED SOURCES
 
 - If a relevant Slack discussion links to a Confluence page, blog post, GitHub PR/issue, design doc, benchmark report, or other readable source, open it and read it carefully.
 - For Confluence pages, use the Confluence MCP tools. For other URLs, use the available web browsing tools.
-- Extract the technical substance, not just the headline:
-  - problem being solved
-  - architecture or design
-  - implementation details
-  - performance characteristics
-  - migration or rollout strategy
-  - tradeoffs, risks, and lessons learned
-- If multiple linked docs are part of the same discussion, synthesize them into one coherent summary.
-- If a linked source is inaccessible, still summarize the Slack discussion, but explicitly note inline that the linked source could not be read.
+- Extract the key technical insights: problem being solved, architecture, concrete numbers, tradeoffs, and lessons learned.
+- If multiple linked docs are part of the same discussion, synthesize them into one set of takeaways.
+- If a linked source is inaccessible, still cover the Slack discussion, but note inline that the linked source could not be read.
 
 STEP 4 — FILTER AND GROUP
 
@@ -152,43 +146,41 @@ Otherwise:
 - Start directly with the first ## heading.
 - No frontmatter.
 - No table of contents.
-- Each item must be self-contained and teach the topic without requiring the reader to click links.
-- If linked docs were read, incorporate their key content directly into the item.
+- Each item must be self-contained: the reader should learn the key insights without clicking any links.
+- If linked docs were read, distill their substance into the Key Takeaways bullets.
 - Use the Slack permalink for the parent message as the heading link.
+- Embed inline markdown links in bullets where a claim, number, or design detail comes from a specific Slack message or linked document.
 - Do NOT add a separate Sources section.
-- Instead, embed markdown links directly in the relevant text wherever a claim, design detail, benchmark, migration step, or quote comes from Slack or a linked document.
-- Prefer linking the most relevant source at the sentence or clause where it is used.
-- If a paragraph synthesizes multiple sources, include links inline at the relevant points rather than collecting them at the end.
 
 FORMAT FOR EACH ITEM
 
 ## [Topic title](slack_permalink) — @author_name
 
-**Why it matters:** 1 short paragraph explaining why this topic is important for engineers building real systems. Embed links inline where relevant.
+### Key Takeaways
 
-**What it is:** 1 paragraph defining the tool, technique, system, or decision in concrete technical terms. Link directly to the Slack thread or linked doc at the point where the definition or framing comes from.
+3-5 bullet points. Each bullet is one concrete learning from the discussion. Format each as:
 
-**How it works:** 1-3 paragraphs with the core mechanism. Be specific. Explain architecture, workflow, algorithm, protocol, data flow, evaluation method, migration plan, or implementation pattern. Include concrete examples, commands, APIs, schema details, benchmark numbers, or code snippets where useful. Every important factual claim should have an inline markdown link to the supporting Slack thread or document.
+- **[Short imperative phrase]** — 1-2 sentences explaining the reasoning or motivation behind this point. Be specific enough that the reader can learn from it without reading the original thread. Embed inline markdown links to supporting Slack messages or linked documents where relevant.
 
-**Technical insights:**
-- 1-3 bullets with specific engineering lessons, tradeoffs, failure modes, or reusable patterns.
-- Embed source links directly in each bullet where relevant.
-- Prefer actionable takeaways over generic observations.
+### Best Practices
+
+Include this section only if the discussion suggests concrete actions, habits, or workflows. Otherwise omit it entirely.
+
+1-3 bullet points. Each is a specific, actionable step the reader can try in their own work. Start each with a verb. Embed inline links where relevant.
 
 ---
 
 QUALITY BAR
 
 - Write for a software engineer, not a general audience.
-- Be technically dense but readable.
-- Prefer mechanism over marketing.
-- Prefer concrete detail over vague summary.
-- If claims are uncertain or debated in the thread, say so, with inline links to the relevant discussion.
-- If the thread references performance, include the actual numbers when available and link them inline.
-- If the discussion centers on a design decision, explain the alternatives and tradeoffs and link each major point inline.
-- If linked docs add key context, inline that context so the note stands alone.
+- Be concise: each bullet should be 1-2 sentences maximum. No multi-paragraph explanations.
+- Be specific: include concrete numbers, names, tools, and mechanisms. Avoid vague summaries like "this is important for teams."
+- Each Key Takeaway bullet must teach something concrete — the reader should learn the insight without needing to read the original thread.
+- Best Practices must be actionable — start with a verb, describe a step someone can take.
+- If claims are uncertain or debated in the thread, say so within the bullet.
+- If the thread references performance, include the actual numbers.
+- Prefer mechanism over marketing. Prefer engineering lessons over announcements.
 - Favor technically substantial items over merely interesting ones.
-- Optimize for learning value: the reader should come away understanding the system, method, or decision, not just knowing that it was discussed.
 
 SLACK PERMALINK FORMAT
 
@@ -202,7 +194,7 @@ ENDING
 
 For successful digests only, at the very end add one blank line and then exactly:
 
-- [ ] Review AI slack digest 📅 ${YESTERDAY}
+- [ ] Review AI slack digest ${YESTERDAY} 📅 ${YESTERDAY}
 
 IMPORTANT: Write ONLY the final markdown content to ${OUTPUT_FILE}. No preamble, no code fences, no commentary.
 IMPORTANT: The file must be exactly one of these forms:
