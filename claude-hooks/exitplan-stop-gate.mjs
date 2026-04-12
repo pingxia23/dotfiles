@@ -4,9 +4,15 @@ import crypto from "node:crypto";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 const TAG = "[exitplan-gate]";
-const log = (msg) => process.stderr.write(`${TAG} ${msg}\n`);
+const LOG_FILE = path.join(os.homedir(), ".claude", "hooks", "exitplan-stop-gate.log");
+const log = (msg) => {
+  const line = `${new Date().toISOString()} ${TAG} ${msg}\n`;
+  process.stderr.write(line);
+  try { fs.appendFileSync(LOG_FILE, line); } catch {}
+};
 
 // ── 1. Read PreToolUse hook input from stdin ──
 let input;
@@ -104,6 +110,12 @@ for (let i = transcriptLines.length - 1; i >= 0; i--) {
 }
 
 // ── 7. Build prompt ──
+const REVIEW_SCHEMA = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "schemas",
+  "plan-review-output.schema.json"
+);
+
 const prompt = `<task>
 Review this implementation plan before it's presented for user approval.
 The user's original request and Claude's last response are provided for context.
@@ -121,24 +133,19 @@ ${planContent}
 </plan>
 </task>
 
-<compact_output_contract>
-Your first line must be exactly one of:
-- ALLOW: <short reason>
-- BLOCK: <short reason>
-Do not put anything before that first line.
-</compact_output_contract>
-
 <review_policy>
-ALLOW if the plan addresses the user's request and the approach is sound.
-BLOCK only for concrete issues: wrong file paths, missed dependencies,
+Set verdict to "approve" if the plan addresses the user's request and the approach is sound.
+Set verdict to "revise" only for concrete issues: wrong file paths, missed dependencies,
 incorrect assumptions about existing code, or a fundamentally flawed approach.
-Do NOT block for: style nits, minor improvements, alternative approaches that
+Do NOT revise for: style nits, minor improvements, alternative approaches that
 are merely different (not better), or missing nice-to-haves.
+When verdict is "approve", comments must be an empty array.
+When verdict is "revise", each comment must describe one concrete issue.
 </review_policy>
 
 <grounding_rules>
-Ground every blocking claim in repository files or tool outputs you inspected.
-Verify file paths exist and code patterns match before blocking.
+Ground every comment in repository files or tool outputs you inspected.
+Verify file paths exist and code patterns match before flagging an issue.
 </grounding_rules>`;
 
 log(`prompt length: ${prompt.length} chars`);
@@ -147,10 +154,14 @@ log(`prompt length: ${prompt.length} chars`);
 const tmpFile = path.join(os.tmpdir(), `exitplan-codex-${Date.now()}.txt`);
 log("running codex exec...");
 
-const codexResult = spawnSync("codex", ["exec", "-o", tmpFile, prompt], {
-  encoding: "utf8",
-  timeout: 15 * 60 * 1000,
-});
+const codexResult = spawnSync(
+  "codex",
+  ["exec", "--output-schema", REVIEW_SCHEMA, "-o", tmpFile, prompt],
+  {
+    encoding: "utf8",
+    timeout: 15 * 60 * 1000,
+  }
+);
 
 log(`codex exit code: ${codexResult.status}`);
 if (codexResult.stderr) log(`codex stderr: ${codexResult.stderr.trim()}`);
@@ -171,7 +182,7 @@ if (!codexOutput) {
   process.exit(0);
 }
 
-// ── 9. Write hash marker (regardless of ALLOW/BLOCK) ──
+// ── 9. Write hash marker ──
 try {
   fs.writeFileSync(markerFile, planHash, "utf8");
   log("wrote hash marker");
@@ -179,21 +190,34 @@ try {
   log(`failed to write hash marker: ${e.message}`);
 }
 
-// ── 10. Emit decision ──
-const firstLine = codexOutput.split("\n")[0].trim();
-
-if (firstLine.startsWith("BLOCK:")) {
-  const reason = `Codex review blocked the plan:\n\n${codexOutput}`;
-  log(`decision: BLOCK — ${firstLine}`);
-  process.stdout.write(JSON.stringify({ decision: "block", reason }));
+// ── 10. Parse structured review output ──
+let review;
+try {
+  review = JSON.parse(codexOutput);
+} catch {
+  log(`failed to parse codex output as JSON, allowing`);
   process.exit(0);
 }
 
-if (firstLine.startsWith("ALLOW:")) {
-  log(`decision: ALLOW — ${firstLine}`);
+if (!review.verdict || !Array.isArray(review.comments)) {
+  log(`malformed review output (missing verdict or comments), allowing`);
   process.exit(0);
 }
 
-// Unparseable output — fail open
-log(`unparseable codex output (first line: ${firstLine}), allowing`);
+if (review.verdict === "approve") {
+  log("verdict: approve, proceeding to user approval");
+  process.exit(0);
+}
+
+if (review.verdict === "revise") {
+  const feedback = review.comments.length > 0
+    ? review.comments.map((c, i) => `${i + 1}. ${c}`).join("\n")
+    : "No specific comments provided.";
+  log(`verdict: revise (${review.comments.length} comments)`);
+  process.stderr.write(`Codex review comments on the plan:\n\n${feedback}\n\nAddress the review comments above, update the plan file, then retry ExitPlanMode.`);
+  process.exit(2);
+}
+
+// Unknown verdict — fail open
+log(`unknown verdict "${review.verdict}", allowing`);
 process.exit(0);
