@@ -17,6 +17,8 @@ Implement a task in a deterministic sequence: plan intake (`.md` file or direct 
 - Use `gh` for all GitHub interactions.
 - Address unresolved PR comments/findings only.
 - Never use destructive cleanup commands (`git reset --hard`, `git checkout -- .`, `git clean -fd`).
+- Never resolve GitHub PR comments.
+- Only address unresolved comments and threads when reviewer feedback is part of the task.
 - Approval definition: `approval` means reviewer JSON reports `findings=[]` and `overall_correctness="patch is correct"`, never user confirmation.
 - Autonomy rule: do not ask the user for approval or extra checkpoints during normal flow; only ask the user when blocked/stuck/failing.
 
@@ -67,33 +69,73 @@ Repo constraints:
 - Never use `bzl test --test_filter`.
 - Never run multiple `bzl` commands in parallel.
 
-### 5) Run the PR-aware review/fix loop with `code-review`
+### 5) Run the PR-aware review/fix loop
 
-Use the dedicated `code-review` skill as the single source of truth for each PR-aware review pass.
 DO NOT COMMIT inside this step.
 
-Contract:
+**Review Scope Policy:**
+- Use PR-aware review scope by default: review the full prospective PR delta from merge base to the current working tree, not only the latest local diff hunk.
+- Re-review the full prospective PR delta each time the review loop runs. Do not narrow scope to only previously flagged hunks.
+- Focus on correctness, regression, security, compatibility, performance, and tests. Do not block on pure style nits.
 
-- Run a bounded loop with at most 2 rounds.
-- Delegate each review round to `code-review` in delegated mode.
-- Pass the current task goal, targeted verification summary, and any unresolved findings ledger from prior rounds.
-- `code-review` owns:
-  - PR-aware base/head resolution
-  - merge-base computation
-  - unresolved PR feedback ingestion
-  - full-delta re-review policy for each invocation
-  - reviewer prompt selection and schema validation
-- The loop in this skill owns:
-  - approval evaluation
-  - retry behavior and round counting
-  - fix application
-  - targeted verification reruns
-  - re-invocation after fixes
-- Treat delegated `code-review` output as the round result.
-- If delegated `code-review` output has `findings=[]` and `overall_correctness="patch is correct"`, stop the loop and proceed to commit.
-- If delegated `code-review` output has `findings=[]` and `overall_correctness="patch is incorrect"`, rerun the review pass once for consistency; if still inconsistent, stop and report blocked status.
-- If delegated `code-review` output has findings, fix unresolved items only, prioritize by `priority` ascending (`0` -> `3`; unknown priority after known priorities), rerun targeted verification, update the unresolved findings ledger, and continue until approval or max rounds.
-- If `code-review` returns blocked status, propagate that status without proceeding to commit.
+Run a bounded loop with at most 2 rounds. Each round executes Steps 5a-5d below.
+
+#### 5a) Normalize Review Context
+
+1. Normalize checkout context through the shared helper:
+   - `eval "$("$HOME/dotfiles/scripts/git-context.sh")"`
+   - The helper must provide: `inside_worktree`, `worktree_root`, `worktree_path`, `branch`, `repo`, `in_dd_scope`.
+   - If helper exits non-zero, stop and report blocked status with helper stderr.
+2. `cd "$worktree_root"` so review commands run from a stable root.
+3. Resolve the review base branch:
+   - `base_branch="$(gh pr list --repo "$repo" --head "$branch" --state open --json baseRefName --jq '.[0].baseRefName' 2>/dev/null || true)"`
+   - If empty: `base_branch="$(gh repo view --repo "$repo" --json defaultBranchRef -q '.defaultBranchRef.name' 2>/dev/null || true)"`
+   - If still empty: `base_branch=main`
+4. Ensure the base ref exists locally:
+   - `git fetch origin "$base_branch" --quiet` as best effort.
+5. Compute merge base:
+   - `merge_base="$(git merge-base HEAD "origin/$base_branch" 2>/dev/null || true)"`
+   - If empty, stop and report explicit base-resolution failure.
+
+#### 5b) Gather PR-Aware Review Inputs
+
+1. Detect an open PR for the current branch when possible:
+   - `pr_url="$(gh pr list --repo "$repo" --head "$branch" --state open --json url --jq '.[0].url' 2>/dev/null || true)"`
+2. Gather unresolved review feedback when available:
+   - default `unresolved_pr_feedback='[]'`
+   - if `pr_url` exists, resolve `pr_number` and query unresolved, non-outdated review threads
+3. Build the review context pack:
+   - `review_diff=$(git diff --binary "$merge_base")`
+   - `changed_files=$(git diff --name-status "$merge_base")`
+   - current full contents of changed files from the working tree, truncated deterministically to the first 400 lines per file
+   - verification outputs summary
+   - unresolved findings ledger from prior passes
+   - unresolved PR comments or threads
+
+#### 5c) Run Reviewer
+
+1. Use the canonical reviewer prompt file:
+   - `references/reviewer-prompt-codex-cli.md`
+2. Inject the following placeholders:
+   - `{review_diff}`, `{changed_files}`, `{changed_file_context}`,
+     `{task_goal}`, `{verification_summary}`,
+     `{unresolved_findings_ledger}`, `{unresolved_pr_feedback}`
+3. Launch a fresh reviewer sub-agent.
+4. The reviewer must return strict JSON only, matching the schema in `references/reviewer-prompt-codex-cli.md`.
+
+#### 5d) Validate Reviewer Output
+
+1. Parse reviewer output as strict JSON with no markdown fences or extra prose.
+2. Validate exactly against the `OUTPUT FORMAT` schema in `references/reviewer-prompt-codex-cli.md`.
+3. If output is malformed or schema-invalid, rerun the reviewer once with a schema reminder.
+4. If still invalid, stop and report blocked status with the invalid payload summary and validator errors.
+
+#### 5e) Review/Fix Loop Control
+
+- If the reviewer output has `findings=[]` and `overall_correctness="patch is correct"`, stop the loop and proceed to commit.
+- If the reviewer output has `findings=[]` and `overall_correctness="patch is incorrect"`, rerun the review pass once for consistency; if still inconsistent, stop and report blocked status.
+- If the reviewer output has findings, fix unresolved items only, prioritize by `priority` ascending (`0` -> `3`; unknown priority after known priorities), rerun targeted verification, update the unresolved findings ledger, and continue until approval or max rounds.
+- If a review round returns blocked status, propagate that status without proceeding to commit.
 - If not approved after `MAX_ROUNDS`, emit blocked status with unresolved findings and attempted fixes.
 
 ### 6) Mandatory commit-smart after approval
