@@ -114,6 +114,10 @@ OUTPUT DIRECTORY: ${DIGEST_DIR}
 
 For each source file, write a digest file at: ${DIGEST_DIR}/<same filename as source>
 
+STYLE
+
+Use plain English as much as possible. Avoid dense, abstract phrasing. Say what you mean in simple sentences. For example, don't write "Calibrate upward from a sustainable baseline rather than pushing agent count until something breaks." Instead write "Start with fewer threads than you're tempted to use, because the failure mode is subtle: you still feel productive, but your review quality drops."
+
 FRONTMATTER RULES
 - Preserve the original YAML frontmatter from the source file exactly, but make these changes:
   - Replace the "clippings" tag with "clippings/digest"

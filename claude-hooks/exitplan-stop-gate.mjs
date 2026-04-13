@@ -148,8 +148,6 @@ Ground every comment in repository files or tool outputs you inspected.
 Verify file paths exist and code patterns match before flagging an issue.
 </grounding_rules>`;
 
-log(`prompt length: ${prompt.length} chars`);
-
 // ── 8. Run codex ──
 const tmpFile = path.join(os.tmpdir(), `exitplan-codex-${Date.now()}.txt`);
 log("running codex exec...");
@@ -164,7 +162,6 @@ const codexResult = spawnSync(
 );
 
 log(`codex exit code: ${codexResult.status}`);
-if (codexResult.stderr) log(`codex stderr: ${codexResult.stderr.trim()}`);
 
 let codexOutput = "";
 try {

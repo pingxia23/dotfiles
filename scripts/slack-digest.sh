@@ -77,7 +77,11 @@ Produce a technical learning digest from Slack for yesterday (${YESTERDAY}).
 
 GOAL
 
-Create a self-contained, technically detailed digest of the most valuable discussions from Slack channel ${CHANNEL_ID} for a software engineer. The digest should let the reader understand the topic without needing to click any links by default. If linked documents exist, absorb their substance and integrate it directly into the writeup.
+Create a self-contained, technically detailed digest of the most valuable discussions from Slack channel ${CHANNEL_ID} for a software engineer. The digest should let the reader understand the topic without needing to click any links by default. If linked documents exist, read them and include the key points directly in the digest.
+
+STYLE
+
+Use plain English as much as possible. Avoid dense, abstract phrasing. Say what you mean in simple sentences. For example, don't write "Calibrate upward from a sustainable baseline rather than pushing agent count until something breaks." Instead write "Start with fewer threads than you're tempted to use, because the failure mode is subtle: you still feel productive, but your review quality drops."
 
 DATE AND FILE RULES
 
@@ -106,7 +110,7 @@ STEP 3 — READ LINKED SOURCES
 - If a relevant Slack discussion links to a Confluence page, blog post, GitHub PR/issue, design doc, benchmark report, or other readable source, open it and read it carefully.
 - For Confluence pages, use the Confluence MCP tools. For other URLs, use the available web browsing tools.
 - Extract the key technical insights: problem being solved, architecture, concrete numbers, tradeoffs, and lessons learned.
-- If multiple linked docs are part of the same discussion, synthesize them into one set of takeaways.
+- If multiple linked docs are part of the same discussion, combine them into one set of takeaways.
 - If a linked source is inaccessible, still cover the Slack discussion, but note inline that the linked source could not be read.
 
 STEP 4 — FILTER AND GROUP
@@ -124,7 +128,7 @@ STEP 4 — FILTER AND GROUP
   - infrastructure or platform patterns
   - novel engineering workflows
   - concrete implementation lessons
-- Strongly prefer substance over popularity or recency.
+- Pick discussions because they're technically deep, not because they got lots of reactions or were posted recently.
 - Skip:
   - greetings
   - emoji-only reactions
@@ -147,7 +151,7 @@ Otherwise:
 - No frontmatter.
 - No table of contents.
 - Each item must be self-contained: the reader should learn the key insights without clicking any links.
-- If linked docs were read, distill their substance into the Key Takeaways bullets.
+- If linked docs were read, summarize their main points into the Key Takeaways bullets.
 - Use the Slack permalink for the parent message as the heading link.
 - Embed inline markdown links in bullets where a claim, number, or design detail comes from a specific Slack message or linked document.
 - Do NOT add a separate Sources section.
@@ -179,8 +183,8 @@ QUALITY BAR
 - Best Practices must be actionable — start with a verb, describe a step someone can take.
 - If claims are uncertain or debated in the thread, say so within the bullet.
 - If the thread references performance, include the actual numbers.
-- Prefer mechanism over marketing. Prefer engineering lessons over announcements.
-- Favor technically substantial items over merely interesting ones.
+- Explain how things actually work, not how they're pitched. Prefer engineering lessons over announcements.
+- Include items that teach something technical, not ones that are just interesting to read.
 
 SLACK PERMALINK FORMAT
 
