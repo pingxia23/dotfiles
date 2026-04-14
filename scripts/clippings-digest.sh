@@ -66,6 +66,11 @@ if ! command -v claude >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! command -v python3 >/dev/null 2>&1; then
+  log_error "python3 is not installed or not on PATH."
+  exit 1
+fi
+
 if [[ ! -d "$CLIPPINGS_DIR" ]]; then
   log_error "Source directory does not exist: $CLIPPINGS_DIR"
   exit 1
@@ -76,7 +81,11 @@ mkdir -p "$DIGEST_DIR"
 # --- Rebuild: clear existing digests ---
 if [[ "$RUN_MODE" == "rebuild" ]]; then
   log "Rebuild mode: removing all existing digests."
-  find "$DIGEST_DIR" -type f -name '*.md' -delete
+  python3 -c "
+import pathlib
+for p in pathlib.Path('$DIGEST_DIR').glob('*.md'):
+    p.unlink()
+"
 fi
 
 # --- Collect files to process ---
@@ -87,7 +96,11 @@ while IFS= read -r source_file; do
   if needs_processing "$source_file" "$digest_file"; then
     FILES_TO_PROCESS+=("$source_file")
   fi
-done < <(find "$CLIPPINGS_DIR" -type f -name '*.md' | LC_ALL=C sort)
+done < <(python3 -c "
+import pathlib
+for p in sorted(pathlib.Path('$CLIPPINGS_DIR').glob('*.md')):
+    print(p)
+")
 
 if [[ "${#FILES_TO_PROCESS[@]}" -eq 0 ]]; then
   log "No clippings need processing."
