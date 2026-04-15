@@ -5,6 +5,15 @@
         "hooks": [
           {
             "type": "command",
+            "command": "node \"$HOME/.codex/hooks/stop-plan-gate.mjs\"",
+            "timeout": 900
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
             "command": "bash \"$HOME/.codex/hooks/stop-notify.sh\"",
             "timeout": 10
           }
