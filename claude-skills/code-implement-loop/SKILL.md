@@ -21,6 +21,9 @@ Implement a task in a deterministic sequence: plan intake (`.md` file or direct 
 - Only address unresolved comments and threads when reviewer feedback is part of the task.
 - Approval definition: `approval` means reviewer JSON reports `findings=[]` and `overall_correctness="patch is correct"`, never user confirmation.
 - Autonomy rule: do not ask the user for approval or extra checkpoints during normal flow; only ask the user when blocked/stuck/failing.
+- Plan adherence rule: implement the approved plan as written. Do not add extra refactors, abstractions, dependency plumbing, cleanup, or opportunistic improvements unless they are strictly required to complete that plan.
+- Minimality rule: when the plan is underspecified, choose the smallest implementation that satisfies the plan instead of broadening scope.
+- If you discover a requirement that materially changes the plan, stop and report the gap rather than silently expanding the implementation.
 
 ### 2) Input contract
 
@@ -62,6 +65,7 @@ For each TODO:
 4. Run targeted verification.
 5. Keep changes scoped to the current TODO.
 6. DO NOT COMMIT during implementation; keep all changes uncommitted for the review loop.
+7. Do not broaden scope while implementing a TODO; keep the code change limited to what that TODO and the approved plan require.
 
 Repo constraints:
 

@@ -237,6 +237,7 @@ function loadReviewSchema() {
 }
 
 function runClaude(prompt, cwd, reviewSchema) {
+  log(`running claude with prompt:\n${prompt}`);
   return spawnSync(
     CLAUDE_BIN,
     [

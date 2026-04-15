@@ -27,6 +27,12 @@ These rules apply to all projects and working directories.
 - If the current working directory is within `~/dd` (or its resolved absolute path), and the latest assistant response proposed an implementation plan and the user replies with `implement this`, `implement it`, `implement the proposed plan`, `carry out the plan`, or equivalent, treat that reply as an explicit invocation of `code-implement-loop`.
 - This override takes precedence over generic default behavior such as "assume the user wants implementation."
 
+## Scope Control
+
+- When implementing from an approved plan, stick to that plan.
+- Do not add refactors, abstractions, wiring, cleanup, or behavior changes that are not required for the planned implementation.
+- If the plan is missing something necessary, make the smallest change that unblocks the planned work. If the gap changes scope materially, stop and surface it instead of expanding the implementation on your own.
+
 # DD-SOURCE Repository Guidelines
 These are general guidelines when you work inside `~/dd/dd-source` folder or `~/go/src/github.com/DataDog/dd-source`
 
