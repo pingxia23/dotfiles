@@ -260,6 +260,7 @@ function runClaude(prompt, cwd, reviewSchema) {
 
 function parseClaudeReview(output) {
   const trimmed = output.trim();
+  log(`trimmed claude review output:\n${trimmed}`);
   if (!trimmed) {
     return null;
   }
