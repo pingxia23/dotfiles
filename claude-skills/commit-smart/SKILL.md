@@ -23,6 +23,11 @@ Perform a deterministic smart-commit workflow.
    - `git status --short`
    - `git diff --name-only --diff-filter=U`
    - If unresolved conflicts exist, stop and report the issue.
+4. Detect merge-commit state:
+   - Set `merge_in_progress=true` only when Git reports an in-progress merge commit, for example:
+     - `git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1`
+   - Treat this as the standard "finalize the current merge commit" path only.
+   - Do not treat squash, rebase, or cherry-pick flows as merge commits for this rule.
 
 ## Step 1: Run Tests For Affected Packages (Disabled - handled by pre-commit)
 <!--
@@ -55,13 +60,18 @@ Perform a deterministic smart-commit workflow.
 3. If nothing is staged, stop and inform the user.
 
 ## Step 3: Compose Commit Message
-1. Inspect recent style:
+1. Choose the commit path:
+   - If `merge_in_progress=true`, finalize the merge with:
+     - `git commit --no-verify`
+   - Use this exception only for the merge commit Git is already preparing.
+   - Do not pass `--no-verify` for any other commit unless the user explicitly asks.
+2. If `merge_in_progress=false`, inspect recent style:
    - `git log -n 20 --pretty=%s`
-2. Write a message that:
+3. If `merge_in_progress=false`, write a message that:
    - Matches local style.
    - Explains why the change is needed.
    - Uses a concise subject and optional body.
-3. Commit using HEREDOC:
+4. If `merge_in_progress=false`, commit using HEREDOC:
    ```bash
    git commit -m "$(cat <<'EOF'
    <subject>
@@ -90,7 +100,7 @@ If `git commit` fails due to hooks:
        - the commit succeeds
        - the disk-pressure markers disappear and a different concrete failure remains
        - the cleanup helper reports no reclaim candidates left and the same disk-pressure failure still occurs
-     - Do NOT use `--no-verify` UNLESS the user explicitly asks you to use it
+     - For non-merge commits, do NOT use `--no-verify` UNLESS the user explicitly asks you to use it
      - Do NOT use `bzl clean` for this issue.
   5. If the failure is not a Bazel disk-pressure case, fix issues in code/config/message, re-stage, retry.
   6. Repeat until `git commit` succeeds.
