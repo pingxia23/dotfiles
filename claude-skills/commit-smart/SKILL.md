@@ -24,10 +24,8 @@ Perform a deterministic smart-commit workflow.
    - `git diff --name-only --diff-filter=U`
    - If unresolved conflicts exist, stop and report the issue.
 4. Detect merge-commit state:
-   - Set `merge_in_progress=true` only when Git reports an in-progress merge commit, for example:
-     - `git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1`
-   - Treat this as the standard "finalize the current merge commit" path only.
-   - Do not treat squash, rebase, or cherry-pick flows as merge commits for this rule.
+   - Set `merge_in_progress=true` when `git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1` succeeds.
+   - This applies only to the merge commit Git is already preparing.
 
 ## Step 1: Run Tests For Affected Packages (Disabled - handled by pre-commit)
 <!--
@@ -61,11 +59,9 @@ Perform a deterministic smart-commit workflow.
 
 ## Step 3: Compose Commit Message
 1. Choose the commit path:
-   - If `merge_in_progress=true`, finalize the merge with:
-     - `git commit --no-verify`
-   - Use this exception only for the merge commit Git is already preparing.
-   - Do not pass `--no-verify` for any other commit unless the user explicitly asks.
-2. If `merge_in_progress=false`, write a message that:
+   - If `merge_in_progress=true`, run `git commit --no-verify`.
+   - Otherwise, do not use `--no-verify` unless the user explicitly asks.
+1. If `merge_in_progress=false`, write a message that:
    - Explains why the change is needed.
    - Uses a concise subject and optional body.
    - commit using HEREDOC:
