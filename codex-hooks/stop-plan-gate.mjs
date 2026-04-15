@@ -19,6 +19,12 @@ function log(message) {
   } catch {}
 }
 
+function logRawPayload(rawPayload) {
+  try {
+    fs.appendFileSync(LOG_FILE, `${rawPayload}\n`);
+  } catch {}
+}
+
 function allow(reason) {
   if (reason) {
     log(`allow: ${reason}`);
@@ -50,9 +56,9 @@ function readPayload(argv) {
   }
 
   try {
-    return JSON.parse(payload);
+    return { raw: payload, parsed: JSON.parse(payload) };
   } catch {
-    return null;
+    return { raw: payload, parsed: null };
   }
 }
 
@@ -222,7 +228,12 @@ function buildRevisionPrompt(comments) {
   return `Revise the implementation plan before presenting it to the user.\n\nAddress these concrete review comments:\n${feedback}`;
 }
 
-const input = readPayload(process.argv.slice(2));
+const payload = readPayload(process.argv.slice(2));
+if (!payload) {
+  allow("failed to parse stop payload");
+}
+
+const input = payload.parsed;
 if (!input) {
   allow("failed to parse stop payload");
 }
@@ -234,6 +245,9 @@ log(`received: session=${sessionId} turn=${turnId}`);
 if (input.permission_mode !== "plan") {
   allow(`skip non-plan mode (${input.permission_mode || "missing"})`);
 }
+
+log(`raw stop payload:`);
+logRawPayload(payload.raw);
 
 if (input.stop_hook_active === true) {
   allow("skip stop_hook_active continuation");
