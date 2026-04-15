@@ -65,13 +65,10 @@ Perform a deterministic smart-commit workflow.
      - `git commit --no-verify`
    - Use this exception only for the merge commit Git is already preparing.
    - Do not pass `--no-verify` for any other commit unless the user explicitly asks.
-2. If `merge_in_progress=false`, inspect recent style:
-   - `git log -n 20 --pretty=%s`
-3. If `merge_in_progress=false`, write a message that:
-   - Matches local style.
+2. If `merge_in_progress=false`, write a message that:
    - Explains why the change is needed.
    - Uses a concise subject and optional body.
-4. If `merge_in_progress=false`, commit using HEREDOC:
+   - commit using HEREDOC:
    ```bash
    git commit -m "$(cat <<'EOF'
    <subject>

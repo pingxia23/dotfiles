@@ -45,7 +45,8 @@
   "enabledPlugins": {
     "slack@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
-    "claude-md-management@claude-plugins-official": true
+    "claude-md-management@claude-plugins-official": true,
+    "codex@openai-codex": true
   },
   "extraKnownMarketplaces": {
     "openai-codex": {
@@ -57,6 +58,6 @@
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "high",
-  "skipDangerousModePermissionPrompt": true,
-  "autoMemoryEnabled": true
+  "autoMemoryEnabled": true,
+  "skipDangerousModePermissionPrompt": true
 }
