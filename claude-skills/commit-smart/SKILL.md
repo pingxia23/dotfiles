@@ -1,6 +1,6 @@
 ---
 name: commit-smart
-description: "Deterministic workflow to stage changes, run bzl tests when applicable, commit with hooks, push, and create GitHub draft PRs. Trigger this skill whenever the user asks to commit (for example: 'commit', 'commit this', 'please commit')."
+description: "Deterministic workflow to stage changes, run bzl tests when applicable, commit with hooks, push, create or reuse a GitHub PR, and best-effort trigger Codex review. Trigger this skill whenever the user asks to commit (for example: 'commit', 'commit this', 'please commit')."
 ---
 
 Perform a deterministic smart-commit workflow.
@@ -104,7 +104,7 @@ If `git commit` fails due to hooks:
    - `git push`
 2. If push fails, stop and show exact error output.
 
-## Step 6: Create Draft PR (WIP Title)
+## Step 6: Create Or Reuse Draft PR (WIP Title)
 Intent:
 - Create a new PR only when no open PR exists for the current branch.
 - If an open PR already exists for the branch, reuse it and do not mutate it.
@@ -115,7 +115,7 @@ Intent:
    - `pr_url=$(gh pr list --repo "$repo" --head "$branch" --state open --json url --jq '.[0].url' 2>/dev/null)`
 4. If `pr_url` exists:
    - Do not edit title/body/state.
-   - Return the existing URL as final PR output for this step (no update path).
+   - Reuse the existing URL for downstream steps (no update path).
 5. If `pr_url` is empty, read latest commit context:
    - `latest_commit_body=$(git log -1 --pretty=%B)`
    - `git show --name-status --format=fuller --no-color HEAD`
@@ -136,11 +136,22 @@ Intent:
 8. Create a draft PR path (`pr_url` is empty):
    - Create a new draft PR from the template body:
      - `gh pr create --repo "$repo" --head "$branch" --title "<wip_title>" --body "<description>" --draft`
-9. Return final PR link to the user.
+9. Ensure `pr_url` is populated for downstream steps before returning success.
+
+## Step 7: Trigger Codex PR Review (Best Effort)
+1. After Step 6 has produced or reused `pr_url`, post a fresh top-level PR comment:
+   - `gh pr comment --repo "$repo" "$pr_url" --body "@codex review"`
+2. Always create a new comment. Do not edit, reuse, or deduplicate prior trigger comments.
+3. If the comment command fails:
+   - capture the exact CLI stderr/stdout
+   - surface that output to the user as a warning
+   - continue successfully if commit, push, and PR creation/reuse already succeeded
+4. Return the final PR link to the user.
 
 ## Completion Checklist
 - Tests passed (or correctly skipped when out of `~/dd` scope or no applicable code-test targets)
 - Commit succeeded with hooks enabled
 - Push succeeded
 - Draft PR created or existing open PR reused (no update path)
+- Best-effort `@codex review` PR comment attempted, with exact failure output surfaced if it failed
 - PR link shared with user

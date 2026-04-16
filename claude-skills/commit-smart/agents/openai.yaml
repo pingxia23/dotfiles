@@ -1,4 +1,4 @@
 interface:
   display_name: "Commit Smart"
-  short_description: "Safe commit, push, and PR workflow"
-  default_prompt: "Use $commit-smart to run tests, commit safely, push, and create or update the PR."
+  short_description: "Safe commit, push, PR, and Codex trigger workflow"
+  default_prompt: "Use $commit-smart to run tests, commit safely, push, create or reuse the PR, and best-effort post a fresh `@codex review` comment."

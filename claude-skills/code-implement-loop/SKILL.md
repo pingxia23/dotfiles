@@ -152,7 +152,9 @@ After the review loop returns approval (empty findings + correct patch verdict),
 
 Rules:
 - Do not ask the user for additional confirmation before running `commit-smart`.
-- Do not end the workflow as success until `commit-smart` has completed.
+- Do not end the workflow as success until `commit-smart` has completed its commit/push/PR flow.
+- `commit-smart` completion includes a best-effort attempt to post a fresh `@codex review` PR comment after PR creation or reuse.
+- If that comment attempt fails, surface the exact CLI error output as a warning, but do not treat it as a blocking failure.
 - If `commit-smart` fails, report blocked status with the failure reason and attempted remediation.
 
 ### 7) Return final status

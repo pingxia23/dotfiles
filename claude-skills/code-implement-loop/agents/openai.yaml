@@ -1,4 +1,4 @@
 interface:
   display_name: "Code Implement Loop"
   short_description: "Implement from plans, comment links, or direct instructions"
-  default_prompt: "Implement from a provided .md plan/design, GitHub review comment links, or direct instructions, then run up to 2 PR-aware full-diff review/fix rounds."
+  default_prompt: "Implement from a provided .md plan/design, GitHub review comment links, or direct instructions, then run up to 2 PR-aware full-diff review/fix rounds and finish with commit-smart, including the best-effort `@codex review` PR trigger."
