@@ -176,20 +176,10 @@ function buildPrompt(
   planContent,
   reviewSchema
 ) {
-  return `<task>
+  return `
 Review this implementation plan before it's presented for user approval.
-The latest user request and the full latest-turn context are provided below, both extracted
-from the transcript. Use them as primary context. The full transcript file is also available
-at the path below if you need to inspect deeper context during review.
-
-<transcript_path>
-${transcriptPath}
-</transcript_path>
-
-<current_turn_id>
-${turnId}
-</current_turn_id>
-
+The latest user request , plan content and the latest-turn context are provided below, both extracted
+from the transcript. Use them as primary context. 
 <latest_user_request>
 ${latestUserRequest}
 </latest_user_request>
@@ -201,7 +191,12 @@ ${latestTurnContext}
 <plan>
 ${planContent}
 </plan>
-</task>
+
+The full transcript file (including latest-turn ${turnId}) is also available at the path below if you need to inspect deeper context during review.
+<transcript_path>
+${transcriptPath}
+</transcript_path>
+
 
 <review_policy>
 Set verdict to "approve" if the plan addresses the user's request and the approach is sound.

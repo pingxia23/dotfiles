@@ -23,7 +23,7 @@ try {
   process.exit(0);
 }
 
-log(`input received: tool=${input.tool_name}, session=${input.session_id ?? "unknown"}`);
+log(`input received: ${input}`);
 
 const transcriptPath = input.transcript_path;
 if (!transcriptPath || !fs.existsSync(transcriptPath)) {
@@ -72,12 +72,12 @@ if (authResult.status !== 0) {
 
 log("codex auth OK");
 
-// ── 6. Build context — extract first user message + last assistant message ──
+// ── 6. Build context — extract last user message + last assistant message ──
 const transcriptLines = fs.readFileSync(transcriptPath, "utf8").trim().split("\n");
 let userRequest = "";
 let claudeResponse = "";
 
-for (let i = 0; i < transcriptLines.length; i++) {
+for (let i = transcriptLines.length - 1; i >= 0; i--) {
   try {
     const entry = JSON.parse(transcriptLines[i]);
     if (entry.type === "human" && entry.message?.content) {
@@ -118,7 +118,7 @@ const REVIEW_SCHEMA = path.join(
 
 const prompt = `<task>
 Review this implementation plan before it's presented for user approval.
-The user's original request and Claude's last response are provided for context.
+The user's last request and Claude's last response are provided for context.
 
 <user_request>
 ${userRequest}
@@ -131,6 +131,11 @@ ${claudeResponse}
 <plan>
 ${planContent}
 </plan>
+
+The full transcript file is also available at the path below if you need to inspect deeper context during review.
+<transcript_path>
+${transcriptPath}
+</transcript_path>
 </task>
 
 <review_policy>
@@ -150,7 +155,7 @@ Verify file paths exist and code patterns match before flagging an issue.
 
 // ── 8. Run codex ──
 const tmpFile = path.join(os.tmpdir(), `exitplan-codex-${Date.now()}.txt`);
-log("running codex exec...");
+log(`running codex exec with prompt: ${prompt}`);
 
 const codexResult = spawnSync(
   "codex",
