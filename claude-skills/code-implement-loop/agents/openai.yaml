@@ -1,4 +1,4 @@
 interface:
   display_name: "Code Implement Loop"
-  short_description: "Implement code with a PR-aware review/fix loop"
-  default_prompt: "Implement from a provided .md plan/design, then run up to 2 PR-aware full-diff review/fix rounds."
+  short_description: "Implement from plans, comment links, or direct instructions"
+  default_prompt: "Implement from a provided .md plan/design, GitHub review comment links, or direct instructions, then run up to 2 PR-aware full-diff review/fix rounds."

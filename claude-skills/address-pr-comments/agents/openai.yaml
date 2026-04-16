@@ -1,0 +1,4 @@
+interface:
+  display_name: "Address PR Comments"
+  short_description: "Scan unresolved PR threads, reply when enough, implement when needed"
+  default_prompt: "Use $address-pr-comments on this PR URL to process unresolved review threads."

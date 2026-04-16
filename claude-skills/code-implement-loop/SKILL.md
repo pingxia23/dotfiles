@@ -1,6 +1,6 @@
 ---
 name: code-implement-loop
-description: "Trigger this skill when implementation should start: if Codex/Claude proposes a plan and the user says 'implement this', 'implement the proposed plan', 'implement it', or equivalent; or if the user explicitly invokes `code-implement-loop`. Accepted implementation input sources are: a Codex/Claude-proposed plan, a user-provided `.md` plan/design file, or user-provided inline implementation instructions."
+description: "Trigger this skill when implementation should start: if Codex/Claude proposes a plan and the user says 'implement this', 'implement the proposed plan', 'implement it', or equivalent; or if the user explicitly invokes `code-implement-loop`. Accepted implementation input sources are: a Codex/Claude-proposed plan, a user-provided `.md` plan/design file, GitHub PR review comment/thread links, or direct inline implementation instructions."
 ---
 
 # Code Implement Loop
@@ -30,14 +30,16 @@ Implement a task in a deterministic sequence: plan intake (`.md` file or direct 
 Accept one of the following as the implementation source:
 
 1. **`.md` file path** — a path to a plan/design document.
-2. **Direct user instructions** — inline text describing the changes to implement.
+2. **GitHub PR review comment/thread links** — one or more GitHub URLs that point at PR review feedback to address.
+3. **Direct user instructions** — inline text describing the changes to implement.
 
 Resolution order:
 
 - If the argument is a path ending in `.md`, use that file as the implementation source.
+- Otherwise, if the input contains GitHub PR review comment/thread links, use those links as the implementation source and treat them as the authoritative scope.
 - Otherwise, treat the entire user input as direct implementation instructions.
 - If input is completely empty (no file path and no instructions), stop and return:
-  - `FAILED: provide a .md plan file or describe the changes to implement`
+  - `FAILED: provide a .md plan file, GitHub review comment/thread links, or describe the changes to implement`
 - Do not run explore-intent in this skill.
 
 
@@ -52,6 +54,8 @@ Build an ordered TODO checklist before editing code.
 - Include tests to add/update for each TODO.
 - Include verification command per TODO.
 - Include dependency order between TODOs.
+- For GitHub review comment/thread link inputs, fetch the linked feedback with `gh`, ignore any links that now point to resolved or outdated review feedback, and build the TODOs only from the remaining unresolved items.
+- If every linked review item is already resolved or outdated, stop and return a no-op status instead of broadening scope.
 - Resolve missing decisions before coding.
 
 ### 4) Implement TODOs in order
