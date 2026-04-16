@@ -14,6 +14,87 @@ const log = (msg) => {
   try { fs.appendFileSync(LOG_FILE, line); } catch {}
 };
 
+function reviewPlanWithCodex(prompt, reviewSchemaPath) {
+  const authResult = spawnSync("codex", ["login", "status"], {
+    encoding: "utf8",
+    timeout: 15_000,
+  });
+
+  if (authResult.error) {
+    return { review: null, reason: `codex auth spawn failed: ${authResult.error.message}` };
+  }
+
+  if (authResult.status !== 0) {
+    return {
+      review: null,
+      reason: `codex auth check failed (exit ${authResult.status}): ${(authResult.stderr || "").trim()}`,
+    };
+  }
+
+  log("codex auth OK");
+
+  const tmpFile = path.join(os.tmpdir(), `exitplan-codex-${Date.now()}-${process.pid}.txt`);
+  log("running codex exec ...");
+
+  const codexResult = spawnSync(
+    "codex",
+    [
+      "exec",
+      "-c",
+      'model_reasoning_effort="medium"',
+      "--output-schema",
+      reviewSchemaPath,
+      "-o",
+      tmpFile,
+      prompt,
+    ],
+    {
+      encoding: "utf8",
+      timeout: 15 * 60 * 1000,
+    }
+  );
+
+  log(`codex exit code: ${codexResult.status}`);
+
+  if (codexResult.error) {
+    try { fs.unlinkSync(tmpFile); } catch {}
+    return { review: null, reason: `codex spawn failed: ${codexResult.error.message}` };
+  }
+
+  if (codexResult.status !== 0) {
+    try { fs.unlinkSync(tmpFile); } catch {}
+    return { review: null, reason: `codex non-zero exit: ${codexResult.status}` };
+  }
+
+  let codexOutput = "";
+  try {
+    codexOutput = fs.readFileSync(tmpFile, "utf8").trim();
+  } catch (e) {
+    return { review: null, reason: `failed to read codex output: ${e.message}` };
+  } finally {
+    try { fs.unlinkSync(tmpFile); } catch {}
+  }
+
+  log(`codex output: ${codexOutput.slice(0, 500)}`);
+
+  if (!codexOutput) {
+    return { review: null, reason: "codex produced empty output" };
+  }
+
+  let review;
+  try {
+    review = JSON.parse(codexOutput);
+  } catch {
+    return { review: null, reason: "failed to parse codex output as JSON" };
+  }
+
+  if (!review?.verdict || !Array.isArray(review.comments)) {
+    return { review: null, reason: "malformed review output (missing verdict or comments)" };
+  }
+
+  return { review, reason: null };
+}
+
 // ── 1. Read PreToolUse hook input from stdin ──
 let input;
 try {
@@ -58,19 +139,6 @@ if (fs.existsSync(markerFile)) {
 }
 
 log(`plan hash: ${planHash}`);
-
-// ── 5. Codex auth check ──
-const authResult = spawnSync("codex", ["login", "status"], {
-  encoding: "utf8",
-  timeout: 15_000,
-});
-
-if (authResult.status !== 0) {
-  log(`codex auth check failed (exit ${authResult.status}): ${(authResult.stderr || "").trim()}, allowing`);
-  process.exit(0);
-}
-
-log("codex auth OK");
 
 // ── 6. Build context — extract last user message + last assistant message ──
 const transcriptLines = fs.readFileSync(transcriptPath, "utf8").trim().split("\n");
@@ -153,34 +221,9 @@ Ground every comment in repository files or tool outputs you inspected.
 Verify file paths exist and code patterns match before flagging an issue.
 </grounding_rules>`;
 
-// ── 8. Run codex ──
-const tmpFile = path.join(os.tmpdir(), `exitplan-codex-${Date.now()}.txt`);
-log(`running codex exec ...`);
-
-const codexResult = spawnSync(
-  "codex",
-  ["exec", "--output-schema", REVIEW_SCHEMA, "-o", tmpFile, prompt],
-  {
-    encoding: "utf8",
-    timeout: 15 * 60 * 1000,
-  }
-);
-
-log(`codex exit code: ${codexResult.status}`);
-
-let codexOutput = "";
-try {
-  codexOutput = fs.readFileSync(tmpFile, "utf8").trim();
-  fs.unlinkSync(tmpFile);
-} catch (e) {
-  log(`failed to read codex output: ${e.message}, allowing`);
-  process.exit(0);
-}
-
-log(`codex output: ${codexOutput.slice(0, 500)}`);
-
-if (!codexOutput) {
-  log("codex produced empty output, allowing");
+const { review, reason } = reviewPlanWithCodex(prompt, REVIEW_SCHEMA);
+if (!review) {
+  log(`${reason}, allowing`);
   process.exit(0);
 }
 
@@ -190,20 +233,6 @@ try {
   log("wrote hash marker");
 } catch (e) {
   log(`failed to write hash marker: ${e.message}`);
-}
-
-// ── 10. Parse structured review output ──
-let review;
-try {
-  review = JSON.parse(codexOutput);
-} catch {
-  log(`failed to parse codex output as JSON, allowing`);
-  process.exit(0);
-}
-
-if (!review.verdict || !Array.isArray(review.comments)) {
-  log(`malformed review output (missing verdict or comments), allowing`);
-  process.exit(0);
 }
 
 if (review.verdict === "approve") {

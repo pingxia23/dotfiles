@@ -138,6 +138,7 @@ Intent:
      - `gh pr create --repo "$repo" --head "$branch" --title "<wip_title>" --body "<description>" --draft`
 9. Ensure `pr_url` is populated for downstream steps before returning success.
 
+<!--
 ## Step 7: Trigger Codex PR Review (Best Effort)
 1. After Step 6 has produced or reused `pr_url`, post a fresh top-level PR comment:
    - `gh pr comment --repo "$repo" "$pr_url" --body "@codex review"`
@@ -147,6 +148,7 @@ Intent:
    - surface that output to the user as a warning
    - continue successfully if commit, push, and PR creation/reuse already succeeded
 4. Return the final PR link to the user.
+-->
 
 ## Completion Checklist
 - Tests passed (or correctly skipped when out of `~/dd` scope or no applicable code-test targets)

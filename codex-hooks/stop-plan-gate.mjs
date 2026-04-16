@@ -11,10 +11,13 @@ const LOG_FILE = path.join(SCRIPT_DIR, "stop-plan-gate.log");
 const REVIEW_SCHEMA_PATH = path.join(
   SCRIPT_DIR,
   "schemas",
-  "plan-review-output.schema.json"
+  "plan-review-output.schema.json",
 );
 const CLAUDE_BIN = process.env.CLAUDE_BIN || "claude";
 const CLAUDE_TIMEOUT_MS = 15 * 60 * 1000;
+const CODEX_BIN = process.env.CODEX_BIN || "codex";
+const CODEX_TIMEOUT_MS = 15 * 60 * 1000;
+const CODEX_REASONING_EFFORT = "medium";
 
 function log(message) {
   const line = `${new Date().toISOString()} ${TAG} ${message}\n`;
@@ -163,7 +166,9 @@ function findTurnBounds(entries, turnId) {
 
 function buildTurnContext(entries, bounds) {
   return entries
-    .filter(({ index }) => index >= bounds.firstIndex && index <= bounds.lastIndex)
+    .filter(
+      ({ index }) => index >= bounds.firstIndex && index <= bounds.lastIndex,
+    )
     .map(({ raw }) => raw)
     .join("\n");
 }
@@ -173,7 +178,7 @@ function buildPrompt(
   turnId,
   latestUserRequest,
   planContent,
-  reviewSchema
+  reviewSchema,
 ) {
   return `
 Review this implementation plan before it's presented for user approval.
@@ -225,14 +230,14 @@ function loadReviewSchema() {
   }
 }
 
-function runClaude(prompt, cwd, reviewSchema) {
-  log(`running claude ...`);
-  return spawnSync(
+function reviewPlanWithClaude(prompt, cwd, reviewSchema) {
+  log(`running claude in cwd=${cwd}`);
+  const claudeResult = spawnSync(
     CLAUDE_BIN,
     [
       "-p",
       "--model",
-      "claude-opus-4-6",
+      "claude-opus-4-7[1m]",
       "--no-session-persistence",
       "--allowedTools",
       "Read,Write,Edit,Bash,Glob,Grep,WebFetch,WebSearch",
@@ -244,37 +249,186 @@ function runClaude(prompt, cwd, reviewSchema) {
       cwd,
       encoding: "utf8",
       timeout: CLAUDE_TIMEOUT_MS,
-    }
+    },
   );
+  log(
+    `claude exit=${claudeResult.status ?? "null"} signal=${
+      claudeResult.signal ?? "null"
+    } stderr_chars=${getText(claudeResult.stderr).length}`,
+  );
+
+  if (claudeResult.error) {
+    return {
+      review: null,
+      reason: `claude spawn failed: ${claudeResult.error.message}`,
+    };
+  }
+
+  if (claudeResult.status !== 0) {
+    return {
+      review: null,
+      reason: `claude non-zero exit: ${claudeResult.status}`,
+    };
+  }
+
+  const trimmed = (claudeResult.stdout || "").trim();
+  log(`trimmed claude review output:\n${trimmed}`);
+
+  let review = null;
+  if (trimmed) {
+    const candidates = [trimmed];
+    const fencedMatch = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
+    if (fencedMatch?.[1]) {
+      candidates.unshift(fencedMatch[1].trim());
+    }
+
+    try {
+      for (const candidate of candidates) {
+        const parsed = JSON.parse(candidate);
+        if (
+          parsed &&
+          typeof parsed === "object" &&
+          typeof parsed.verdict === "string"
+        ) {
+          review = parsed;
+          break;
+        }
+      }
+    } catch {}
+  }
+
+  if (
+    !review ||
+    !["approve", "revise"].includes(review.verdict) ||
+    !Array.isArray(review.comments)
+  ) {
+    log(
+      `invalid claude review stdout=${JSON.stringify(
+        (claudeResult.stdout || "").slice(0, 500),
+      )}`,
+    );
+    return { review: null, reason: "invalid claude review output" };
+  }
+
+  return { review, reason: null };
 }
 
-function parseClaudeReview(output) {
-  const trimmed = output.trim();
-  log(`trimmed claude review output:\n${trimmed}`);
-  if (!trimmed) {
-    return null;
+function reviewPlanWithCodex(prompt, cwd) {
+  const authResult = spawnSync(CODEX_BIN, ["login", "status"], {
+    cwd,
+    encoding: "utf8",
+    timeout: 15_000,
+  });
+  log(
+    `codex auth exit=${authResult.status ?? "null"} signal=${
+      authResult.signal ?? "null"
+    } stderr_chars=${getText(authResult.stderr).length}`,
+  );
+
+  if (authResult.error) {
+    return {
+      review: null,
+      reason: `codex auth spawn failed: ${authResult.error.message}`,
+    };
   }
 
-  const candidates = [trimmed];
-  const fencedMatch = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
-  if (fencedMatch?.[1]) {
-    candidates.unshift(fencedMatch[1].trim());
+  if (authResult.status !== 0) {
+    return {
+      review: null,
+      reason: `codex auth check failed: ${getText(authResult.stderr) || authResult.status}`,
+    };
   }
 
+  const tmpFile = path.join(
+    os.tmpdir(),
+    `stop-plan-gate-codex-${Date.now()}-${process.pid}.json`,
+  );
+
+  log(`running codex in cwd=${cwd}`);
+  const codexResult = spawnSync(
+    CODEX_BIN,
+    [
+      "exec",
+      "-c",
+      `model_reasoning_effort="${CODEX_REASONING_EFFORT}"`,
+      "--output-schema",
+      REVIEW_SCHEMA_PATH,
+      "-o",
+      tmpFile,
+      prompt,
+    ],
+    {
+      cwd,
+      encoding: "utf8",
+      timeout: CODEX_TIMEOUT_MS,
+    },
+  );
+  log(
+    `codex exit=${codexResult.status ?? "null"} signal=${
+      codexResult.signal ?? "null"
+    } stderr_chars=${getText(codexResult.stderr).length}`,
+  );
+
+  if (codexResult.error) {
+    try {
+      fs.unlinkSync(tmpFile);
+    } catch {}
+    return {
+      review: null,
+      reason: `codex spawn failed: ${codexResult.error.message}`,
+    };
+  }
+
+  if (codexResult.status !== 0) {
+    try {
+      fs.unlinkSync(tmpFile);
+    } catch {}
+    return {
+      review: null,
+      reason: `codex non-zero exit: ${codexResult.status}`,
+    };
+  }
+
+  let output = "";
   try {
-    for (const candidate of candidates) {
-      const parsed = JSON.parse(candidate);
+    output = fs.readFileSync(tmpFile, "utf8").trim();
+  } catch (error) {
+    return {
+      review: null,
+      reason: `failed to read codex output: ${error.message}`,
+    };
+  } finally {
+    try {
+      fs.unlinkSync(tmpFile);
+    } catch {}
+  }
+
+  log(`trimmed codex review output:\n${output}`);
+
+  let review = null;
+  if (output) {
+    try {
+      const parsed = JSON.parse(output);
       if (
         parsed &&
         typeof parsed === "object" &&
         typeof parsed.verdict === "string"
       ) {
-        return parsed;
+        review = parsed;
       }
-    }
-  } catch {}
+    } catch {}
+  }
 
-  return null;
+  if (
+    !review ||
+    !["approve", "revise"].includes(review.verdict) ||
+    !Array.isArray(review.comments)
+  ) {
+    log(`invalid codex review stdout=${JSON.stringify(output.slice(0, 500))}`);
+    return { review: null, reason: "invalid codex review output" };
+  }
+
+  return { review, reason: null };
 }
 
 function buildRevisionPrompt(comments) {
@@ -301,7 +455,6 @@ if (!input) {
 const sessionId = input.session_id || "unknown";
 const turnId = input.turn_id || "unknown";
 log(`received: session=${sessionId} turn=${turnId}`);
-
 
 if (input.stop_hook_active === true) {
   allow("skip stop_hook_active continuation");
@@ -336,7 +489,7 @@ log(
     planMatch.index
   } turn_bounds=${turnBounds.firstIndex}-${turnBounds.lastIndex} plan_chars=${
     planContent.length
-  } user_chars=${latestUserRequest.length} turn_chars=${latestTurnContext.length}`
+  } user_chars=${latestUserRequest.length} turn_chars=${latestTurnContext.length}`,
 );
 
 const reviewSchema = loadReviewSchema();
@@ -349,41 +502,16 @@ const prompt = buildPrompt(
   turnId,
   latestUserRequest,
   planContent,
-  reviewSchema
+  reviewSchema,
 );
 const cwd =
   typeof input.cwd === "string" && fs.existsSync(input.cwd)
     ? input.cwd
     : os.homedir();
 
-log(`running claude in cwd=${cwd}`);
-const claudeResult = runClaude(prompt, cwd, reviewSchema);
-log(
-  `claude exit=${claudeResult.status ?? "null"} signal=${
-    claudeResult.signal ?? "null"
-  } stderr_chars=${getText(claudeResult.stderr).length}`
-);
-
-if (claudeResult.error) {
-  allow(`claude spawn failed: ${claudeResult.error.message}`);
-}
-
-if (claudeResult.status !== 0) {
-  allow(`claude non-zero exit: ${claudeResult.status}`);
-}
-
-const review = parseClaudeReview(claudeResult.stdout || "");
-if (
-  !review ||
-  !["approve", "revise"].includes(review.verdict) ||
-  !Array.isArray(review.comments)
-) {
-  log(
-    `invalid review stdout=${JSON.stringify(
-      (claudeResult.stdout || "").slice(0, 500)
-    )}`
-  );
-  allow("invalid claude review output");
+const { review, reason } = reviewPlanWithCodex(prompt, cwd);
+if (!review) {
+  allow(reason || "invalid codex review output");
 }
 
 if (review.verdict === "approve") {
