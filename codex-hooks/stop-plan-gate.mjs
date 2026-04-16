@@ -172,7 +172,6 @@ function buildPrompt(
   transcriptPath,
   turnId,
   latestUserRequest,
-  latestTurnContext,
   planContent,
   reviewSchema
 ) {
@@ -184,18 +183,13 @@ from the transcript. Use them as primary context.
 ${latestUserRequest}
 </latest_user_request>
 
-<latest_turn_context>
-${latestTurnContext}
-</latest_turn_context>
-
 <plan>
 ${planContent}
 </plan>
 
-The full transcript file (including latest-turn ${turnId}) is also available at the path below if you need to inspect deeper context during review.
-<transcript_path>
-${transcriptPath}
-</transcript_path>
+<latest_turn_context>
+The full transcript is available at the path ${transcriptPath}. To locate the latest turn context from the transcript, search for ${turnId} and review the lines between its first and last occurrence.
+</latest_turn_context>
 
 
 <review_policy>
@@ -232,7 +226,7 @@ function loadReviewSchema() {
 }
 
 function runClaude(prompt, cwd, reviewSchema) {
-  log(`running claude with prompt:\n${prompt}`);
+  log(`running claude ...`);
   return spawnSync(
     CLAUDE_BIN,
     [
@@ -354,7 +348,6 @@ const prompt = buildPrompt(
   transcriptPath,
   turnId,
   latestUserRequest,
-  latestTurnContext,
   planContent,
   reviewSchema
 );

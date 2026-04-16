@@ -155,7 +155,7 @@ Verify file paths exist and code patterns match before flagging an issue.
 
 // ── 8. Run codex ──
 const tmpFile = path.join(os.tmpdir(), `exitplan-codex-${Date.now()}.txt`);
-log(`running codex exec with prompt: ${prompt}`);
+log(`running codex exec ...`);
 
 const codexResult = spawnSync(
   "codex",
