@@ -54,7 +54,7 @@ alias claude_max="ddtool auth login --datacenter us1.ddbuild.io && claude --effo
 
 alias codex_normal="ddtool auth login --datacenter us1.ddbuild.io && codex -c 'model_reasoning_effort=\"medium\"' --dangerously-bypass-approvals-and-sandbox"
 alias codex_high="ddtool auth login --datacenter us1.ddbuild.io && codex -c 'model_reasoning_effort=\"high\"' --dangerously-bypass-approvals-and-sandbox"
-alias codex_xhigh="ddtool auth login --datacenter us1.ddbuild.io && codex -c 'model_reasoning_effort=\"xhigh\"' --dangerously-bypass-approvals-and-sandbox"
+alias codex_max="ddtool auth login --datacenter us1.ddbuild.io && codex -c 'model_reasoning_effort=\"xhigh\"' --dangerously-bypass-approvals-and-sandbox"
 
 export MCP_OAUTH_CALLBACK_PORT=41111
 

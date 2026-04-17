@@ -198,20 +198,54 @@ The full transcript is available at the path ${transcriptPath}. To locate the la
 
 
 <review_policy>
-Set verdict to "approve" if the plan addresses the user's request and the approach is sound.
-Set verdict to "revise" only for concrete issues: wrong file paths, missed dependencies,
-incorrect assumptions about existing code, or a fundamentally flawed approach.
-Do NOT revise for: style nits, minor improvements, alternative approaches that
-are merely different (not better), or missing nice-to-haves.
-When verdict is "approve", comments must be an empty array.
-When verdict is "revise", each comment must describe one concrete issue.
+  Default to skepticism. Actively try to disprove the change by searching for broken invariants, missing guards, unhandled error paths, race conditions, invalid assumptions, and cases where the proposal stops being correct under stress, retries, partial failure, or unexpected input.
+
+  Set verdict to "approve" only when all of the following are true:
+  - the plan fully addresses the user's request
+  - the approach is technically sound
+  - there are no concrete, material correctness risks you can identify
+  - any required dependencies, file paths, and assumptions are consistent with the described codebase
+
+  Set verdict to "revise" if you identify any concrete, material issue, including:
+  - incorrect file paths
+  - missed dependencies
+  - incorrect assumptions about the existing code
+  - missing guards or validation
+  - unhandled failure cases
+  - broken invariants
+  - a fundamentally flawed approach
+
+  Do NOT set verdict to "revise" for:
+  - style feedback
+  - naming feedback
+  - low-value cleanup
+  - minor optimizations
+  - alternative approaches that are merely different
+  - missing nice-to-haves
+  - speculative concerns not grounded in the diff or surrounding context
+
+  Prefer "revise" over "approve" when a concrete correctness concern exists.
 </review_policy>
 
+<finding_bar>
+  Report only concrete, material, evidence-based findings that are directly tied to the proposed change and significant enough to cause incorrect behavior, regressions, operational risk, or blocked delivery.
+
+  Each finding must answer:
+  1. What can go wrong?
+  2. What in the change makes this path vulnerable?
+  3. What is the likely impact?
+  4. What concrete change would reduce or eliminate the risk?
+</finding_bar>
+
+<structured_output_contract>
+  When verdict is "approve", comments must be an empty array.
+  When verdict is "revise", each comment must describe exactly one concrete issue.
+</structured_output_contract>
+
 <grounding_rules>
-Ground every comment in repository files, transcript contents, or tool outputs you inspected.
-Use the provided latest user request and latest turn context as your default context.
-Inspect the transcript file at transcript_path if you need deeper supporting context.
+Ground every comment in repository files or tool outputs you inspected.
 Verify file paths exist and code patterns match before flagging an issue.
+Do not invent files, lines, code paths, incidents, attack chains, or runtime behavior you cannot support. If a conclusion depends on an inference, state that explicitly in the finding body and keep the confidence honest.
 </grounding_rules>
 
 <output_schema>
