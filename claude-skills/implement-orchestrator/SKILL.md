@@ -68,13 +68,13 @@ For each milestone in `$HOME/dotfiles/implementation_plan/{slug}/IMPLEMENTATION.
    - `milestone_block`
 2. Render the milestone into a sub-agent prompt with:
     ```bash
-rendered_prompt="$(
-  python scripts/render_subagent_prompt.py \
-    --implementation-doc-path "$implementation_doc_path" \
-    --milestone-name "$milestone_name" \
-    --milestone-block "$milestone_block"
-)"
-```
+   rendered_prompt="$(
+   python scripts/render_subagent_prompt.py \
+      --implementation-doc-path "$implementation_doc_path" \
+      --milestone-name "$milestone_name" \
+      --milestone-block "$milestone_block"
+   )"
+   ```
 3. Use the rendered prompt `rendered_prompt` to launch a fresh sub-agent.
    - never use mini models for the sub-agent
 
