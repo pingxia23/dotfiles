@@ -209,6 +209,16 @@ get_assistant_python_files() {
     }
 }
 
+get_assistant_changed_files() {
+    get_my_branch_files | {
+        local files=""
+        while IFS= read -r file; do
+            [[ "$file" == domains/assistant/* ]] && files+=" $file"
+        done
+        echo "$files" | xargs
+    }
+}
+
 get_assistant_python_packages() {
     get_my_branch_files | {
         local pkgs=""
@@ -436,7 +446,8 @@ fi
 
 # --------------------------- Assistant Tests (domains/assistant) --------------------------- #
 warn "🔍 Running tests in domains/assistant..."
-if [[ -n "$assistant_python_files" ]]; then
+assistant_changed_files=$(get_assistant_changed_files)
+if [[ -n "$assistant_changed_files" ]]; then
     assistant_test_targets="//domains/assistant/...:all"
 
     info "  🧪 Running: bzl test --build_tests_only $assistant_test_targets"
@@ -448,7 +459,7 @@ if [[ -n "$assistant_python_files" ]]; then
         exit 1
     fi
 else
-    info "  🕵 No Python files in domains/assistant to test"
+    info "  🕵 No branch-local files in domains/assistant to test"
 fi
 
 

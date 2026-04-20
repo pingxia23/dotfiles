@@ -58,10 +58,8 @@ Perform a deterministic smart-commit workflow.
 3. If nothing is staged, stop and inform the user.
 
 ## Step 3: Compose Commit Message
-1. Choose the commit path:
-   - If `merge_in_progress=true`, run `git commit --no-verify`.
-   - Otherwise, do not use `--no-verify` unless the user explicitly asks.
-1. If `merge_in_progress=false`, write a message that:
+1. do not use `--no-verify` unless the user explicitly asks.
+2. If `merge_in_progress=false`, write a message that:
    - Explains why the change is needed.
    - Uses a concise subject and optional body.
    - commit using HEREDOC:

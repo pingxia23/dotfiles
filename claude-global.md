@@ -16,6 +16,7 @@ These rules apply to all projects and working directories.
 ## Code Commit 
 1. Remove any temporary files created during development (e.g., plan files, test outputs)
 2. **ALWAYS** use `commit-smart` skill to commit
+3. **NEVER** commit without Git signing enabled. If a commit hangs, retry once. If it still does not work, stop and ask the user for help.
 
 
 ## Python Code Style
