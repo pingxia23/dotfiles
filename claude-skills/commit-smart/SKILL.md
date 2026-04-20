@@ -76,26 +76,27 @@ Perform a deterministic smart-commit workflow.
 If `git commit` fails due to hooks:
   1. Parse hook output and identify the failing check.
   2. Always preserve the full failed commit output for inspection before deciding the next action.
-  3. In dd-scope, treat the failure as Bazel disk pressure if either of these is true:
+  3. Initialize a workflow-local guard before the retry loop:
+     - `disk_pressure_recovery_attempted=false`
+  4. In dd-scope, treat the failure as Bazel disk pressure if either of these is true:
      - the captured commit output contains any of:
        - `No space left on device`
        - `ENOSPC`
        - `Disk quota exceeded`
      - the hook failed in a Bazel-related phase (`bzl`, `bazel`, `sandbox`, `test.log`, `output base`, `tests failed`) and the agent can find any of the same disk-pressure strings in nearby Bazel log output or recent Bazel stderr/test logs
      - Do not require the disk-pressure string and Bazel path text to appear on the same line.
-  4. If the failure matches the Bazel disk-pressure case:
-     - In dd-scope, run:
-       - `CURRENT_WORKSPACE_ROOT="$worktree_root" "$HOME/dotfiles/scripts/cleanup-stale-bazel-output-bases.sh"`
-     - If the retry still fails with the same disk-pressure signals, run the cleanup helper again and retry again.
-     - Repeat until either:
-       - the commit succeeds
-       - the disk-pressure markers disappear and a different concrete failure remains
-       - the cleanup helper reports no reclaim candidates left and the same disk-pressure failure still occurs
+  5. If the failure matches the Bazel disk-pressure case:
+     - if `disk_pressure_recovery_attempted == true`, stop and report the repeated disk-pressure failure with the captured output
+     - set `disk_pressure_recovery_attempted=true`
+     - launch a fresh disk-pressure recovery sub-agent
+     - never use mini models for this sub-agent
+     - if the sub-agent returns `RETRY:`, retry `git commit` with hooks enabled
+     - if the sub-agent returns `BLOCKED:`, stop and report that blocker with the captured output
      - For non-merge commits, do NOT use `--no-verify` UNLESS the user explicitly asks you to use it
      - Do NOT use `bzl clean` for this issue.
-  5. If the failure is not a Bazel disk-pressure case, fix issues in code/config/message, re-stage, retry.
-  6. Repeat until `git commit` succeeds.
-  7. Stop only for external blockers (auth/network/tool outage) or when the cleanup helper has no reclaim candidates left but the same disk-pressure failure persists; report exact output in either case.
+  6. If the failure is not a Bazel disk-pressure case, fix issues in code/config/message, re-stage, retry.
+  7. Repeat until `git commit` succeeds.
+  8. Stop only for external blockers (auth/network/tool outage), when the recovery sub-agent returns `BLOCKED:`, or when the same disk-pressure failure persists after the single delegated recovery attempt; report exact output in each case.
 
 ## Step 5: Push
 1. Push after successful commit:
