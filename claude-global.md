@@ -54,7 +54,5 @@ This repo uses `bzl` to build and test packages.
 - Always use `bzl` instead of `bazel`.
 - Do not manually create new targets in BUILD.bazel files; use `bzl run //:gazelle` to generate them instead.
 - Always run `bzl run //:gazelle` after modifying import statements.
-- NEVER clear the bazel cache. `bzl clean` will NOT solve your problem.
-- Do not use `bzl test` with the `--test_filter` flag; there is a bug that may cause the test case you're selecting to be skipped.
 - Never run multiple `bzl` commands in parallel (lockfile conflicts)
 - Always print `bzl` output 
