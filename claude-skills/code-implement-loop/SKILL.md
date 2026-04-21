@@ -7,24 +7,30 @@ description: "Trigger this skill when implementation should start: if Codex/Clau
 
 ## Overview
 
-Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> TODO breakdown -> implementation (uncommitted) -> iterative review/fix loop -> mandatory single commit-smart. Keep the loop focused on unresolved feedback and stop only on reviewer approval + commit-smart completion, or max-rounds blocked output.
+Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> TODO breakdown -> implementation (uncommitted) -> iterative review/fix loop -> mandatory single commit-smart. Keep the loop focused on unresolved reviewer findings from prior local review rounds and stop only on reviewer approval + commit-smart completion, or max-rounds blocked output.
 
-## Workflow
-
-### 1) Apply hard rules
+## Hard Rules
 
 - Never change the current git branch name.
 - Use `gh` for all GitHub interactions.
-- Address unresolved PR comments/findings only.
 - Never use destructive cleanup commands (`git reset --hard`, `git checkout -- .`, `git clean -fd`).
 - Never resolve GitHub PR comments.
-- Only address unresolved comments and threads when reviewer feedback is part of the task.
 - When you encounter a `no space left on device` failure, launch a fresh sub-agent and use the `disk-pressure-recovery` skill to reclaim disk space before continuing.
 - Approval definition: `approval` means reviewer JSON reports `findings=[]` and `overall_correctness="patch is correct"`, never user confirmation.
 - Autonomy rule: do not ask the user for approval or extra checkpoints during normal flow; only ask the user when blocked/stuck/failing.
 - Plan adherence rule: implement the approved plan as written. Do not add extra refactors, abstractions, dependency plumbing, cleanup, or opportunistic improvements unless they are strictly required to complete that plan.
 - Minimality rule: when the plan is underspecified, choose the smallest implementation that satisfies the plan instead of broadening scope.
 - If you discover a requirement that materially changes the plan, stop and report the gap rather than silently expanding the implementation.
+
+## Workflow
+
+### 1) Preflight
+
+1. Resolve the current branch: `branch="$(git rev-parse --abbrev-ref HEAD)"`.
+2. If `branch` is `HEAD` (detached HEAD), stop and ask the user — this skill requires a named branch for the commit flow.
+3. Check whether an upstream exists: `git rev-parse --verify --quiet "refs/remotes/origin/$branch"`.
+   - If it does not exist (local-only branch), skip the divergence check and proceed.
+4. If the upstream exists and local `HEAD` has diverged from `origin/$branch` (each side has commits the other lacks), stop and ask the user.
 
 ### 2) Input contract
 
@@ -41,11 +47,12 @@ Resolution order:
   - `FAILED: provide a .md plan file or describe the changes to implement`
 - Do not run explore-intent in this skill.
 
-
 ### 3) Create decision-complete TODOs
+
 Before creating implementation TODOs:
-  - If running as Claude, read `CLAUDE.md`.
-  - Otherwise, read `AGENTS.md`.
+
+- If running as Claude, read `CLAUDE.md`.
+- Otherwise, read `AGENTS.md`.
 
 Build an ordered TODO checklist before editing code.
 
@@ -74,16 +81,11 @@ Repo constraints:
 - Never use `bzl test --test_filter`.
 - Never run multiple `bzl` commands in parallel.
 
-### 5) Run the PR-aware review/fix loop
+### 5) Run the local-uncommitted review/fix loop
 
 DO NOT COMMIT inside this step.
 
-**Review Scope Policy:**
-- Use PR-aware review scope by default: review the full prospective PR delta from merge base to the current working tree, not only the latest local diff hunk.
-- Re-review the full prospective PR delta each time the review loop runs. Do not narrow scope to only previously flagged hunks.
-- Focus on correctness, regression, security, compatibility, performance, and tests. Do not block on pure style nits.
-
-Run a bounded loop with at most 2 rounds. Each round executes Steps 5a-5d below.
+Run a bounded loop with at most 2 rounds. Each round executes Steps 5a-5e below.
 
 #### 5a) Normalize Review Context
 
@@ -92,46 +94,37 @@ Run a bounded loop with at most 2 rounds. Each round executes Steps 5a-5d below.
    - The helper must provide: `inside_worktree`, `worktree_root`, `worktree_path`, `branch`, `repo`, `in_dd_scope`.
    - If helper exits non-zero, stop and report blocked status with helper stderr.
 2. `cd "$worktree_root"` so review commands run from a stable root.
-3. Resolve the review base branch:
-   - `base_branch="$(gh pr list --repo "$repo" --head "$branch" --state open --json baseRefName --jq '.[0].baseRefName' 2>/dev/null || true)"`
-   - If empty: `base_branch="$(gh repo view --repo "$repo" --json defaultBranchRef -q '.defaultBranchRef.name' 2>/dev/null || true)"`
-   - If still empty: `base_branch=main`
-4. Ensure the base ref exists locally:
-   - `git fetch origin "$base_branch" --quiet` as best effort.
-5. Compute merge base:
-   - `merge_base="$(git merge-base HEAD "origin/$base_branch" 2>/dev/null || true)"`
-   - If empty, stop and report explicit base-resolution failure.
 
-#### 5b) Gather PR-Aware Review Inputs
+#### 5b) Assemble Reviewer Inputs
 
-1. Detect an open PR for the current branch when possible:
-   - `pr_url="$(gh pr list --repo "$repo" --head "$branch" --state open --json url --jq '.[0].url' 2>/dev/null || true)"`
-2. Gather unresolved review feedback when available:
-   - default `unresolved_pr_feedback='[]'`
-   - if `pr_url` exists, resolve `pr_number` and query unresolved, non-outdated review threads
-3. Build the review context pack:
-   - `review_diff=$(git diff --binary "$merge_base")`
-   - `changed_files=$(git diff --name-status "$merge_base")`
-   - current full contents of changed files from the working tree, truncated deterministically to the first 400 lines per file
-   - verification outputs summary
+The reviewer sub-agent gathers the local uncommitted patch set itself. The orchestrator only resolves the implementation plan and supporting context.
+
+1. Resolve `implementation_plan` from Step 2:
+   - if the implementation input is a `.md` path, use the contents of that file
+   - otherwise use the inline instruction text exactly as provided to the skill
+2. Include the remaining review inputs:
    - unresolved findings ledger from prior passes
-   - unresolved PR comments or threads
+   - `worktree_root` from Step 5a (so the reviewer can `cd` there before gathering the patch set)
 
 #### 5c) Run Reviewer
 
-1. Use the canonical reviewer prompt file:
-   - `references/reviewer-prompt-codex-cli.md`
-2. Inject the following placeholders:
-   - `{review_diff}`, `{changed_files}`, `{changed_file_context}`,
-     `{task_goal}`, `{verification_summary}`,
-     `{unresolved_findings_ledger}`, `{unresolved_pr_feedback}`
-3. Launch a fresh reviewer sub-agent.
-4. The reviewer must return strict JSON only, matching the schema in `references/reviewer-prompt-codex-cli.md`.
+1. Render the exact reviewer prompt through the shared helper:
+   ```bash
+   rendered_prompt="$(
+   node scripts/render_reviewer_prompt.mjs \
+      --worktree-root "$worktree_root" \
+      --implementation-plan "$implementation_plan" \
+      --unresolved-findings-ledger "$unresolved_findings_ledger"
+   )"
+   ```
+2. Do not hand-edit `rendered_prompt` after generation.
+3. Launch a fresh reviewer sub-agent with `rendered_prompt` as the exact prompt.
+4. The reviewer must return strict JSON only, matching the output schema embedded in `scripts/render_reviewer_prompt.mjs`, and evaluate the local uncommitted patch set against the implementation plan.
 
 #### 5d) Validate Reviewer Output
 
 1. Parse reviewer output as strict JSON with no markdown fences or extra prose.
-2. Validate exactly against the `OUTPUT FORMAT` schema in `references/reviewer-prompt-codex-cli.md`.
+2. Validate exactly against the `OUTPUT FORMAT` schema embedded in `scripts/render_reviewer_prompt.mjs`.
 3. If output is malformed or schema-invalid, rerun the reviewer once with a schema reminder.
 4. If still invalid, stop and report blocked status with the invalid payload summary and validator errors.
 
@@ -148,6 +141,7 @@ Run a bounded loop with at most 2 rounds. Each round executes Steps 5a-5d below.
 After the review loop returns approval (empty findings + correct patch verdict), immediately invoke `commit-smart` to commit and push changes.
 
 Rules:
+
 - Do not ask the user for additional confirmation before running `commit-smart`.
 - Do not end the workflow as success until `commit-smart` has completed.
 - If `commit-smart` fails, report blocked status with the failure reason and attempted remediation.

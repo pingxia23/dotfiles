@@ -100,18 +100,28 @@ create-worktree() {
 
   local branch="ping.xia/$feature"
   local target="$HOME/dd/$feature"
+  local upstream_ref=""
 
   if [[ -d "$target" ]]; then
     echo "Directory already exists: $target"
     return 1
   fi
 
-  if ! git -C "$DD_SOURCE_ROOT" fetch origin main; then
-    echo "Failed to fetch origin/main for $DD_SOURCE_ROOT"
-    return 1
+  if git -C "$DD_SOURCE_ROOT" ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+    upstream_ref="origin/$branch"
+    if ! git -C "$DD_SOURCE_ROOT" fetch origin "$branch"; then
+      echo "Failed to fetch $upstream_ref for $DD_SOURCE_ROOT"
+      return 1
+    fi
+  else
+    upstream_ref="origin/main"
+    if ! git -C "$DD_SOURCE_ROOT" fetch origin main; then
+      echo "Failed to fetch $upstream_ref for $DD_SOURCE_ROOT"
+      return 1
+    fi
   fi
 
-  git -C "$DD_SOURCE_ROOT" worktree add --track -b "$branch" "$target" origin/main && cd "$target"
+  git -C "$DD_SOURCE_ROOT" worktree add --track -b "$branch" "$target" "$upstream_ref" && cd "$target"
 
   # Set up Python virtual environment for assistant domain
   # if ! make -C "$target/domains/assistant" setup; then
