@@ -1,16 +1,17 @@
 ---
 name: address-pr-comments
-description: "Process unresolved PR review threads from a PR URL: no-op when none remain, reply to clarification-only threads with gh, and send actionable thread links to `code-implement-loop`."
+description: "Process unresolved PR review threads from a PR URL, or focus on one direct top-level review URL: no-op when nothing remains, reply when enough, and send actionable links to `code-implement-loop`."
 ---
 
 # Address PR Comments
 
-Process unresolved PR review threads for a pull request that is already checked out locally.
+Process unresolved PR review threads for a pull request that is already checked out locally. If the input URL points to a specific top-level review summary, focus only on that review instead of scanning the whole PR.
 
 ## Hard Rules
 
 - Use `gh` for all GitHub interactions.
-- Only inspect unresolved, non-outdated PR review threads.
+- For a plain PR URL, inspect unresolved, non-outdated PR review threads.
+- For a direct `#pullrequestreview-{id}` URL, focus only on that one top-level review summary.
 - Ignore top-level PR conversation comments.
 - Never resolve GitHub threads.
 - Assume the current worktree is already on the PR branch in the correct repository.
@@ -36,7 +37,13 @@ Purpose:
 - bind GitHub operations to the current checkout explicitly
 - keep local file reads and diffs anchored to the active repo
 
-### 2) Load unresolved review threads
+### 2) Route by input URL
+
+1. If the input is a plain PR URL, do the usual unresolved-review-thread workflow below.
+2. If the input is a direct `#pullrequestreview-{id}` URL, focus only on that top-level review summary.
+3. Do not broaden a direct top-level review URL into a full-PR scan.
+
+### 3) Plain PR URL: load unresolved review threads
 
 1. Run:
    - `"$HOME/dotfiles/claude-skills/address-pr-comments/scripts/list_unresolved_review_threads.sh" "<pr-url>"`
@@ -52,14 +59,14 @@ Purpose:
    - `last_comment_body`
    - `comments[]`
 
-### 3) No-op when nothing remains
+### 4) Plain PR URL: no-op when nothing remains
 
 - If no unresolved, non-outdated review threads remain, stop and return:
   - `NOOP: no unresolved review threads`
 
-### 4) Classify each unresolved thread
+### 5) Classify each item
 
-Classify each unresolved thread into one of:
+Classify each unresolved thread or direct top-level review into one of:
 
 - `reply_only`
 - `implementation_needed`
@@ -75,7 +82,7 @@ Use this rubric:
   - replying alone would overstate what has been fixed
   - the request is ambiguous; default here conservatively
 
-### 5) Reply to clarification-only threads
+### 6) Reply to clarification-only items
 
 For each `reply_only` thread:
 
@@ -84,11 +91,19 @@ For each `reply_only` thread:
    - `"$HOME/dotfiles/claude-skills/address-pr-comments/scripts/reply_to_review_thread.sh" "$repo" "<pr-number>" "<last-comment-id>" "<reply-body>"`
 3. Do not resolve the thread.
 
-### 6) Delegate actionable threads
+For a direct `reply_only` top-level review summary:
 
-If one or more threads are `implementation_needed`:
+1. Draft a concise factual reply.
+2. Post a normal PR comment that references the input review URL.
+3. Do not attempt to resolve anything.
 
-1. Collect only the actionable comment URLs from `comment_url`.
+### 7) Delegate actionable items
+
+If one or more items are `implementation_needed`:
+
+1. Collect only the actionable URLs:
+   - for unresolved threads, use `comment_url`
+   - for a direct top-level review, use the input URL
 2. Invoke `code-implement-loop` once with those URLs as the entire implementation scope.
 3. Do not restate the requests or add broader work items if the links already identify the actionable unresolved feedback.
 
@@ -99,11 +114,13 @@ https://github.com/owner/repo/pull/123#discussion_r111
 https://github.com/owner/repo/pull/123#discussion_r222
 ```
 
-### 7) Return final status
+### 8) Return final status
 
 Use one of these formats:
 
 - `SUCCESS: replied to {N} unresolved thread(s) | PR: {url}`
 - `SUCCESS: delegated {M} unresolved thread(s) to code-implement-loop | PR: {url}`
 - `SUCCESS: replied to {N} unresolved thread(s); delegated {M} unresolved thread(s) | PR: {url}`
+- `SUCCESS: replied to direct top-level review | PR: {url}`
+- `SUCCESS: delegated direct top-level review to code-implement-loop | PR: {url}`
 - `BLOCKED: {reason} | PR: {url}`

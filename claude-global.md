@@ -35,11 +35,17 @@ Our codebase uses `bzl` to build and test packages.
 - Never run multiple `bzl` commands in parallel (lockfile conflicts)
 - Always print `bzl` output 
 
-## Scope Control During Code Implementation
+## Scope Control
 
-- When implementing from an approved plan, stick to that plan.
-- Do not add refactors, abstractions, wiring, cleanup, or behavior changes that are not required for the planned implementation.
-- If the plan is missing something necessary, make the smallest change that unblocks the planned work. If the gap changes scope materially, stop and surface it instead of expanding the implementation on your own.
+* Keep plans tightly focused on the user’s explicit request.
+* Do not add refactors, abstractions, cleanup, extra wiring, or behavior changes unless they are required to complete the requested work.
+* Once a plan is approved, implement only that plan.
+* If something necessary is missing, make the smallest change that unblocks the planned work.
+* If the required change would materially expand scope, stop and surface it instead of proceeding on your own.
+* Do not include adjacent improvements, opportunistic fixes, or “while we’re here” changes unless the user explicitly approves them.
+* Before making any change, check: is this required for the approved scope? If not, leave it out.
+* When summarizing work, clearly distinguish required changes from optional suggestions.
+
 
 
 ## Skill Routing Override
