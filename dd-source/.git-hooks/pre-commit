@@ -60,19 +60,24 @@ run_bzl_locked() {
 }
 
 stage_generated_files() {
-    local current_files=$(git diff --name-only)
-    local original_files=$BEFORE_HOOK
+    local current_files
+    current_files=$(git diff --name-only)
+    local original_unstaged=$BEFORE_HOOK
     local original_staged=$BEFORE_HOOK_STAGED
 
-    if [[ "$original_files" != "$current_files" ]]; then
-        warn "📝 Changes detected. Adding modified files to commit..."
-        while IFS= read -r file; do
-            if [[ "$original_staged" == *"$file"* || "$original_files" != *"$file"* ]]; then
-                info "  📝 Adding: $file"
-                git add "$file"
-            fi
-        done <<< "$current_files"
-    fi
+    # Skip files that were unstaged-only pre-hook: user's in-progress work
+    # they deliberately didn't stage. Everything else (staged pre-hook, or
+    # clean pre-hook and now dirty) gets re-staged so formatter/generator
+    # output and retry-state content land in the commit.
+    [[ -z "$current_files" ]] && return
+    while IFS= read -r file; do
+        [[ -z "$file" ]] && continue
+        if [[ "$original_unstaged" == *"$file"* && "$original_staged" != *"$file"* ]]; then
+            continue
+        fi
+        info "  📝 Adding: $file"
+        git add "$file"
+    done <<< "$current_files"
 }
 
 # Returns files eligible for processing - SINGLE SOURCE OF TRUTH for merge detection
