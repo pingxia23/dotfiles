@@ -113,15 +113,16 @@ dd_gitlab_checks_json="$(
    - `pending`: `bucket=="pending"`
    - `failed`: `bucket=="fail"` or `bucket=="cancel"`
    - `passed`: `bucket=="pass"`
-3. If any `dd-gitlab/*` checks are still pending, do not handle failures yet. Sleep for a fixed interval such as `60` seconds, then start the next loop iteration.
-4. Once there are zero pending `dd-gitlab/*` checks:
+3. If there are zero `dd-gitlab/*` checks, treat that as "jobs not started yet" rather than success. Sleep for a fixed interval such as `60` seconds, then start the next loop iteration.
+4. If any `dd-gitlab/*` checks are still pending, do not handle failures yet. Sleep for a fixed interval such as `60` seconds, then start the next loop iteration.
+5. Once there are one or more `dd-gitlab/*` checks and zero pending `dd-gitlab/*` checks:
    - if all `dd-gitlab/*` checks passed, skip the remaining steps in this iteration and exit the loop
    - otherwise continue with the failure-handling steps below
-5. Split the failed `dd-gitlab/*` checks into:
+6. Split the failed `dd-gitlab/*` checks into:
    - `fetchable_failed_jobs`: failed checks whose `link` contains `taskId=gitlab` and `taskExecutionId=`
    - `rollup_only_failures`: failed checks such as `dd-gitlab/default-pipeline` whose link does not include a concrete `taskExecutionId=`
-6. If there are no `fetchable_failed_jobs`, stop and report blocked status with the failing rollup checks. The skill cannot fetch logs for a rollup-only failure.
-7. For each job in `fetchable_failed_jobs`:
+7. If there are no `fetchable_failed_jobs`, stop and report blocked status with the failing rollup checks. The skill cannot fetch logs for a rollup-only failure.
+8. For each job in `fetchable_failed_jobs`:
    - fetch the failure log with:
    ```bash
    node "$HOME/dotfiles/scripts/fetch-mosaic-ci-log.mjs" "<mosaic-link>"
@@ -134,14 +135,14 @@ dd_gitlab_checks_json="$(
      - the failing test name or command when present
      - the concrete error text or exception
      - whether the failure is likely caused by this PR
-8. After understanding all `fetchable_failed_jobs`, hand off to `code-implement-loop`. The handoff must include, for each failed fetchable job:
+9. After understanding all `fetchable_failed_jobs`, hand off to `code-implement-loop`. The handoff must include, for each failed fetchable job:
    - the PR URL
    - the GitLab job URL from `web_url`
    - the local trace file path from `trace_file`
    - the failure summary extracted from the trace
-9. Invoke `code-implement-loop` with that raw failure context as the entire implementation scope.
-10. If `code-implement-loop` returns blocked status, propagate it and stop.
-11. If `code-implement-loop` succeeds, continue the loop and return to Step 3.1 to repoll the `dd-gitlab/*` checks.
+10. Invoke `code-implement-loop` with that raw failure context as the entire implementation scope.
+11. If `code-implement-loop` returns blocked status, propagate it and stop.
+12. If `code-implement-loop` succeeds, continue the loop and return to Step 3.1 to repoll the `dd-gitlab/*` checks.
 
 Example handoff to `code-implement-loop`:
 
