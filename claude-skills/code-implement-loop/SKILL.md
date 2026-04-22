@@ -7,7 +7,7 @@ description: "Trigger this skill when implementation should start: if Codex/Clau
 
 ## Overview
 
-Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> TODO breakdown -> implementation (uncommitted) -> iterative review/fix loop -> mandatory single commit-smart. Keep the loop focused on unresolved reviewer findings from prior local review rounds and stop only on reviewer approval + commit-smart completion, or max-rounds blocked output.
+Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> TODO breakdown -> implementation (uncommitted) -> iterative review/fix loop -> conditional `commit-smart` when `in_dd_scope=true`. Keep the loop focused on unresolved reviewer findings from prior local review rounds and stop only on reviewer approval plus the required completion step for the current repo scope, or max-rounds blocked output.
 
 ## Hard Rules
 
@@ -27,10 +27,13 @@ Implement a task in a deterministic sequence: plan intake (`.md` file or direct 
 ### 1) Preflight
 
 1. Resolve the current branch: `branch="$(git rev-parse --abbrev-ref HEAD)"`.
-2. If `branch` is `HEAD` (detached HEAD), stop and ask the user — this skill requires a named branch for the commit flow.
-3. Check whether an upstream exists: `git rev-parse --verify --quiet "refs/remotes/origin/$branch"`.
+2. Resolve repo scope early: `eval "$("$HOME/dotfiles/scripts/git-context.sh")"`.
+   - The helper must provide: `inside_worktree`, `worktree_root`, `worktree_path`, `branch`, `repo`, `in_dd_scope`.
+   - If helper exits non-zero, stop and report blocked status with helper stderr.
+3. If `branch` is `HEAD` (detached HEAD) and `in_dd_scope=true`, stop and ask the user — this skill requires a named branch for the commit flow in dd scope.
+4. Check whether an upstream exists: `git rev-parse --verify --quiet "refs/remotes/origin/$branch"`.
    - If it does not exist (local-only branch), skip the divergence check and proceed.
-4. If the upstream exists and local `HEAD` has diverged from `origin/$branch` (each side has commits the other lacks), stop and ask the user.
+5. If the upstream exists and local `HEAD` has diverged from `origin/$branch` (each side has commits the other lacks), stop and ask the user.
 
 ### 2) Input contract
 
@@ -130,27 +133,32 @@ The reviewer sub-agent gathers the local uncommitted patch set itself. The orche
 
 #### 5e) Review/Fix Loop Control
 
-- If the reviewer output has `findings=[]` and `overall_correctness="patch is correct"`, stop the loop and proceed to commit.
+- If the reviewer output has `findings=[]` and `overall_correctness="patch is correct"`, stop the loop and proceed to the next step.
 - If the reviewer output has `findings=[]` and `overall_correctness="patch is incorrect"`, rerun the review pass once for consistency; if still inconsistent, stop and report blocked status.
 - If the reviewer output has findings, fix unresolved items only, prioritize by `priority` ascending (`0` -> `3`; unknown priority after known priorities), rerun targeted verification, update the unresolved findings ledger, and continue until approval or max rounds.
 - If a review round returns blocked status, propagate that status without proceeding to commit.
 - If not approved after `MAX_ROUNDS`, emit blocked status with unresolved findings and attempted fixes.
 
-### 6) Mandatory commit-smart after approval
+### 6) Completion After Approval
 
-After the review loop returns approval (empty findings + correct patch verdict), immediately invoke `commit-smart` to commit and push changes.
+After the review loop returns approval (empty findings + correct patch verdict):
+
+- If `in_dd_scope=true`, immediately invoke `commit-smart` to commit and push changes.
+- If `in_dd_scope=false`, stop after reporting success and leave the approved changes uncommitted in the worktree.
 
 Rules:
 
-- Do not ask the user for additional confirmation before running `commit-smart`.
-- Do not end the workflow as success until `commit-smart` has completed.
-- If `commit-smart` fails, report blocked status with the failure reason and attempted remediation.
+- Do not ask the user for additional confirmation before running `commit-smart` when `in_dd_scope=true`.
+- Do not end the workflow as success until `commit-smart` has completed when `in_dd_scope=true`.
+- If `commit-smart` fails in dd scope, report blocked status with the failure reason and attempted remediation.
+- Outside dd scope, do not invoke `commit-smart`, do not create or update a PR, and report success once the reviewed patch is complete.
 
 ### 7) Return final status
 
 Success format:
 
-`SUCCESS: Implementation complete | PR: {url}`
+- In dd scope: `SUCCESS: Implementation complete | PR: {url}`
+- Outside dd scope: `SUCCESS: Implementation complete | PR: none`
 
 Blocked format:
 
