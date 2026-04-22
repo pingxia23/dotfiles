@@ -12,7 +12,6 @@ Create or update a top-level review-guidance comment for a GitHub pull request.
 - Accept exactly one GitHub PR URL.
 - Use `gh` for all GitHub access.
 - Do not rely on a local checkout.
-- Stop if the PR author is not `pingxia23`.
 - Only update comments owned by this skill marker: `<!-- pr-review-guidance:v1 -->`.
 - Never delete or replace unmarked comments.
 - Do not post a draft as a reply or review-thread comment; use a normal top-level PR comment.
@@ -50,13 +49,7 @@ Inside `bundle_dir`, read these files as needed:
 - `comments.json` - top-level PR conversation comments
 - `review_threads.json` - unresolved, non-outdated review threads
 
-### 2) Verify ownership
-
-- Stop immediately unless `author_login` is exactly `pingxia23`.
-- Return:
-  - `BLOCKED: PR author is <login>, expected pingxia23 | PR: <url>`
-
-### 3) Build understanding
+### 2) Build understanding
 
 Read the PR thoroughly before writing the comment:
 
@@ -71,7 +64,7 @@ gh api -H 'Accept: application/vnd.github.raw+json' \
 
 Build an actual model of behavior, data flow, risk, and review hotspots. Do not just paraphrase the PR title or body.
 
-### 4) Write the guidance comment
+### 3) Write the guidance comment
 
 The comment body must begin with the hidden marker:
 
@@ -109,7 +102,7 @@ Guidance rules:
 - Use information from existing comments/reviews only as supporting context.
 - Keep the tone and section shape close to the inlined reference example above.
 
-### 5) Upsert the top-level comment
+### 4) Upsert the top-level comment
 
 Pipe the final comment body into:
 
@@ -127,7 +120,7 @@ It prints JSON including:
 - `action` - `created` or `updated`
 - `comment_url`
 
-### 6) Return final status
+### 5) Return final status
 
 Use one of:
 
