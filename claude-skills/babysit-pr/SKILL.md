@@ -1,6 +1,6 @@
 ---
 name: babysit-pr
-description: "Babysit a GitHub PR from a PR URL: check whether merging the latest base branch would conflict, resolve and commit merge conflicts with `commit-smart` when needed, then loop on `dd-gitlab/*` CI checks until they pass; when concrete dd-gitlab jobs fail, fetch their Mosaic traces with `scripts/fetch-mosaic-ci-log.mjs`, use `code-implement-loop` to fix the failures, and finish by updating the PR with `pr-review-guidance`."
+description: "Babysit a GitHub PR from a PR URL: check whether merging the latest base branch would conflict, resolve and commit merge conflicts with `commit-smart` when needed, then loop on `dd-gitlab/*` CI checks until they pass; when concrete dd-gitlab jobs fail, classify the fetched Mosaic traces, merge the latest base when failures look external, and use `code-implement-loop` only for failures that are likely caused by the PR."
 ---
 
 # Babysit PR
@@ -67,7 +67,7 @@ merge_state_status="$(jq -r '.mergeStateStatus' <<<"$merge_state_json")"
 
 2. If `mergeable=="UNKNOWN"`, wait briefly and repoll a small number of times so GitHub can finish computing mergeability.
 3. Interpret the result from GitHub:
-   - `mergeable=="MERGEABLE"`: no merge conflicts; do not merge the base branch
+   - `mergeable=="MERGEABLE"`: no conflict-driven merge is needed at this stage
    - `mergeable=="CONFLICTING"`: the PR branch conflicts with the latest base branch
    - any other value, or a persistent `UNKNOWN`: stop and report `mergeable` and `mergeStateStatus` as blocked
 
@@ -75,9 +75,10 @@ merge_state_status="$(jq -r '.mergeStateStatus' <<<"$merge_state_json")"
 
 Only run this step when Step 1 found real merge conflicts.
 
-1. Merge the latest base branch into the PR branch:
+1. Refresh and merge the latest base branch into the PR branch:
 
 ```bash
+git fetch origin "$base_ref"
 git merge --no-ff "origin/$base_ref"
 ```
 
@@ -128,15 +129,40 @@ dd_gitlab_checks_json="$(
      - the failing Bazel target or job step
      - the failing test name or command when present
      - the concrete error text or exception
+     - a concise failure summary
      - whether the failure is likely caused by this PR
-9. After understanding all `fetchable_failed_jobs`, hand off to `code-implement-loop`. The handoff must include, for each failed fetchable job:
+   - classify each job as either:
+     - `likely caused by this PR`
+     - `likely not caused by this PR`
+   - treat failures like the following as `likely not caused by this PR` unless stronger evidence points to the patch:
+     - checkout/bootstrap failures before repo code executes
+     - `gitretriever fetch failed`
+     - source fetch or checkout cleanup failures
+     - runner or CI environment bootstrap failures
+     - truncated logs with no concrete repo target, test, or command failure visible
+9. If **any** job in `fetchable_failed_jobs` is classified as `likely not caused by this PR`, do not invoke `code-implement-loop` yet. Remediate against the freshest base branch first:
+    - run:
+    ```bash
+    git fetch origin "$base_ref"
+    ```
+    - if the fetch fails, stop and report blocked status
+    - if the current branch already contains the freshly fetched `origin/$base_ref`, stop and report blocked status rather than retrying CI unchanged
+    - otherwise merge the freshly fetched base:
+    ```bash
+    git merge --no-ff "origin/$base_ref"
+    ```
+    - if the merge conflicts, resolve them with the smallest change that restores intended PR behavior
+    - run the minimum targeted verification needed for the merge or conflict resolution
+    - invoke `commit-smart` immediately to create or push the merge result
+    - after `commit-smart` completes, sleep for a fixed interval such as `60` seconds, then start the next loop iteration.
+10. Hand off `fetchable_failed_jobs` that are still classified as `likely caused by this PR` to `code-implement-loop`. The handoff must include, for each such job:
    - the PR URL
    - the GitLab job URL from `web_url`
    - the local trace file path from `trace_file`
    - the failure summary extracted from the trace
-10. Invoke `code-implement-loop` with that raw failure context as the entire implementation scope.
-11. If `code-implement-loop` returns blocked status, propagate it and stop.
-12. If `code-implement-loop` succeeds, continue the loop and return to Step 3.1 to repoll the `dd-gitlab/*` checks.
+12. Invoke `code-implement-loop` with that raw failure context as the entire implementation scope.
+13. If `code-implement-loop` returns blocked status, propagate it and stop.
+14. If `code-implement-loop` succeeds, continue the loop and return to Step 3.1 to repoll the `dd-gitlab/*` checks.
 
 Example handoff to `code-implement-loop`:
 
@@ -149,11 +175,6 @@ Fix the failing dd-gitlab CI jobs for PR https://github.com/DataDog/dd-source/pu
   Trace file: /tmp/mosaic-ci-1620901756/job-1620901756.log
   Summary: //domains/assistant/apps/apis/assistant_api:py_default_test failed because test_background_worker.py::test_run_command_agent_populates_background_worker_payload raised TypeError: object MagicMock can't be used in 'await' expression
 
-- dd-gitlab/static-build-success
-  PR: https://github.com/DataDog/dd-source/pull/406053
-  GitLab job: https://gitlab.ddbuild.io/DataDog/dd-source/-/jobs/1620892229
-  Trace file: /tmp/mosaic-ci-1620892229/job-1620892229.log
-  Summary: This job only reported that an earlier stage failed; treat it as downstream fallout unless new evidence shows otherwise.
 ```
 <!--
 ### 4) Update the PR review guidance
@@ -167,5 +188,6 @@ Use one of:
 - `SUCCESS: dd-gitlab checks green and PR review guidance updated | PR: <url>`
 - `BLOCKED: merge conflict check failed | PR: <url> | Error: <summary>`
 - `BLOCKED: rollup-only dd-gitlab failure without fetchable jobs | PR: <url>`
+- `BLOCKED: external-looking dd-gitlab failure but branch already includes latest base | PR: <url>`
 - `BLOCKED: code-implement-loop failed | PR: <url> | Error: <summary>`
 - `BLOCKED: <reason> | PR: <url>`
