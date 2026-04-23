@@ -38,3 +38,8 @@ Verify:
 ```bash
 dd-gitsign doctor
 ```
+
+## dd-auth setup
+```bash
+dd-auth --domain dd.datad0g.com --workspace workspace-pingxia-workspace-test
+```

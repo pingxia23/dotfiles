@@ -7,14 +7,12 @@ These rules apply to all projects and working directories.
 ## Handle no disk space failure
 - When you encounter a `no space left on device` failure, launch a fresh sub-agent and use the `disk-pressure-recovery` skill to reclaim disk space before continuing.
 
-## GitHub
+## GitHub / Git 
 - Always use `gh` for GitHub interactions
 - Never resolve Github PR comments
-- **ONLY** address unresolved comments
-
-## Git
+- **ONLY** address unresolved Github comments
 - **Never change the current git branch name** unless I explicitly asked you to do so
-
+- NEVER force push unless I explicitly asked you to do so
 
 ## Code Commit 
 1. Remove any temporary files created during development (e.g., plan files, test outputs)
@@ -36,19 +34,21 @@ Our codebase uses `bzl` to build and test packages.
 - Always print `bzl` output 
 
 ## Scope Control
+**Primary Rule**
+  - Keep plans tightly focused on the user’s explicit request.
+  - Implement only the approved plan.
 
-* Keep plans tightly focused on the user’s explicit request.
-* Do not add refactors, abstractions, cleanup, extra wiring, or behavior changes unless they are required to complete the requested work.
-* Once a plan is approved, implement only that plan.
-* If something necessary is missing, make the smallest change that unblocks the planned work.
-* If the required change would materially expand scope, stop and surface it instead of proceeding on your own.
-* Do not include adjacent improvements, opportunistic fixes, or “while we’re here” changes unless the user explicitly approves them.
-* Before making any change, check: is this required for the approved scope? If not, leave it out.
-* When summarizing work, clearly distinguish required changes from optional suggestions.
-
-
-
-## Skill Routing Override
+**What Not To Add**
+  - Do not add refactors, abstractions, cleanup, extra wiring, or behavior changes unless they are required to complete the requested
+    work.
+  - Do not include adjacent improvements, opportunistic fixes, or “while we’re here” changes unless the user explicitly approves them.
+**How To Handle Gaps**
+  - If something necessary is missing, make the smallest change needed to unblock the planned work.
+  - If a required change would materially expand scope, stop and surface it instead of proceeding on your own.
+  - Decision Check Before Changing Anything
+  - Before making any change, ask: is this required to complete the approved scope?
+  - If not, leave it out.
+# Skill Routing Override
 
 - If the current working directory is within `~/dd` (or its resolved absolute path), and the latest assistant response proposed an implementation plan and the user replies with `implement this`, `implement it`, `implement the proposed plan`, `carry out the plan`, or equivalent, treat that reply as an explicit invocation of `code-implement-loop`.
 - This override takes precedence over generic default behavior such as "assume the user wants implementation."

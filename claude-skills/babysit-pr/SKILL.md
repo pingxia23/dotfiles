@@ -6,9 +6,7 @@ description: "Babysit a GitHub PR from a PR URL: check whether merging the lates
 # Babysit PR
 
 ## Hard Rules
-
-- Use `gh` for all GitHub access.
-- Never change the current branch name manually.
+- First, review the `# Global Rules` from your memory file and apply them before the skill-specific rules below.
 - Assume the current checkout is already on the correct PR branch and commit for the input PR. Validate that assumption and stop on mismatch.
 - Do not broaden scope beyond:
   - merge-conflict remediation against the latest PR base branch
@@ -27,26 +25,22 @@ description: "Babysit a GitHub PR from a PR URL: check whether merging the lates
 
 ### 0) Preflight
 
-1. Resolve the current branch: `branch="$(git rev-parse --abbrev-ref HEAD)"`.
-2. Resolve repo scope early: `eval "$("$HOME/dotfiles/scripts/git-context.sh")"`.
-   - The helper must provide: `inside_worktree`, `worktree_root`, `worktree_path`, `branch`, `repo`, `in_dd_scope`.
+1. Resolve repo scope and enforce the strict coding preflight:
+   - `eval "$("$HOME/dotfiles/scripts/coding-preflight.mjs")"`
+   - The helper must provide: `inside_worktree`, `worktree_root`, `worktree_path`, `branch`, `repo`, `in_dd_scope`, `origin_branch_ref`, `origin_branch_exists`, `local_ahead_count`, `origin_ahead_count`.
    - If helper exits non-zero, stop and report blocked status with helper stderr.
-3. `cd "$worktree_root"`.
-4. If `branch` is `HEAD` (detached HEAD) and `in_dd_scope=true`, stop and ask the user — this skill requires a named branch for the commit flow in dd scope.
-5. Check whether an upstream exists: `git rev-parse --verify --quiet "refs/remotes/origin/$branch"`.
-   - If it does not exist (local-only branch), skip the divergence check and proceed.
-6. If the upstream exists and local `HEAD` has diverged from `origin/$branch` (each side has commits the other lacks), stop and ask the user.
-7. Load PR context with:
+2. `cd "$worktree_root"`.
+3. Load PR context with:
 
 ```bash
 pr_ctx_json="$("$HOME/dotfiles/scripts/fetch-pr-context.sh" "<pr-url>")"
 ```
 
-8. Parse from `pr_ctx_json`:
+4. Parse from `pr_ctx_json`:
    - `repo`
    - `pr_number`
    - `pr_url`
-9. Load the current PR refs:
+5. Load the current PR refs:
 
 ```bash
 pr_meta_json="$(gh pr view --repo "$repo" "$pr_number" --json baseRefName,headRefName,headRefOid,url)"
@@ -55,7 +49,7 @@ head_ref="$(jq -r '.headRefName' <<<"$pr_meta_json")"
 head_sha="$(jq -r '.headRefOid' <<<"$pr_meta_json")"
 ```
 
-10. Confirm the current checkout matches the PR you were given:
+6. Confirm the current checkout matches the PR you were given:
    - `repo` from the helper must equal the PR repo
    - `branch` from the helper must equal `head_ref`
    - `git rev-parse HEAD` must equal `head_sha`

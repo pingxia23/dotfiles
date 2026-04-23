@@ -16,12 +16,10 @@ Implement a planning-to-implementation orchestrator:
 
 ## Hard Rules
 
-- Never change the current git branch name.
-- Use `gh` for all GitHub interactions.
+- First, review the `# Global Rules` from your memory file and apply them before the skill-specific rules below.
 - If running in a git worktree, resolve and pin the GitHub repository explicitly:
   - run `gh repo view --json nameWithOwner -q .nameWithOwner` from the current worktree,
   - pass `--repo <owner/repo>` to subsequent `gh` commands.
-- Address unresolved PR comments/findings only.
 - Never use destructive cleanup commands (`git reset --hard`, `git checkout -- .`, `git clean -fd`).
 - Preserve existing unrelated working tree changes.
 

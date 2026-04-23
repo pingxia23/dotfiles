@@ -9,8 +9,8 @@ Create or update a top-level review-guidance comment for a GitHub pull request.
 
 ## Hard Rules
 
+- First, review the `# Global Rules` from your memory file and apply them before the skill-specific rules below.
 - Accept exactly one GitHub PR URL.
-- Use `gh` for all GitHub access.
 - Do not rely on a local checkout.
 - Only update comments owned by this skill marker: `<!-- pr-review-guidance:v1 -->`.
 - Never delete or replace unmarked comments.

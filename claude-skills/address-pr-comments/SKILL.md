@@ -8,13 +8,10 @@ description: "Process unresolved PR review threads from a PR URL, or focus on on
 Process unresolved PR review threads for a pull request that is already checked out locally. If the input URL points to a specific top-level review summary, focus only on that review instead of scanning the whole PR.
 
 ## Hard Rules
-
-- Use `gh` for all GitHub interactions.
+- First, review the `# Global Rules` from your memory file and apply them before the skill-specific rules below.
 - For a plain PR URL, inspect unresolved, non-outdated PR review threads.
 - For a direct `#pullrequestreview-{id}` URL, focus only on that one top-level review summary.
 - Ignore top-level PR conversation comments.
-- Never resolve GitHub threads.
-- Assume the current worktree is already on the PR branch in the correct repository.
 - Do not add scope beyond the unresolved actionable review feedback.
 - Do not post follow-up replies after `code-implement-loop` finishes.
 
@@ -25,6 +22,8 @@ Process unresolved PR review threads for a pull request that is already checked 
   - `FAILED: provide a PR URL`
 
 ## Workflow
+
+### 0) Preflight
 
 ### 1) Normalize local context
 

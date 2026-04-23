@@ -6,25 +6,17 @@ description: "Deterministic workflow to stage changes, run bzl tests when applic
 Perform a deterministic smart-commit workflow.
 
 ## Hard Rules
-- NEVER force push
-- NEVER rename or switch branches unless the user explicitly asks
+
+- First, review the `# Global Rules` from your memory file and apply them before the skill-specific rules below.
 - For pre-commit hook failures, inspect, fix, and retry until commit succeeds
-- When you encounter a `no space left on device` failure, launch a fresh sub-agent and use the `disk-pressure-recovery` skill to reclaim disk space before continuing.
 
 ## Step 0: Preflight
-1. Confirm git state:
-   - Load shared git/worktree context:
-     - `eval "$("$HOME/dotfiles/scripts/git-context.sh")"`
-   - The helper must provide: `inside_worktree`, `worktree_root`, `worktree_path`, `branch`, `repo`, `in_dd_scope`.
-   - If helper exits non-zero, stop and report its stderr as the blocker.
-   - `cd "$worktree_root"` so all subsequent commands run from the repo root even if invoked from nested cwd.
-2. Confirm repository scope:
-   - Use `in_dd_scope` from shared helper output.
-3. Inspect workspace:
-   - `git status --short`
-   - `git diff --name-only --diff-filter=U`
-   - If unresolved conflicts exist, stop and report the issue.
-4. Detect merge-commit state:
+1. Resolve repo scope and enforce the strict coding preflight:
+   - `eval "$("$HOME/dotfiles/scripts/coding-preflight.mjs")"`
+   - The helper must provide: `inside_worktree`, `worktree_root`, `worktree_path`, `branch`, `repo`, `in_dd_scope`, `origin_branch_ref`, `origin_branch_exists`, `local_ahead_count`, `origin_ahead_count`.
+   - If helper exits non-zero, stop and report blocked status with helper stderr.
+2. `cd "$worktree_root"` so all subsequent commands run from the repo root even if invoked from nested cwd.
+3. Detect merge-commit state:
    - Set `merge_in_progress=true` when `git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1` succeeds.
    - This applies only to the merge commit Git is already preparing.
 

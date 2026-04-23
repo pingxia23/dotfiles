@@ -10,30 +10,20 @@ description: "Trigger this skill when implementation should start: if Codex/Clau
 Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> TODO breakdown -> implementation (uncommitted) -> iterative review/fix loop -> conditional `commit-smart` when `in_dd_scope=true`. Keep the loop focused on unresolved reviewer findings from prior local review rounds and stop only on reviewer approval plus the required completion step for the current repo scope, or max-rounds blocked output.
 
 ## Hard Rules
-
-- Never change the current git branch name.
-- Use `gh` for all GitHub interactions.
+- First, review the `# Global Rules` from your memory file and apply them before the skill-specific rules below.
 - Never use destructive cleanup commands (`git reset --hard`, `git checkout -- .`, `git clean -fd`).
-- Never resolve GitHub PR comments.
-- When you encounter a `no space left on device` failure, launch a fresh sub-agent and use the `disk-pressure-recovery` skill to reclaim disk space before continuing.
 - Approval definition: `approval` means reviewer JSON reports `findings=[]` and `overall_correctness="patch is correct"`, never user confirmation.
 - Autonomy rule: do not ask the user for approval or extra checkpoints during normal flow; only ask the user when blocked/stuck/failing.
-- Plan adherence rule: implement the approved plan as written. Do not add extra refactors, abstractions, dependency plumbing, cleanup, or opportunistic improvements unless they are strictly required to complete that plan.
-- Minimality rule: when the plan is underspecified, choose the smallest implementation that satisfies the plan instead of broadening scope.
-- If you discover a requirement that materially changes the plan, stop and report the gap rather than silently expanding the implementation.
 
 ## Workflow
 
 ### 1) Preflight
 
-1. Resolve the current branch: `branch="$(git rev-parse --abbrev-ref HEAD)"`.
-2. Resolve repo scope early: `eval "$("$HOME/dotfiles/scripts/git-context.sh")"`.
-   - The helper must provide: `inside_worktree`, `worktree_root`, `worktree_path`, `branch`, `repo`, `in_dd_scope`.
+1. Resolve repo scope and enforce the strict coding preflight:
+   - `eval "$("$HOME/dotfiles/scripts/coding-preflight.mjs")"`
+   - The helper must provide: `inside_worktree`, `worktree_root`, `worktree_path`, `branch`, `repo`, `in_dd_scope`, `origin_branch_ref`, `origin_branch_exists`, `local_ahead_count`, `origin_ahead_count`.
    - If helper exits non-zero, stop and report blocked status with helper stderr.
-3. If `branch` is `HEAD` (detached HEAD) and `in_dd_scope=true`, stop and ask the user — this skill requires a named branch for the commit flow in dd scope.
-4. Check whether an upstream exists: `git rev-parse --verify --quiet "refs/remotes/origin/$branch"`.
-   - If it does not exist (local-only branch), skip the divergence check and proceed.
-5. If the upstream exists and local `HEAD` has diverged from `origin/$branch` (each side has commits the other lacks), stop and ask the user.
+2. `cd "$worktree_root"` so subsequent commands run from a stable repo root.
 
 ### 2) Input contract
 
