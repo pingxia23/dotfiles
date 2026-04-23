@@ -155,12 +155,12 @@ Fix the failing dd-gitlab CI jobs for PR https://github.com/DataDog/dd-source/pu
   Trace file: /tmp/mosaic-ci-1620892229/job-1620892229.log
   Summary: This job only reported that an earlier stage failed; treat it as downstream fallout unless new evidence shows otherwise.
 ```
-
+<!--
 ### 4) Update the PR review guidance
 
 After all `dd-gitlab/*` checks pass, invoke `pr-review-guidance` with the same PR URL.
-
-### 5) Return final status
+-->
+### 4) Return final status
 
 Use one of:
 
