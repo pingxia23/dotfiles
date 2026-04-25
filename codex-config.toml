@@ -1,4 +1,4 @@
-model = "gpt-5.4"
+model = "gpt-5.5"
 model_reasoning_effort = "high"
 model_supports_reasoning_summaries = true
 approval_policy = "never"
@@ -24,6 +24,9 @@ url = "https://mcp.datad0g.com/api/unstable/mcp-server/mcp?toolsets=core,llmobs,
 [tui]
 theme = "catppuccin-macchiato"
 alternate_screen = "never"
+
+[tui.model_availability_nux]
+"gpt-5.5" = 1
 
 [projects."/Users/ping.xia/dotfiles"]
 trust_level = "trusted"

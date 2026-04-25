@@ -22,6 +22,8 @@ These rules apply to all projects and working directories.
 
 ## Python Code Style
 1. **ALWAYS** perfer top-level import than inline import
+2. Absolute imports only, never relative.
+3. Mock with `patch.object()` on imported modules, not long path strings.
 
 ## Bazel / bzl Commands
 
