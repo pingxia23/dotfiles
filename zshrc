@@ -142,19 +142,30 @@ delete-worktree() {
   fi
 
   local target="$HOME/dd/$feature"
+  local resolved_datadog_root=""
+  local resolved_target=""
+  local -a workspace_targets
+  workspace_targets=("$target")
+
+  if [[ -d "$HOME/dd" ]]; then
+    resolved_datadog_root="$(cd "$HOME/dd" && pwd -P)"
+    resolved_target="$resolved_datadog_root/$feature"
+    if [[ "$resolved_target" != "$target" ]]; then
+      workspace_targets+=("$resolved_target")
+    fi
+  fi
 
   if [[ ! -d "$target" ]]; then
     echo "Worktree directory does not exist: $target"
-    return 1
-  fi
+  else
+    # Kill tmux session if it exists
+    if command -v tmux >/dev/null 2>&1; then
+      tmux kill-session -t "$feature" 2>/dev/null
+    fi
 
-  # Kill tmux session if it exists
-  if command -v tmux >/dev/null 2>&1; then
-    tmux kill-session -t "$feature" 2>/dev/null
+    # Force remove the git worktree
+    git -C "$DD_SOURCE_ROOT" worktree remove --force "$target"
   fi
-
-  # Force remove the git worktree
-  git -C "$DD_SOURCE_ROOT" worktree remove --force "$target"
 
   # Delete Bazel output bases that belong to this worktree.
   local deleted=0
@@ -162,11 +173,20 @@ delete-worktree() {
   local marker=""
   local output_base=""
   local workspace_path=""
+  local expected_workspace_path=""
+  local matches_target=0
   for search_root in "$HOME/.cache/bazel" "$HOME/Library/Caches/bazel"; do
     [[ -d "$search_root" ]] || continue
     while IFS= read -r -d '' marker; do
       workspace_path="$(cat "$marker" 2>/dev/null || true)"
-      [[ "$workspace_path" == "$target" ]] || continue
+      matches_target=0
+      for expected_workspace_path in "${workspace_targets[@]}"; do
+        if [[ "$workspace_path" == "$expected_workspace_path" ]]; then
+          matches_target=1
+          break
+        fi
+      done
+      [[ "$matches_target" == "1" ]] || continue
       output_base="$(dirname "$marker")"
       chmod -R u+w "$output_base" 2>/dev/null || true
       rm -rf -- "$output_base"
