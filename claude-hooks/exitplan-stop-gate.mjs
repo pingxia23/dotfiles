@@ -8,11 +8,68 @@ import { fileURLToPath } from "node:url";
 
 const TAG = "[exitplan-gate]";
 const LOG_FILE = path.join(os.homedir(), ".claude", "hooks", "exitplan-stop-gate.log");
+const STATE_OWNER = typeof process.getuid === "function"
+  ? `uid-${process.getuid()}`
+  : `user-${os.userInfo().username.replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
+const STATE_DIR = path.join(os.tmpdir(), "claude-exitplan-stop-gate", STATE_OWNER);
+const MAX_CODEX_REVIEWS = 2;
 const log = (msg) => {
   const line = `${new Date().toISOString()} ${TAG} ${msg}\n`;
   process.stderr.write(line);
   try { fs.appendFileSync(LOG_FILE, line); } catch {}
 };
+
+function stateFileFor(sessionId, planFile) {
+  const stateKey = `${sessionId}:${planFile}`;
+  const stateHash = crypto.createHash("sha256").update(stateKey).digest("hex");
+  return path.join(STATE_DIR, `${stateHash}.json`);
+}
+
+function readReviewAttempts(stateFile) {
+  try {
+    if (!fs.existsSync(stateFile)) {
+      return 0;
+    }
+
+    const state = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+    return Number.isInteger(state?.attempts) && state.attempts > 0 ? state.attempts : 0;
+  } catch (e) {
+    log(`failed to read attempt state: ${e.message}; treating as no attempts`);
+    return 0;
+  }
+}
+
+function writeReviewAttempts(stateFile, sessionId, planFile, attempts) {
+  try {
+    fs.mkdirSync(path.dirname(stateFile), { recursive: true, mode: 0o700 });
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        attempts,
+        sessionId,
+        planFilePath: planFile,
+        updatedAt: new Date().toISOString(),
+      }),
+      "utf8"
+    );
+    log(`wrote attempt state: ${attempts}/${MAX_CODEX_REVIEWS}`);
+    return true;
+  } catch (e) {
+    log(`failed to write attempt state: ${e.message}`);
+    return false;
+  }
+}
+
+function clearReviewAttempts(stateFile) {
+  try {
+    if (fs.existsSync(stateFile)) {
+      fs.unlinkSync(stateFile);
+      log("cleared attempt state");
+    }
+  } catch (e) {
+    log(`failed to clear attempt state: ${e.message}`);
+  }
+}
 
 function reviewPlanWithCodex(prompt, reviewSchemaPath) {
   const authResult = spawnSync("codex", ["login", "status"], {
@@ -125,20 +182,26 @@ if (!planFile || !planContent?.trim()) {
 
 log(`plan file: ${planFile} (${planContent.length} chars)`);
 
-// ── 4. Hash dedup — skip if plan unchanged since last codex review ──
-const planHash = crypto.createHash("md5").update(planContent).digest("hex");
-const markerFile = `${planFile}.codex-reviewed`;
-
-if (fs.existsSync(markerFile)) {
-  const previousHash = fs.readFileSync(markerFile, "utf8").trim();
-  if (previousHash === planHash) {
-    log("plan unchanged since last review, removing marker and allowing");
-    try { fs.unlinkSync(markerFile); } catch {}
-    process.exit(0);
-  }
+// ── 4. Bound Codex review attempts by session + plan file ──
+const sessionId = input.session_id;
+if (!sessionId) {
+  log("no session_id, allowing");
+  process.exit(0);
 }
 
-log(`plan hash: ${planHash}`);
+const stateFile = stateFileFor(sessionId, planFile);
+log(`state file path: ${stateFile}`)
+const previousAttempts = readReviewAttempts(stateFile);
+
+if (previousAttempts >= MAX_CODEX_REVIEWS) {
+  const message = `Codex plan review already requested ${MAX_CODEX_REVIEWS} revisions for this plan; allowing user review.`;
+  log(message);
+  clearReviewAttempts(stateFile);
+  process.stdout.write(JSON.stringify({ systemMessage: message }));
+  process.exit(0);
+}
+
+log(`codex review attempt: ${previousAttempts + 1}/${MAX_CODEX_REVIEWS}`);
 
 // ── 6. Build context — extract last user message + last assistant message ──
 const transcriptLines = fs.readFileSync(transcriptPath, "utf8").trim().split("\n");
@@ -263,16 +326,9 @@ if (!review) {
   process.exit(0);
 }
 
-// ── 9. Write hash marker ──
-try {
-  fs.writeFileSync(markerFile, planHash, "utf8");
-  log("wrote hash marker");
-} catch (e) {
-  log(`failed to write hash marker: ${e.message}`);
-}
-
 if (review.verdict === "approve") {
   log("verdict: approve, proceeding to user approval");
+  clearReviewAttempts(stateFile);
   process.exit(0);
 }
 
@@ -281,6 +337,11 @@ if (review.verdict === "revise") {
     ? review.comments.map((c, i) => `${i + 1}. ${c}`).join("\n")
     : "No specific comments provided.";
   log(`verdict: revise (${review.comments.length} comments)`);
+  if (!writeReviewAttempts(stateFile, sessionId, planFile, previousAttempts + 1)) {
+    const message = "Codex requested plan revision, but retry state could not be persisted; allowing user review to avoid an unbounded retry loop.";
+    process.stdout.write(JSON.stringify({ systemMessage: message }));
+    process.exit(0);
+  }
   process.stderr.write(`Codex review comments on the plan:\n\n${feedback}\n\nAddress the review comments above, update the plan file, then retry ExitPlanMode.`);
   process.exit(2);
 }
