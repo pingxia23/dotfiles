@@ -26,7 +26,7 @@ theme = "catppuccin-macchiato"
 alternate_screen = "never"
 
 [tui.model_availability_nux]
-"gpt-5.5" = 1
+"gpt-5.5" = 4
 
 [projects."/Users/ping.xia/dotfiles"]
 trust_level = "trusted"

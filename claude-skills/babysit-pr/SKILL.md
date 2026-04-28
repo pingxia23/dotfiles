@@ -1,19 +1,19 @@
 ---
 name: babysit-pr
-description: "Babysit a GitHub PR from a PR URL: check whether merging the latest base branch would conflict, resolve and commit merge conflicts with `commit-smart` when needed, then loop on `dd-gitlab/*` CI checks until they pass; when concrete dd-gitlab jobs fail, classify the fetched Mosaic traces, merge the latest base when failures look external, and use `code-implement-loop` only for failures that are likely caused by the PR."
+description: "Babysit a GitHub PR from a PR URL: check whether merging the latest base branch would conflict, resolve and commit merge conflicts with `commit-smart` when needed, then loop on `dd-gitlab/*` CI checks until they pass; when concrete dd-gitlab jobs fail, classify the fetched Mosaic traces, merge the latest base when failures look external, use `code-implement-loop` only for failures that are likely caused by the PR, and update the PR body at the end."
 ---
 
 # Babysit PR
 
 ## Hard Rules
+
 - First, review the `# Global Rules` from your memory file and apply them before the skill-specific rules below.
 - Assume the current checkout is already on the correct PR branch and commit for the input PR. Validate that assumption and stop on mismatch.
 - Do not broaden scope beyond:
   - merge-conflict remediation against the latest PR base branch
   - fixing failing `dd-gitlab/*` CI jobs
-  - updating PR review guidance at the end
+  - updating the PR body at the end
 - Treat `dd-gitlab/default-pipeline` as a rollup check, not a concrete job trace source.
-
 
 ## Input Contract
 
@@ -119,9 +119,11 @@ dd_gitlab_checks_json="$(
 7. If there are no `fetchable_failed_jobs`, stop and report blocked status with the failing rollup checks. The skill cannot fetch logs for a rollup-only failure.
 8. For each job in `fetchable_failed_jobs`:
    - fetch the failure log with:
+
    ```bash
    node "$HOME/dotfiles/scripts/fetch-mosaic-ci-log.mjs" "<mosaic-link>"
    ```
+
    - treat the JSON returned by `fetch-mosaic-ci-log.mjs` as the source of truth for:
      - `web_url`: the GitLab job URL
      - `trace_file`: the local path to the fetched trace file
@@ -140,26 +142,34 @@ dd_gitlab_checks_json="$(
      - source fetch or checkout cleanup failures
      - runner or CI environment bootstrap failures
      - truncated logs with no concrete repo target, test, or command failure visible
+
 9. If **any** job in `fetchable_failed_jobs` is classified as `likely not caused by this PR`, do not invoke `code-implement-loop` yet. Remediate against the freshest base branch first:
-    - run:
-    ```bash
-    git fetch origin "$base_ref"
-    ```
-    - if the fetch fails, stop and report blocked status
-    - if the current branch already contains the freshly fetched `origin/$base_ref`, stop and report blocked status rather than retrying CI unchanged
-    - otherwise merge the freshly fetched base:
-    ```bash
-    git merge --no-ff "origin/$base_ref"
-    ```
-    - if the merge conflicts, resolve them with the smallest change that restores intended PR behavior
-    - run the minimum targeted verification needed for the merge or conflict resolution
-    - invoke `commit-smart` immediately to create or push the merge result
-    - after `commit-smart` completes, sleep for a fixed interval such as `60` seconds, then start the next loop iteration.
+   - run:
+
+   ```bash
+   git fetch origin "$base_ref"
+   ```
+
+   - if the fetch fails, stop and report blocked status
+   - if the current branch already contains the freshly fetched `origin/$base_ref`, stop and report blocked status rather than retrying CI unchanged
+   - otherwise merge the freshly fetched base:
+
+   ```bash
+   git merge --no-ff "origin/$base_ref"
+   ```
+
+   - if the merge conflicts, resolve them with the smallest change that restores intended PR behavior
+   - run the minimum targeted verification needed for the merge or conflict resolution
+   - invoke `commit-smart` immediately to create or push the merge result
+   - after `commit-smart` completes, sleep for a fixed interval such as `60` seconds, then start the next loop iteration.
+
 10. Hand off `fetchable_failed_jobs` that are still classified as `likely caused by this PR` to `code-implement-loop`. The handoff must include, for each such job:
-   - the PR URL
-   - the GitLab job URL from `web_url`
-   - the local trace file path from `trace_file`
-   - the failure summary extracted from the trace
+
+- the PR URL
+- the GitLab job URL from `web_url`
+- the local trace file path from `trace_file`
+- the failure summary extracted from the trace
+
 12. Invoke `code-implement-loop` with that raw failure context as the entire implementation scope.
 13. If `code-implement-loop` returns blocked status, propagate it and stop.
 14. If `code-implement-loop` succeeds, continue the loop and return to Step 3.1 to repoll the `dd-gitlab/*` checks.
@@ -176,16 +186,46 @@ Fix the failing dd-gitlab CI jobs for PR https://github.com/DataDog/dd-source/pu
   Summary: //domains/assistant/apps/apis/assistant_api:py_default_test failed because test_background_worker.py::test_run_command_agent_populates_background_worker_payload raised TypeError: object MagicMock can't be used in 'await' expression
 
 ```
-<!--
-### 4) Update the PR review guidance
 
-After all `dd-gitlab/*` checks pass, invoke `pr-review-guidance` with the same PR URL.
--->
-### 4) Return final status
+### 4) Update PR body
+
+After all `dd-gitlab/*` checks pass, review the entire PR change, not just commits or fixes made during this skill run:
+
+```bash
+gh pr view --repo "$repo" "$pr_url" --json title,body,commits,files
+gh pr diff --repo "$repo" "$pr_url"
+```
+
+Then update the PR body with:
+
+```bash
+gh pr edit --repo "$repo" "$pr_url" --body-file "<body-file>"
+```
+
+Build the PR body with this schema:
+
+```markdown
+## Problem
+
+<why this change is needed>
+
+## Approach
+
+<key implementation choices>
+```
+
+Use the PR title, existing body, commit list, changed files, and full PR diff to fill the sections concisely.
+
+**Focus on the high-level problem and approach**
+
+- Skip mechanical details such as added unit tests, renamed variables, changed function arguments, or other implementation minutiae unless they are essential to understanding the design.
+- The goal is to state the problem clearly and lay out the high-level approach so reviewers can review the PR efficiently.
+
+### 5) Return final status
 
 Use one of:
 
-- `SUCCESS: dd-gitlab checks green and PR review guidance updated | PR: <url>`
+- `SUCCESS: dd-gitlab checks green and PR body updated | PR: <url>`
 - `BLOCKED: merge conflict check failed | PR: <url> | Error: <summary>`
 - `BLOCKED: rollup-only dd-gitlab failure without fetchable jobs | PR: <url>`
 - `BLOCKED: external-looking dd-gitlab failure but branch already includes latest base | PR: <url>`

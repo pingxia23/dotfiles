@@ -105,17 +105,21 @@ Intent:
 5. If `pr_url` is empty, read latest commit context:
    - `latest_commit_body=$(git log -1 --pretty=%B)`
    - `git show --name-status --format=fuller --no-color HEAD`
-6. Build PR body for new PRs with this schema:
-   ```
+6. Build the PR body with this schema:
+   ```markdown
    ## Problem
+
    <why this change is needed>
 
    ## Approach
-   <key implementation choices>
 
-   ## Tests
-   <what was run and results>
+   <key implementation choices>
    ```
+
+   **Focus on the high-level problem and approach**
+
+   - Skip mechanical details such as added unit tests, renamed variables, changed function arguments, or other implementation minutiae unless they are essential to understanding the design.
+   - The goal is to state the problem clearly and lay out the high-level approach so reviewers can review the PR efficiently. 
 7. Build PR title for creation:
    - Start from your generated title candidate.
    - Ensure the title includes `[WIP]` exactly once (prepend if missing).
@@ -141,5 +145,4 @@ Intent:
 - Commit succeeded with hooks enabled
 - Push succeeded
 - Draft PR created or existing open PR reused (no update path)
-- Best-effort `@codex review` PR comment attempted, with exact failure output surfaced if it failed
 - PR link shared with user
