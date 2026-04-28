@@ -1,6 +1,6 @@
 ---
 name: babysit-pr
-description: "Babysit a GitHub PR from a PR URL: check whether merging the latest base branch would conflict, resolve and commit merge conflicts with `commit-smart` when needed, then loop on `dd-gitlab/*` CI checks until they pass; when concrete dd-gitlab jobs fail, classify the fetched Mosaic traces, merge the latest base when failures look external, use `code-implement-loop` only for failures that are likely caused by the PR, and update the PR body at the end."
+description: "Babysit a GitHub PR from a PR URL: check whether merging the latest base branch would conflict, resolve and commit merge conflicts with `commit-smart` when needed, then loop on `dd-gitlab/*` CI checks until they pass; when concrete dd-gitlab jobs fail, classify the fetched Mosaic traces, merge the latest base when failures look external, use `code-implement-loop` only for failures that are likely caused by the PR, update the PR body at the end, and best-effort trigger Codex review."
 ---
 
 # Babysit PR
@@ -13,6 +13,7 @@ description: "Babysit a GitHub PR from a PR URL: check whether merging the lates
   - merge-conflict remediation against the latest PR base branch
   - fixing failing `dd-gitlab/*` CI jobs
   - updating the PR body at the end
+  - best-effort triggering Codex PR review after checks are green
 - Treat `dd-gitlab/default-pipeline` as a rollup check, not a concrete job trace source.
 
 ## Input Contract
@@ -196,15 +197,19 @@ gh pr view --repo "$repo" "$pr_url" --json title,body,commits,files
 gh pr diff --repo "$repo" "$pr_url"
 ```
 
-Then update the PR body with:
+Only rewrite the PR body when the existing PR body starts with the hidden marker:
 
-```bash
-gh pr edit --repo "$repo" "$pr_url" --body-file "<body-file>"
+```html
+<!-- pr-body:v1 -->
 ```
 
-Build the PR body with this schema:
+If the existing PR body does not start with this marker, treat it as manually edited and skip the overwrite.
+
+Build the PR body with this schema. The marker must be the first line:
 
 ```markdown
+<!-- pr-body:v1 -->
+
 ## Problem
 
 <why this change is needed>
@@ -214,18 +219,42 @@ Build the PR body with this schema:
 <key implementation choices>
 ```
 
-Use the PR title, existing body, commit list, changed files, and full PR diff to fill the sections concisely.
+Use the PR title, existing marked body, commit list, changed files, and full PR diff to fill the sections concisely.
+
+Then update the PR body with:
+
+```bash
+gh pr edit --repo "$repo" "$pr_url" --body-file "<body-file>"
+```
 
 **Focus on the high-level problem and approach**
 
 - Skip mechanical details such as added unit tests, renamed variables, changed function arguments, or other implementation minutiae unless they are essential to understanding the design.
 - The goal is to state the problem clearly and lay out the high-level approach so reviewers can review the PR efficiently.
 
-### 5) Return final status
+### 5) Trigger Codex PR review (best effort)
+
+Post a fresh top-level PR comment:
+
+```bash
+gh pr comment --repo "$repo" "$pr_url" --body "@codex review"
+```
+
+Always create a new comment. Do not edit, reuse, or deduplicate prior trigger comments.
+
+If the comment command fails:
+
+- capture the exact CLI stderr/stdout
+- surface that output to the user as a warning
+- continue successfully if the `dd-gitlab/*` checks are green and the PR body step has already completed or been intentionally skipped
+
+### 6) Return final status
 
 Use one of:
 
-- `SUCCESS: dd-gitlab checks green and PR body updated | PR: <url>`
+- `SUCCESS: dd-gitlab checks green, PR body updated, and Codex review triggered | PR: <url>`
+- `SUCCESS: dd-gitlab checks green, PR body left unchanged because existing body is unmarked, and Codex review triggered | PR: <url>`
+- `SUCCESS: dd-gitlab checks green and PR body step completed, but Codex review trigger failed | PR: <url> | Warning: <exact gh error summary>`
 - `BLOCKED: merge conflict check failed | PR: <url> | Error: <summary>`
 - `BLOCKED: rollup-only dd-gitlab failure without fetchable jobs | PR: <url>`
 - `BLOCKED: external-looking dd-gitlab failure but branch already includes latest base | PR: <url>`
