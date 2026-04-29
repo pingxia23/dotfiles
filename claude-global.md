@@ -19,6 +19,8 @@ These rules apply to all projects and working directories.
 2. **ALWAYS** use `commit-smart` skill to commit
 3. **NEVER** commit without Git signing enabled. If a commit hangs, retry once. If it still does not work, stop and ask the user for help.
 
+## Plan Files
+- **Whenever the agent is about to present a proposed plan**, write the plan to a file in the `plans/` folder as well, so it can be viewed and commented on separately.
 
 ## Python Code Style
 1. **ALWAYS** perfer top-level import than inline import
