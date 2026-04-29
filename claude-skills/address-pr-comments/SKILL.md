@@ -1,6 +1,6 @@
 ---
 name: address-pr-comments
-description: "Process unresolved PR review threads from a PR URL, or focus on one direct top-level review URL: no-op when nothing remains, reply when enough, and send actionable links to `code-implement-loop`."
+description: "Process unresolved PR review threads from a PR URL, or focus on one direct top-level review URL: no-op when nothing remains, create a comment address plan, reply when enough, and send actionable links to `code-implement-loop`."
 ---
 
 # Address PR Comments
@@ -8,10 +8,12 @@ description: "Process unresolved PR review threads from a PR URL, or focus on on
 Process unresolved PR review threads for a pull request that is already checked out locally. If the input URL points to a specific top-level review summary, focus only on that review instead of scanning the whole PR.
 
 ## Hard Rules
+
 - First, review the `# Global Rules` from your memory file and apply them before the skill-specific rules below.
 - For a plain PR URL, inspect unresolved, non-outdated PR review threads.
 - For a direct `#pullrequestreview-{id}` URL, focus only on that one top-level review summary.
 - Ignore top-level PR conversation comments.
+- By default, stop at Step 5 and present the comment address plan to the user. Continue to the fixing steps only after the user approves the plan. If the user explicitly instructs the skill to auto-fix, do not stop at Step 5; continue directly to the fixing steps.
 - Do not add scope beyond the unresolved actionable review feedback.
 - Do not post follow-up replies after `code-implement-loop` finishes.
 
@@ -33,6 +35,7 @@ Process unresolved PR review threads for a pull request that is already checked 
 3. Use `repo` from the helper and pass `--repo "$repo"` to all direct `gh` commands.
 
 Purpose:
+
 - bind GitHub operations to the current checkout explicitly
 - keep local file reads and diffs anchored to the active repo
 
@@ -81,7 +84,26 @@ Use this rubric:
   - replying alone would overstate what has been fixed
   - the request is ambiguous; default here conservatively
 
+Before taking any action, create a comment address plan that covers every unresolved thread or direct top-level review in scope. Use this format for each item:
+
+```markdown
+## <comment-id-or-review-id> - <short title>
+
+Raw comment:
+<raw reviewer comment>
+
+Decision: reply_only | implementation_needed
+
+Reasoning:
+<why this classification is correct from the current code and PR state>
+
+Plan:
+<for reply_only, the exact reply to post; for implementation_needed, the concrete code, test, docs, or config changes needed>
+```
+
 ### 6) Reply to clarification-only items
+
+Do this step only after Step 5 has produced a comment address plan and either the user approved the plan or explicitly requested auto-fix.
 
 For each `reply_only` thread:
 
@@ -97,6 +119,8 @@ For a direct `reply_only` top-level review summary:
 3. Do not attempt to resolve anything.
 
 ### 7) Delegate actionable items
+
+Do this step only after Step 5 has produced a comment address plan and either the user approved the plan or explicitly requested auto-fix.
 
 If one or more items are `implementation_needed`:
 
