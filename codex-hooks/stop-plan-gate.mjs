@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const TAG = "[stop-plan-gate]";
@@ -14,6 +14,7 @@ const REVIEW_SCHEMA_PATH = path.join(
   "plan-review-output.schema.json",
 );
 const CLAUDE_BIN = process.env.CLAUDE_BIN || "claude";
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-opus-4-7[1m]";
 const CLAUDE_TIMEOUT_MS = 15 * 60 * 1000;
 const CODEX_BIN = process.env.CODEX_BIN || "codex";
 const CODEX_TIMEOUT_MS = 15 * 60 * 1000;
@@ -264,24 +265,122 @@ function loadReviewSchema() {
   }
 }
 
-function reviewPlanWithClaude(prompt, cwd, reviewSchema) {
+function spawnWithTimeout(command, args, options) {
+  return new Promise((resolve) => {
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    let timedOut = false;
+    let timeout = null;
+
+    const child = spawn(command, args, {
+      cwd: options.cwd,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+
+    const settle = (result) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+      resolve({
+        stdout,
+        stderr,
+        ...result,
+      });
+    };
+
+    timeout = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGTERM");
+      setTimeout(() => {
+        if (!settled) {
+          child.kill("SIGKILL");
+        }
+      }, 5_000).unref();
+    }, options.timeout);
+    timeout.unref();
+
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    child.on("error", (error) => {
+      settle({ status: null, signal: null, error });
+    });
+    child.on("close", (status, signal) => {
+      settle({
+        status,
+        signal,
+        error: timedOut
+          ? new Error(`timed out after ${options.timeout}ms`)
+          : null,
+      });
+    });
+  });
+}
+
+function isReviewObject(value) {
+  return (
+    value &&
+    typeof value === "object" &&
+    ["approve", "revise"].includes(value.verdict) &&
+    Array.isArray(value.comments)
+  );
+}
+
+function parseJsonObject(value) {
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseClaudeReviewOutput(output) {
+  const parsed = parseJsonObject(output);
+  if (!parsed) {
+    return null;
+  }
+
+  if (
+    parsed.structured_output &&
+    typeof parsed.structured_output === "object" &&
+    isReviewObject(parsed.structured_output)
+  ) {
+    return parsed.structured_output;
+  }
+
+  return null;
+}
+
+async function reviewPlanWithClaude(prompt, cwd, reviewSchema) {
   log(`running claude in cwd=${cwd}`);
-  const claudeResult = spawnSync(
+  const claudeResult = await spawnWithTimeout(
     CLAUDE_BIN,
     [
       "-p",
       "--model",
-      "claude-opus-4-7[1m]",
+      CLAUDE_MODEL,
       "--no-session-persistence",
       "--allowedTools",
       "Read,Write,Edit,Bash,Glob,Grep,WebFetch,WebSearch",
+      "--output-format",
+      "json",
       "--json-schema",
       reviewSchema,
       prompt,
     ],
     {
       cwd,
-      encoding: "utf8",
       timeout: CLAUDE_TIMEOUT_MS,
     },
   );
@@ -308,28 +407,7 @@ function reviewPlanWithClaude(prompt, cwd, reviewSchema) {
   const trimmed = (claudeResult.stdout || "").trim();
   log(`trimmed claude review output:\n${trimmed}`);
 
-  let review = null;
-  if (trimmed) {
-    const candidates = [trimmed];
-    const fencedMatch = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
-    if (fencedMatch?.[1]) {
-      candidates.unshift(fencedMatch[1].trim());
-    }
-
-    try {
-      for (const candidate of candidates) {
-        const parsed = JSON.parse(candidate);
-        if (
-          parsed &&
-          typeof parsed === "object" &&
-          typeof parsed.verdict === "string"
-        ) {
-          review = parsed;
-          break;
-        }
-      }
-    } catch {}
-  }
+  const review = parseClaudeReviewOutput(trimmed);
 
   if (
     !review ||
@@ -347,7 +425,7 @@ function reviewPlanWithClaude(prompt, cwd, reviewSchema) {
   return { review, reason: null };
 }
 
-function reviewPlanWithCodex(prompt, cwd) {
+async function reviewPlanWithCodex(prompt, cwd) {
   const authResult = spawnSync(CODEX_BIN, ["login", "status"], {
     cwd,
     encoding: "utf8",
@@ -379,7 +457,7 @@ function reviewPlanWithCodex(prompt, cwd) {
   );
 
   log(`running codex in cwd=${cwd}`);
-  const codexResult = spawnSync(
+  const codexResult = await spawnWithTimeout(
     CODEX_BIN,
     [
       "exec",
@@ -393,7 +471,6 @@ function reviewPlanWithCodex(prompt, cwd) {
     ],
     {
       cwd,
-      encoding: "utf8",
       timeout: CODEX_TIMEOUT_MS,
     },
   );
@@ -474,6 +551,47 @@ function buildRevisionPrompt(comments) {
   return `Revise the implementation plan before presenting it to the user.\n\nAddress these concrete review comments:\n${feedback}`;
 }
 
+function mergeReviewComments(reviews) {
+  const comments = [];
+  const seen = new Set();
+
+  for (const { reviewer, review } of reviews) {
+    if (!review || review.verdict !== "revise") {
+      continue;
+    }
+
+    for (const rawComment of review.comments) {
+      const comment = getText(rawComment);
+      if (!comment) {
+        continue;
+      }
+
+      const key = comment.toLowerCase().replace(/\s+/g, " ");
+      if (seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+      comments.push(`[${reviewer}] ${comment}`);
+    }
+  }
+
+  return comments;
+}
+
+function runReviewer(reviewer, reviewPromise) {
+  return reviewPromise
+    .then((result) => ({
+      reviewer,
+      ...result,
+    }))
+    .catch((error) => ({
+      reviewer,
+      review: null,
+      reason: `${reviewer.toLowerCase()} review failed: ${error.message}`,
+    }));
+}
+
 const payload = readPayload(process.argv.slice(2));
 if (!payload) {
   allow("failed to parse stop payload");
@@ -543,13 +661,38 @@ const cwd =
     ? input.cwd
     : os.homedir();
 
-const { review, reason } = reviewPlanWithCodex(prompt, cwd);
-if (!review) {
-  allow(reason || "invalid codex review output");
+const claudeReview = runReviewer(
+  "Claude",
+  reviewPlanWithClaude(prompt, cwd, reviewSchema),
+);
+const codexReview = runReviewer("Codex", reviewPlanWithCodex(prompt, cwd));
+const reviewerResults = await Promise.all([codexReview, claudeReview]);
+
+for (const { reviewer, review, reason } of reviewerResults) {
+  if (review) {
+    log(
+      `${reviewer} verdict: ${review.verdict} (${review.comments.length} comments)`,
+    );
+  } else {
+    log(`${reviewer} review unavailable: ${reason || "invalid review output"}`);
+  }
 }
 
-if (review.verdict === "approve") {
-  allow("review approved");
+const validReviews = reviewerResults.filter(({ review }) => review);
+if (validReviews.length === 0) {
+  allow(
+    reviewerResults
+      .map(
+        ({ reviewer, reason }) =>
+          `${reviewer}: ${reason || "invalid review output"}`,
+      )
+      .join("; "),
+  );
 }
 
-block(buildRevisionPrompt(review.comments));
+const revisionComments = mergeReviewComments(validReviews);
+if (revisionComments.length === 0) {
+  allow("all valid reviews approved");
+}
+
+block(buildRevisionPrompt(revisionComments));
