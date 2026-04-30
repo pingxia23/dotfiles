@@ -35,7 +35,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ~/.claude/hooks/exitplan-stop-gate.mjs",
+            "command": "node \"$HOME/dotfiles/scripts/plan-review/claude-exitplan-stop-gate.mjs\"",
             "timeout": 900
           }
         ]
