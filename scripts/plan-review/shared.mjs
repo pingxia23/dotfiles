@@ -3,7 +3,11 @@ import os from "node:os";
 import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 
-export const DEFAULT_REVIEW_TIMEOUT_MS = 15 * 60 * 1000;
+export const DEFAULT_REVIEW_TIMEOUT_MS = 10 * 60 * 1000;
+export const CLAUDE_REVIEW_MODEL = "claude-opus-4-7[1m]";
+export const CLAUDE_REVIEW_EFFORT = "xhigh";
+export const CODEX_REVIEW_MODEL = "gpt-5.5";
+export const CODEX_REVIEW_EFFORT = "high";
 
 export function getText(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -142,11 +146,17 @@ export async function reviewPlanWithClaude({
   log,
   timeout = DEFAULT_REVIEW_TIMEOUT_MS,
 }) {
-  log(`running claude in cwd=${cwd}`);
+  log(
+    `running claude in cwd=${cwd} model=${CLAUDE_REVIEW_MODEL} effort=${CLAUDE_REVIEW_EFFORT}`,
+  );
   const claudeResult = await spawnWithTimeout(
     "claude",
     [
       "-p",
+      "--model",
+      CLAUDE_REVIEW_MODEL,
+      "--effort",
+      CLAUDE_REVIEW_EFFORT,
       "--no-session-persistence",
       "--allowedTools",
       "Read,Write,Edit,Bash,Glob,Grep,WebFetch,WebSearch",
@@ -210,11 +220,6 @@ export async function reviewPlanWithCodex({
     encoding: "utf8",
     timeout: 15_000,
   });
-  log(
-    `codex auth exit=${authResult.status ?? "null"} signal=${
-      authResult.signal ?? "null"
-    } stderr_chars=${getText(authResult.stderr).length}`,
-  );
 
   if (authResult.error) {
     return {
@@ -237,11 +242,17 @@ export async function reviewPlanWithCodex({
     `${tempPrefix}-${Date.now()}-${process.pid}.json`,
   );
 
-  log(`running codex in cwd=${cwd}`);
+  log(
+    `running codex in cwd=${cwd} model=${CODEX_REVIEW_MODEL} effort=${CODEX_REVIEW_EFFORT}`,
+  );
   const codexResult = await spawnWithTimeout(
     "codex",
     [
       "exec",
+      "--model",
+      CODEX_REVIEW_MODEL,
+      "-c",
+      `model_reasoning_effort="${CODEX_REVIEW_EFFORT}"`,
       "--output-schema",
       reviewSchemaPath,
       "-o",

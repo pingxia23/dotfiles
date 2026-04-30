@@ -243,14 +243,6 @@ if (!latestTurnContext) {
   allow("skip empty latest turn context");
 }
 
-log(
-  `context: transcript=present entries=${transcriptEntries.length} plan_index=${
-    planMatch.index
-  } turn_bounds=${turnBounds.firstIndex}-${turnBounds.lastIndex} plan_chars=${
-    planContent.length
-  } user_chars=${latestUserRequest.length} turn_chars=${latestTurnContext.length}`,
-);
-
 const reviewSchema = loadReviewSchema(REVIEW_SCHEMA_PATH);
 if (!reviewSchema) {
   allow(`failed to load review schema from ${REVIEW_SCHEMA_PATH}`);

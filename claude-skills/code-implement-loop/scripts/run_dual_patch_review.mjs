@@ -12,6 +12,10 @@ export const PATCH_REVIEW_SCHEMA_PATH = path.join(
   "patch-review-output.schema.json",
 );
 export const DEFAULT_REVIEW_TIMEOUT_MS = 15 * 60 * 1000;
+export const CLAUDE_REVIEW_MODEL = "claude-opus-4-7[1m]";
+export const CLAUDE_REVIEW_EFFORT = "xhigh";
+export const CODEX_REVIEW_MODEL = "gpt-5.5";
+export const CODEX_REVIEW_EFFORT = "high";
 
 const REVIEWERS = ["Codex", "Claude"];
 const SCHEMA_REMINDER =
@@ -310,6 +314,10 @@ async function runClaudeReview({
     "claude",
     [
       "-p",
+      "--model",
+      CLAUDE_REVIEW_MODEL,
+      "--effort",
+      CLAUDE_REVIEW_EFFORT,
       "--no-session-persistence",
       "--allowedTools",
       "Read,Bash,Glob,Grep",
@@ -383,6 +391,10 @@ async function runCodexReview({
     "codex",
     [
       "exec",
+      "--model",
+      CODEX_REVIEW_MODEL,
+      "-c",
+      `model_reasoning_effort="${CODEX_REVIEW_EFFORT}"`,
       "--sandbox",
       "read-only",
       "--ephemeral",
