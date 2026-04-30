@@ -3,11 +3,6 @@ import os from "node:os";
 import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 
-export const DEFAULT_CLAUDE_BIN = process.env.CLAUDE_BIN || "claude";
-export const DEFAULT_CLAUDE_MODEL =
-  process.env.CLAUDE_MODEL || "claude-opus-4-7[1m]";
-export const DEFAULT_CODEX_BIN = process.env.CODEX_BIN || "codex";
-export const DEFAULT_CODEX_REASONING_EFFORT = "medium";
 export const DEFAULT_REVIEW_TIMEOUT_MS = 15 * 60 * 1000;
 
 export function getText(value) {
@@ -145,17 +140,13 @@ export async function reviewPlanWithClaude({
   cwd,
   reviewSchema,
   log,
-  claudeBin = DEFAULT_CLAUDE_BIN,
-  claudeModel = DEFAULT_CLAUDE_MODEL,
   timeout = DEFAULT_REVIEW_TIMEOUT_MS,
 }) {
   log(`running claude in cwd=${cwd}`);
   const claudeResult = await spawnWithTimeout(
-    claudeBin,
+    "claude",
     [
       "-p",
-      "--model",
-      claudeModel,
       "--no-session-persistence",
       "--allowedTools",
       "Read,Write,Edit,Bash,Glob,Grep,WebFetch,WebSearch",
@@ -211,12 +202,10 @@ export async function reviewPlanWithCodex({
   cwd,
   reviewSchemaPath,
   log,
-  codexBin = DEFAULT_CODEX_BIN,
-  reasoningEffort = DEFAULT_CODEX_REASONING_EFFORT,
   timeout = DEFAULT_REVIEW_TIMEOUT_MS,
   tempPrefix = "plan-review-codex",
 }) {
-  const authResult = spawnSync(codexBin, ["login", "status"], {
+  const authResult = spawnSync("codex", ["login", "status"], {
     cwd,
     encoding: "utf8",
     timeout: 15_000,
@@ -250,11 +239,9 @@ export async function reviewPlanWithCodex({
 
   log(`running codex in cwd=${cwd}`);
   const codexResult = await spawnWithTimeout(
-    codexBin,
+    "codex",
     [
       "exec",
-      "-c",
-      `model_reasoning_effort="${reasoningEffort}"`,
       "--output-schema",
       reviewSchemaPath,
       "-o",

@@ -7,12 +7,12 @@ description: "Trigger this skill when implementation should start: if Codex/Clau
 
 ## Overview
 
-Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> TODO breakdown -> implementation (uncommitted) -> iterative review/fix loop -> conditional `commit-smart` when `in_dd_scope=true`. Keep the loop focused on unresolved reviewer findings from prior local review rounds and stop only on reviewer approval plus the required completion step for the current repo scope, or max-rounds blocked output.
+Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> TODO breakdown -> implementation (uncommitted) -> iterative review/fix loop -> conditional `commit-smart` when `in_dd_scope=true`. Each review round evaluates the current patch fresh; stop only on reviewer approval plus the required completion step for the current repo scope, or max-rounds blocked output.
 
 ## Hard Rules
 - First, review the `# Global Rules` from your memory file and apply them before the skill-specific rules below.
 - Never use destructive cleanup commands (`git reset --hard`, `git checkout -- .`, `git clean -fd`).
-- Approval definition: `approval` means reviewer JSON reports `findings=[]` and `overall_correctness="patch is correct"`, never user confirmation.
+- Approval definition: `approval` means the reviewer script returns `status="approved"`, never user confirmation.
 - Autonomy rule: do not ask the user for approval or extra checkpoints during normal flow; only ask the user when blocked/stuck/failing.
 
 ## Workflow
@@ -90,48 +90,46 @@ Run a bounded loop with at most 2 rounds. Each round executes Steps 5a-5e below.
 
 #### 5b) Assemble Reviewer Inputs
 
-The reviewer sub-agent gathers the local uncommitted patch set itself. The orchestrator only resolves the implementation plan and supporting context.
+The reviewer script gathers and evaluates the local uncommitted patch set itself. The orchestrator only resolves the implementation plan and supporting context.
 
 1. Resolve `implementation_plan` from Step 2:
    - if the implementation input is a `.md` path, use the contents of that file
    - otherwise use the inline instruction text exactly as provided to the skill
-2. Include the remaining review inputs:
-   - unresolved findings ledger from prior passes
-   - `worktree_root` from Step 5a (so the reviewer can `cd` there before gathering the patch set)
+2. Include `worktree_root` from Step 5a so the reviewer script can `cd` there before gathering the patch set.
 
-#### 5c) Run Reviewer
+#### 5c) Run Reviewer Script
 
-1. Render the exact reviewer prompt through the shared helper:
+1. Run the reviewer script:
    ```bash
-   rendered_prompt="$(
-   node scripts/render_reviewer_prompt.mjs \
+   review_result="$(
+   node "$HOME/dotfiles/claude-skills/code-implement-loop/scripts/run_dual_patch_review.mjs" \
       --worktree-root "$worktree_root" \
-      --implementation-plan "$implementation_plan" \
-      --unresolved-findings-ledger "$unresolved_findings_ledger"
+      --implementation-plan "$implementation_plan"
    )"
    ```
-2. Do not hand-edit `rendered_prompt` after generation.
-3. Launch a fresh reviewer sub-agent with `rendered_prompt` as the exact prompt.
-4. The reviewer must return strict JSON only, matching the output schema embedded in `scripts/render_reviewer_prompt.mjs`, and evaluate the local uncommitted patch set against the implementation plan.
+2. Do not hand-edit `review_result`.
 
-#### 5d) Validate Reviewer Output
+#### 5d) Parse Reviewer Output
 
-1. Parse reviewer output as strict JSON with no markdown fences or extra prose.
-2. Validate exactly against the `OUTPUT FORMAT` schema embedded in `scripts/render_reviewer_prompt.mjs`.
-3. If output is malformed or schema-invalid, rerun the reviewer once with a schema reminder.
-4. If still invalid, stop and report blocked status with the invalid payload summary and validator errors.
+1. Parse `review_result` as strict JSON with no markdown fences or extra prose.
+2. The JSON must have:
+   - `status`: `approved`, `revise`, or `blocked`
+   - `findings`: actionable findings to fix, if any
+   - `overall_explanation`: short status explanation
+3. If `review_result` is not valid JSON or does not include these fields, stop and report blocked status with the raw output summary.
 
 #### 5e) Review/Fix Loop Control
 
-- If the reviewer output has `findings=[]` and `overall_correctness="patch is correct"`, stop the loop and proceed to the next step.
-- If the reviewer output has `findings=[]` and `overall_correctness="patch is incorrect"`, rerun the review pass once for consistency; if still inconsistent, stop and report blocked status.
-- If the reviewer output has findings, fix unresolved items only, prioritize by `priority` ascending (`0` -> `3`; unknown priority after known priorities), rerun targeted verification, update the unresolved findings ledger, and continue until approval or max rounds.
+- If `status="approved"`, stop the loop and proceed to the next step.
+- If `status="blocked"`, propagate that status without proceeding to commit.
+- If `status="revise"` and `findings` is empty, stop and report blocked status with the aggregate output because there is no actionable finding to fix.
+- If `status="revise"` has findings, fix those items only, prioritize by `priority` ascending (`0` -> `3`; unknown priority after known priorities), rerun targeted verification, and continue until approval or max rounds.
 - If a review round returns blocked status, propagate that status without proceeding to commit.
-- If not approved after `MAX_ROUNDS`, emit blocked status with unresolved findings and attempted fixes.
+- If not approved after `MAX_ROUNDS`, emit blocked status with current findings and attempted fixes.
 
 ### 6) Completion After Approval
 
-After the review loop returns approval (empty findings + correct patch verdict):
+After the review loop returns approval:
 
 - If `in_dd_scope=true`, immediately invoke `commit-smart` to commit and push changes.
 - If `in_dd_scope=false`, stop after reporting success and leave the approved changes uncommitted in the worktree.
@@ -152,7 +150,7 @@ Success format:
 
 Blocked format:
 
-`BLOCKED: Not approved after {MAX_ROUNDS} rounds | PR: {url} | Unresolved: {summary} | Attempts: {summary}`
+`BLOCKED: Not approved after {MAX_ROUNDS} rounds | PR: {url} | Findings: {summary} | Attempts: {summary}`
 
 or
 

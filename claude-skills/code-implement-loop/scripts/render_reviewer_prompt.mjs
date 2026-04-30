@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
-const REVIEWER_PROMPT_TEMPLATE = `# Reviewer Prompt
+import { fileURLToPath } from "node:url";
+
+export const REVIEWER_PROMPT_TEMPLATE = `# Reviewer Prompt
 
 You are reviewing a proposed code change made by another engineer.
 
@@ -37,7 +39,6 @@ If no issue clearly meets that bar, return no findings.
 Inputs provided directly:
 - Worktree root: {worktree_root}
 - Resolved implementation plan for this run: {implementation_plan}
-- Previously unresolved findings ledger: {unresolved_findings_ledger}
 
 
 Before reviewing, gather the local uncommitted patch set yourself:
@@ -86,14 +87,14 @@ For each finding:
 - \`P1\` / \`priority: 1\`: urgent issue that should be fixed in the next cycle
 - \`P2\` / \`priority: 2\`: normal bug to fix eventually
 
-If priority is unclear or lower then 2, omit \`priority\` or use \`null\`.
+If priority is unclear or lower then 2, set \`priority\` to \`null\`.
 
 ## Overall Verdict
 
 At the end, decide whether the patch is correct.
 
-- \`"patch is correct"\` means the patch is free of blocking bugs and should not break existing code or tests.
-- \`"patch is incorrect"\` means at least one blocking or correctness-relevant issue remains.
+- \`"correct"\` means the patch is free of blocking bugs and should not break existing code or tests.
+- \`"incorrect"\` means at least one blocking or correctness-relevant issue remains.
 
 Ignore non-blocking nits when choosing the overall verdict.
 
@@ -109,14 +110,14 @@ The JSON must match this schema exactly:
       "title": "<≤ 80 chars, imperative>",
       "body": "<valid Markdown explaining *why* this is a problem; cite files/lines/functions>",
       "confidence_score": <float 0.0-1.0>,
-      "priority": <int 0-3, optional>,
+      "priority": <int 0-3 or null>,
       "code_location": {
         "absolute_file_path": "<file path>",
         "line_range": {"start": <int>, "end": <int>}
       }
     }
   ],
-  "overall_correctness": "patch is correct" | "patch is incorrect",
+  "overall_correctness": "correct" | "incorrect",
   "overall_explanation": "<1-3 sentence explanation justifying the overall_correctness verdict>",
   "overall_confidence_score": <float 0.0-1.0>
 }
@@ -137,7 +138,6 @@ function parseArgs(argv) {
   const args = {
     worktreeRoot: null,
     implementationPlan: null,
-    unresolvedFindingsLedger: null,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -149,9 +149,6 @@ function parseArgs(argv) {
       i += 1;
     } else if (arg === "--implementation-plan") {
       args.implementationPlan = value;
-      i += 1;
-    } else if (arg === "--unresolved-findings-ledger") {
-      args.unresolvedFindingsLedger = value;
       i += 1;
     } else {
       throw new Error(`unknown argument: ${arg}`);
@@ -168,23 +165,26 @@ function parseArgs(argv) {
   return args;
 }
 
-function main() {
-  const args = parseArgs(process.argv.slice(2));
-
+export function renderReviewerPrompt(args) {
   const replacements = {
     "{worktree_root}": args.worktreeRoot,
     "{implementation_plan}": args.implementationPlan,
-    "{unresolved_findings_ledger}": args.unresolvedFindingsLedger ?? "",
   };
-  const pattern =
-    /\{worktree_root\}|\{implementation_plan\}|\{unresolved_findings_ledger\}/g;
+  const pattern = /\{worktree_root\}|\{implementation_plan\}/g;
 
-  const renderedPrompt = REVIEWER_PROMPT_TEMPLATE.replace(
+  return REVIEWER_PROMPT_TEMPLATE.replace(
     pattern,
     (match) => replacements[match]
   );
+}
+
+function main() {
+  const args = parseArgs(process.argv.slice(2));
+  const renderedPrompt = renderReviewerPrompt(args);
 
   process.stdout.write(renderedPrompt);
 }
 
-main();
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main();
+}
