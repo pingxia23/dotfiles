@@ -8,6 +8,7 @@ export const CLAUDE_REVIEW_MODEL = "claude-opus-4-7[1m]";
 export const CLAUDE_REVIEW_EFFORT = "xhigh";
 export const CODEX_REVIEW_MODEL = "gpt-5.5";
 export const CODEX_REVIEW_EFFORT = "high";
+export const CODEX_SERVICE_TIER = "fast";
 
 export function getText(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -215,11 +216,15 @@ export async function reviewPlanWithCodex({
   timeout = DEFAULT_REVIEW_TIMEOUT_MS,
   tempPrefix = "plan-review-codex",
 }) {
-  const authResult = spawnSync("codex", ["login", "status"], {
-    cwd,
-    encoding: "utf8",
-    timeout: 15_000,
-  });
+  const authResult = spawnSync(
+    "codex",
+    ["-c", `service_tier="${CODEX_SERVICE_TIER}"`, "login", "status"],
+    {
+      cwd,
+      encoding: "utf8",
+      timeout: 15_000,
+    },
+  );
 
   if (authResult.error) {
     return {
@@ -243,7 +248,7 @@ export async function reviewPlanWithCodex({
   );
 
   log(
-    `running codex in cwd=${cwd} model=${CODEX_REVIEW_MODEL} effort=${CODEX_REVIEW_EFFORT}`,
+    `running codex in cwd=${cwd} model=${CODEX_REVIEW_MODEL} effort=${CODEX_REVIEW_EFFORT} service_tier=${CODEX_SERVICE_TIER}`,
   );
   const codexResult = await spawnWithTimeout(
     "codex",
@@ -253,6 +258,8 @@ export async function reviewPlanWithCodex({
       CODEX_REVIEW_MODEL,
       "-c",
       `model_reasoning_effort="${CODEX_REVIEW_EFFORT}"`,
+      "-c",
+      `service_tier="${CODEX_SERVICE_TIER}"`,
       "--output-schema",
       reviewSchemaPath,
       "-o",

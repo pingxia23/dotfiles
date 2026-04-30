@@ -7,6 +7,8 @@ import { fileURLToPath } from "node:url";
 import { renderReviewerPrompt } from "./render_reviewer_prompt.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const TAG = "[dual-patch-review]";
+const LOG_FILE = path.join(SCRIPT_DIR, "run-dual-patch-review.log");
 export const PATCH_REVIEW_SCHEMA_PATH = path.join(
   SCRIPT_DIR,
   "patch-review-output.schema.json",
@@ -16,6 +18,7 @@ export const CLAUDE_REVIEW_MODEL = "claude-opus-4-7[1m]";
 export const CLAUDE_REVIEW_EFFORT = "xhigh";
 export const CODEX_REVIEW_MODEL = "gpt-5.5";
 export const CODEX_REVIEW_EFFORT = "high";
+export const CODEX_SERVICE_TIER = "fast";
 
 const REVIEWERS = ["Codex", "Claude"];
 const SCHEMA_REMINDER =
@@ -23,6 +26,13 @@ const SCHEMA_REMINDER =
 
 function getText(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function log(message) {
+  const line = `${new Date().toISOString()} ${TAG} ${message}\n`;
+  try {
+    fs.appendFileSync(LOG_FILE, line);
+  } catch {}
 }
 
 function parseArgs(argv) {
@@ -310,6 +320,9 @@ async function runClaudeReview({
   reviewSchema,
   timeout = DEFAULT_REVIEW_TIMEOUT_MS,
 }) {
+  log(
+    `running claude in cwd=${cwd} model=${CLAUDE_REVIEW_MODEL} effort=${CLAUDE_REVIEW_EFFORT}`,
+  );
   const result = await spawnWithTimeout(
     "claude",
     [
@@ -329,6 +342,11 @@ async function runClaudeReview({
     ],
     { cwd, timeout },
   );
+  log(
+    `claude exit=${result.status ?? "null"} signal=${
+      result.signal ?? "null"
+    } stderr_chars=${getText(result.stderr).length}`,
+  );
 
   if (result.error) {
     return {
@@ -345,8 +363,16 @@ async function runClaudeReview({
     };
   }
 
-  const parsed = parseClaudePatchReviewOutput((result.stdout || "").trim());
+  const output = (result.stdout || "").trim();
+  log(`trimmed claude review output:\n${output}`);
+
+  const parsed = parseClaudePatchReviewOutput(output);
   if (!parsed.review) {
+    log(
+      `invalid claude review stdout=${JSON.stringify(
+        (result.stdout || "").slice(0, 500),
+      )}`,
+    );
     return {
       review: null,
       reason: `invalid claude review output: ${parsed.errors.join("; ")}`,
@@ -362,6 +388,7 @@ async function runCodexReview({
   reviewSchemaPath,
   timeout = DEFAULT_REVIEW_TIMEOUT_MS,
 }) {
+  log(`checking codex auth in cwd=${cwd}`);
   const authResult = spawnSync("codex", ["login", "status"], {
     cwd,
     encoding: "utf8",
@@ -387,6 +414,9 @@ async function runCodexReview({
     os.tmpdir(),
     `code-implement-loop-codex-review-${Date.now()}-${process.pid}.json`,
   );
+  log(
+    `running codex in cwd=${cwd} model=${CODEX_REVIEW_MODEL} effort=${CODEX_REVIEW_EFFORT} service_tier=${CODEX_SERVICE_TIER} output=${tmpFile}`,
+  );
   const result = await spawnWithTimeout(
     "codex",
     [
@@ -395,6 +425,8 @@ async function runCodexReview({
       CODEX_REVIEW_MODEL,
       "-c",
       `model_reasoning_effort="${CODEX_REVIEW_EFFORT}"`,
+      "-c",
+      `service_tier="${CODEX_SERVICE_TIER}"`,
       "--sandbox",
       "read-only",
       "--ephemeral",
@@ -405,6 +437,11 @@ async function runCodexReview({
       prompt,
     ],
     { cwd, timeout },
+  );
+  log(
+    `codex exit=${result.status ?? "null"} signal=${
+      result.signal ?? "null"
+    } stderr_chars=${getText(result.stderr).length}`,
   );
 
   if (result.error) {
@@ -442,8 +479,11 @@ async function runCodexReview({
     } catch {}
   }
 
+  log(`trimmed codex review output:\n${output}`);
+
   const parsed = parseCodexPatchReviewOutput(output);
   if (!parsed.review) {
+    log(`invalid codex review stdout=${JSON.stringify(output.slice(0, 500))}`);
     return {
       review: null,
       reason: `invalid codex review output: ${parsed.errors.join("; ")}`,
@@ -453,10 +493,20 @@ async function runCodexReview({
   return { review: parsed.review, reason: null };
 }
 
-export async function runReviewerWithRetries({ reviewer, runReview, prompt }) {
+export async function runReviewerWithRetries({
+  reviewer,
+  runReview,
+  prompt,
+}) {
   let result = await runReview(prompt);
 
   if (!result.review) {
+    log(
+      `${reviewer} review attempt 1 unavailable: ${
+        result.reason || "invalid review output"
+      }`,
+    );
+    log(`${reviewer} review attempt 2 launched with schema reminder`);
     result = await runReview(`${prompt}${SCHEMA_REMINDER}`);
   }
 
@@ -465,6 +515,7 @@ export async function runReviewerWithRetries({ reviewer, runReview, prompt }) {
     result.review.findings.length === 0 &&
     result.review.overall_correctness === "incorrect"
   ) {
+    log(`${reviewer} review consistency retry launched`);
     const rerun = await runReview(`${prompt}${SCHEMA_REMINDER}`);
     if (
       !rerun.review ||
@@ -479,6 +530,14 @@ export async function runReviewerWithRetries({ reviewer, runReview, prompt }) {
       };
     }
     result = rerun;
+  }
+
+  if (result.review) {
+    log(
+      `${reviewer} verdict: ${result.review.overall_correctness} (${result.review.findings.length} findings)`,
+    );
+  } else {
+    log(`${reviewer} review unavailable: ${result.reason || "invalid review output"}`);
   }
 
   return { reviewer, ...result };
@@ -558,11 +617,13 @@ export async function runDualPatchReview({
   reviewSchema = fs.readFileSync(reviewSchemaPath, "utf8").trim(),
   timeout = DEFAULT_REVIEW_TIMEOUT_MS,
 }) {
+  log(`worktree_root=${worktreeRoot}`);
   const prompt = renderReviewerPrompt({
     worktreeRoot,
     implementationPlan,
   });
 
+  log("reviewers launched: Codex, Claude");
   const claudeReview = runReviewerWithRetries({
     reviewer: "Claude",
     prompt,
@@ -587,7 +648,9 @@ export async function runDualPatchReview({
   });
 
   const results = await Promise.all([codexReview, claudeReview]);
-  return aggregatePatchReviews(results);
+  const aggregate = aggregatePatchReviews(results);
+  log(`aggregate status=${aggregate.status}`);
+  return aggregate;
 }
 
 async function main() {
