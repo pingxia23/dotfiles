@@ -87,16 +87,40 @@ For each finding:
 - \`P1\` / \`priority: 1\`: urgent issue that should be fixed in the next cycle
 - \`P2\` / \`priority: 2\`: normal bug to fix eventually
 
-If priority is unclear or lower then 2, set \`priority\` to \`null\`.
+If priority is unclear or lower than P2, omit the finding.
+
+### Examples Of Lower-Severity Concerns To Omit
+
+Only P0, P1, and P2 bugs count as findings. Do not return lower-severity
+concerns at all.
+
+Do not report examples like these:
+
+- "This should be more defensive" is not a finding when the existing callers,
+  types, schema, or surrounding code already guarantee the value is valid.
+- "This could break with malformed input" is not a finding when that input
+  cannot reach this code path without bypassing an existing parser, validator,
+  authorization check, or documented caller contract.
+- "This message/name/comment/log could be clearer" is not a finding when the
+  issue does not change runtime behavior.
+- "This could be simpler/faster/more idiomatic" is not a finding unless the
+  patch introduced a measurable regression or a concrete maintainability bug.
+- "This should add validation/fallback/cleanup/telemetry/compatibility handling"
+  is not a finding unless the implementation plan or existing surrounding
+  patterns require it.
+
+These concerns must not appear in \`findings\` and must not affect
+\`overall_correctness\`.
 
 ## Overall Verdict
 
 At the end, decide whether the patch is correct.
 
-- \`"correct"\` means the patch is free of blocking bugs and should not break existing code or tests.
-- \`"incorrect"\` means at least one blocking or correctness-relevant issue remains.
+- \`"correct"\` means the patch has no P0, P1, or P2 findings.
+- \`"incorrect"\` means at least one P0, P1, or P2 finding remains.
 
-Ignore non-blocking nits when choosing the overall verdict.
+Ignore sub-P2 concerns when choosing the overall verdict. If the patch has only
+sub-P2 concerns, return \`findings: []\` and \`overall_correctness: "correct"\`.
 
 ## Output Format
 
@@ -110,7 +134,7 @@ The JSON must match this schema exactly:
       "title": "<≤ 80 chars, imperative>",
       "body": "<valid Markdown explaining *why* this is a problem; cite files/lines/functions>",
       "confidence_score": <float 0.0-1.0>,
-      "priority": <int 0-3 or null>,
+      "priority": <int 0-2>,
       "code_location": {
         "absolute_file_path": "<file path>",
         "line_range": {"start": <int>, "end": <int>}

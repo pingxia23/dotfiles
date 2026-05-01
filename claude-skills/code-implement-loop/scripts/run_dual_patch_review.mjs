@@ -82,6 +82,38 @@ function hasOnlyKeys(value, allowedKeys) {
   return Object.keys(value).every((key) => allowed.has(key));
 }
 
+function isActionablePriority(priority) {
+  return Number.isInteger(priority) && priority >= 0 && priority <= 2;
+}
+
+export function normalizePatchReview(review) {
+  const findings = review.findings.filter((finding) =>
+    isActionablePriority(finding.priority),
+  );
+  const overallCorrectness = findings.length > 0 ? "incorrect" : "correct";
+  let overallExplanation = review.overall_explanation;
+
+  if (overallCorrectness !== review.overall_correctness) {
+    overallExplanation =
+      findings.length > 0
+        ? "P0-P2 findings were returned."
+        : "No P0-P2 findings were returned.";
+  }
+
+  return {
+    ...review,
+    findings,
+    overall_correctness: overallCorrectness,
+    overall_explanation: overallExplanation,
+  };
+}
+
+function normalizeReviewResult(result) {
+  return result.review
+    ? { ...result, review: normalizePatchReview(result.review) }
+    : result;
+}
+
 export function validatePatchReview(value) {
   const errors = [];
 
@@ -135,6 +167,8 @@ export function validatePatchReview(value) {
       ) {
         errors.push(`${prefix}.confidence_score must be a number from 0 to 1`);
       }
+      // The generation schema only permits P0-P2, but accept legacy lower
+      // severities here so they can be discarded before aggregation.
       if (!("priority" in finding)) {
         errors.push(`${prefix}.priority is required`);
       } else if (
@@ -214,7 +248,7 @@ function parsePatchReviewObject(value) {
     return { review: null, errors: validation.errors };
   }
 
-  return { review: value, errors: [] };
+  return { review: normalizePatchReview(value), errors: [] };
 }
 
 export function parseCodexPatchReviewOutput(output) {
@@ -498,7 +532,7 @@ export async function runReviewerWithRetries({
   runReview,
   prompt,
 }) {
-  let result = await runReview(prompt);
+  let result = normalizeReviewResult(await runReview(prompt));
 
   if (!result.review) {
     log(
@@ -507,7 +541,9 @@ export async function runReviewerWithRetries({
       }`,
     );
     log(`${reviewer} review attempt 2 launched with schema reminder`);
-    result = await runReview(`${prompt}${SCHEMA_REMINDER}`);
+    result = normalizeReviewResult(
+      await runReview(`${prompt}${SCHEMA_REMINDER}`),
+    );
   }
 
   if (
@@ -516,7 +552,9 @@ export async function runReviewerWithRetries({
     result.review.overall_correctness === "incorrect"
   ) {
     log(`${reviewer} review consistency retry launched`);
-    const rerun = await runReview(`${prompt}${SCHEMA_REMINDER}`);
+    const rerun = normalizeReviewResult(
+      await runReview(`${prompt}${SCHEMA_REMINDER}`),
+    );
     if (
       !rerun.review ||
       (rerun.review.findings.length === 0 &&
@@ -556,7 +594,7 @@ export function aggregatePatchReviews(results) {
       });
       reviews[reviewer] = null;
     } else {
-      reviews[reviewer] = result.review;
+      reviews[reviewer] = normalizePatchReview(result.review);
     }
   }
 
