@@ -29,7 +29,7 @@ Create or update a top-level review-guidance comment for a GitHub pull request.
 Run:
 
 ```bash
-"$HOME/dotfiles/scripts/fetch-pr-context.sh" "<pr-url>"
+node "$HOME/dotfiles/scripts/fetch-pr-context.mjs" "<pr-url>"
 ```
 
 The script prints JSON with:
@@ -107,7 +107,7 @@ Guidance rules:
 Pipe the final comment body into:
 
 ```bash
-"$HOME/dotfiles/claude-skills/pr-review-guidance/scripts/upsert_review_guidance_comment.sh" "<pr-url>" -
+node "$HOME/dotfiles/claude-skills/pr-review-guidance/scripts/upsert_review_guidance_comment.mjs" "<pr-url>" -
 ```
 
 The script will:

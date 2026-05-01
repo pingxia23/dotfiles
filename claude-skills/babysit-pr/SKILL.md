@@ -1,6 +1,6 @@
 ---
 name: babysit-pr
-description: "Babysit a GitHub PR from a PR URL: check whether merging the latest base branch would conflict, resolve and commit merge conflicts with `commit-smart` when needed, then loop on `dd-gitlab/*` CI checks until they pass; when concrete dd-gitlab jobs fail, classify the fetched Mosaic traces, merge the latest base when failures look external, use `code-implement-loop` only for failures that are likely caused by the PR, update the PR body at the end, and best-effort trigger Codex review."
+description: "Babysit a GitHub PR from a PR URL: check whether merging the latest base branch would conflict, resolve and commit merge conflicts with `commit-smart` when needed, then loop on `dd-gitlab/*` CI checks until they pass; when concrete dd-gitlab jobs fail, classify the fetched Mosaic traces, merge the latest base when failures look external, use `code-implement-loop` only for failures that are likely caused by the PR, update the PR body at the end, and run PR reviews."
 ---
 
 # Babysit PR
@@ -13,7 +13,7 @@ description: "Babysit a GitHub PR from a PR URL: check whether merging the lates
   - merge-conflict remediation against the latest PR base branch
   - fixing failing `dd-gitlab/*` CI jobs
   - updating the PR body at the end
-  - best-effort triggering Codex PR review after checks are green
+  - parallel Codex and Claude PR reviews after checks are green
 - Treat `dd-gitlab/default-pipeline` as a rollup check, not a concrete job trace source.
 
 ## Input Contract
@@ -34,7 +34,7 @@ description: "Babysit a GitHub PR from a PR URL: check whether merging the lates
 3. Load PR context with:
 
 ```bash
-pr_ctx_json="$("$HOME/dotfiles/scripts/fetch-pr-context.sh" "<pr-url>")"
+pr_ctx_json="$(node "$HOME/dotfiles/scripts/fetch-pr-context.mjs" "<pr-url>")"
 ```
 
 4. Parse from `pr_ctx_json`:
@@ -239,29 +239,38 @@ Update the marked body by splicing new generated content into the existing body:
 - Skip mechanical details such as added unit tests, renamed variables, changed function arguments, or other implementation minutiae unless they are essential to understanding the design.
 - The goal is to state the problem clearly and lay out the high-level approach so reviewers can review the PR efficiently.
 
-### 5) Trigger Codex PR review (best effort)
+### 5) Run dual PR review and update PR (best effort)
 
-Post a fresh top-level PR comment:
+Run the bundled helper:
 
 ```bash
-gh pr comment --repo "$repo" "$pr_url" --body "@codex review"
+review_result="$(
+  node "$HOME/dotfiles/claude-skills/babysit-pr/scripts/run_dual_pr_review.mjs" \
+    --worktree-root "$worktree_root" \
+    --repo "$repo" \
+    --pr-number "$pr_number" \
+    --pr-url "$pr_url" \
+    --base-ref "$base_ref"
+)"
 ```
 
-Always create a new comment. Do not edit, reuse, or deduplicate prior trigger comments.
+Parse `review_result` as JSON:
 
-If the comment command fails:
+- `status`: `approved`, `revise`, or `error`
+- `reviewers`: reviewer status map
+- `review_file`: local review artifact path, when available
+- `review_comment`: PR comment upsert result, when available
+- `error`: summary of review or comment publication errors, when present
 
-- capture the exact CLI stderr/stdout
-- surface that output to the user as a warning
-- continue successfully if the `dd-gitlab/*` checks are green and the PR body step has already completed or been intentionally skipped
+Do not block on any Step 5 result, including `status=="error"` or invalid JSON. Carry the parsed result or raw helper output into the final status only.
 
 ### 6) Return final status
 
 Use one of:
 
-- `SUCCESS: dd-gitlab checks green, PR body updated, and Codex review triggered | PR: <url>`
-- `SUCCESS: dd-gitlab checks green, PR body left unchanged because existing body is unmarked, and Codex review triggered | PR: <url>`
-- `SUCCESS: dd-gitlab checks green and PR body step completed, but Codex review trigger failed | PR: <url> | Warning: <exact gh error summary>`
+- `SUCCESS: dd-gitlab checks green, PR body updated, and review summary comment upserted | PR: <url>`
+- `SUCCESS: dd-gitlab checks green, PR body left unchanged because existing body is unmarked, and review summary comment upserted | PR: <url>`
+- `SUCCESS: dd-gitlab checks green and PR body step completed, but review summary comment was not upserted | PR: <url> | Warning: <exact review or upsert error summary>`
 - `BLOCKED: merge conflict check failed | PR: <url> | Error: <summary>`
 - `BLOCKED: rollup-only dd-gitlab failure without fetchable jobs | PR: <url>`
 - `BLOCKED: external-looking dd-gitlab failure but branch already includes latest base | PR: <url>`
