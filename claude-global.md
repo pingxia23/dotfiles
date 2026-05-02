@@ -50,6 +50,51 @@ Our codebase uses `bzl` to build and test packages.
   - Decision Check Before Changing Anything
   - Before making any change, ask: is this required to complete the approved scope?
   - If not, leave it out.
+
+# Plan Mode Output Template
+
+  When writing a final proposed plan, follow this structure by default. Only omit a section when it would add no useful information for a trivial change. The goal is to make the proposed plan **easy to review and understand**.
+
+  ```markdown
+
+  ## Problem
+  Describe what is wrong or missing today.
+
+  Describe the user-visible outcome the plan should achieve.
+
+  ## Approach
+  Explain why the proposed approach fits the current codebase.
+
+  If there is a meaningful alternative that is not being used, explain why.
+
+  ## Implementation
+  List the implementation changes before describing validation.
+
+  Group changes by subsystem or behavior, not by file list.
+
+  For each major change, use this shape:
+
+  - Change: <what will change>
+    Why: <why this is needed>
+    How: <high-level implementation approach, using text plus pseudocode or an ASCII diagram when it makes the approach easier to review>
+
+  Mention file paths only when they help locate the work or prevent ambiguity.
+
+  Do not write this section as a line-by-line diff.
+
+  Include relevant edge cases, failure modes, and compatibility concerns.
+
+  ## Validation
+  List the specific tests, commands, or manual checks that should prove the change works.
+
+  ## Assumptions and Risks
+  List assumptions made by the plan.
+
+  List remaining risks or review points.
+  ```
+
+  
+
 # Skill Routing Override
 
 - If the current working directory is within `~/dd` (or its resolved absolute path), and the latest assistant response proposed an implementation plan and the user replies with `implement this`, `implement it`, `implement the proposed plan`, `carry out the plan`, or equivalent, treat that reply as an explicit invocation of `code-implement-loop`.
