@@ -67,6 +67,12 @@ Our codebase uses `bzl` to build and test packages.
 
   If there is a meaningful alternative that is not being used, explain why.
 
+  For any factual claim about existing behavior, caching, performance, safety, or why a change can be avoided, include hard evidence from the repo when available. Cite concrete files, symbols, tests, or observed command output. Do not use words like "likely", "probably", or "should be fine" as justification unless they are explicitly marked as assumptions or risks.
+
+  When evidence exists, state both:
+  - Evidence: <specific code path, file, symbol, test, or command output>
+  - Conclusion: <what that evidence proves, and any remaining inference>
+
   ## Implementation
   List the implementation changes before describing validation.
 
