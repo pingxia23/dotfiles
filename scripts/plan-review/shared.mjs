@@ -451,6 +451,12 @@ export function buildReviewInstructions(reviewSchema) {
   When verdict is "revise", each comment must describe exactly one concrete issue.
 </structured_output_contract>
 
+<plan_pseudocode_rules>
+  Treat code blocks and snippets in the plan as illustrative pseudocode unless the plan explicitly says they are exact code to copy.
+  Review pseudocode for design clarity, behavioral correctness, data shape, edge cases, and integration points.
+  Do not flag pseudocode for syntax, imports, exact API names, formatting, or compile correctness unless those details create ambiguity, imply incorrect behavior, or would likely mislead implementation.
+</plan_pseudocode_rules>
+
 <grounding_rules>
 Ground every comment in repository files or tool outputs you inspected.
 Verify file paths exist and code patterns match before flagging an issue.

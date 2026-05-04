@@ -7,7 +7,17 @@ WIKI_ROOT="$VAULT_ROOT/wiki"
 WIKI_SOURCES_DIR="$WIKI_ROOT/sources"
 WIKI_TOPICS_DIR="$WIKI_ROOT/topics"
 REVIEW_SCRIPT="$HOME/dotfiles/scripts/wiki-review.py"
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+LOG_FILE="${SCRIPT_DIR}/wiki-update.log"
 LOG_PREFIX="[wiki-update]"
+
+timestamp_output() {
+  while IFS= read -r line; do
+    printf '%s %s\n' "$(/bin/date '+%Y-%m-%dT%H:%M:%S%z')" "$line" | tee -a "$LOG_FILE"
+  done
+}
+
+exec > >(timestamp_output) 2>&1
 
 log() {
   printf '%s %s\n' "$LOG_PREFIX" "$1"
@@ -16,6 +26,8 @@ log() {
 log_error() {
   printf '%s %s\n' "$LOG_PREFIX" "$1" >&2
 }
+
+log "Logging to ${LOG_FILE}"
 
 usage() {
   cat <<'EOF'

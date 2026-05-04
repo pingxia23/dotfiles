@@ -76,7 +76,7 @@ Our codebase uses `bzl` to build and test packages.
 
   - Change: <what will change>
     Why: <why this is needed>
-    How: <high-level implementation approach, using text plus pseudocode or an ASCII diagram when it makes the approach easier to review>
+    How: <high-level implementation approach, preferring pseudocode or an ASCII diagram when it makes the approach easier to review>
 
   Mention file paths only when they help locate the work or prevent ambiguity.
 

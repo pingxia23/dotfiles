@@ -4,8 +4,20 @@ set -euo pipefail
 # --- Config ---
 CHANNEL_ID="C08V7DFTUMS"
 DIGEST_DIR="$HOME/Documents/obsidian/Digests"
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+LOG_FILE="${SCRIPT_DIR}/slack-digest.log"
 LOG_PREFIX="[slack-digest]"
 DIGEST_REVIEW_FOOTER="- [ ] Review AI slack digest ${YESTERDAY:-} 📅 ${YESTERDAY:-}"
+
+timestamp_output() {
+  while IFS= read -r line; do
+    printf '%s %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$line" | tee -a "$LOG_FILE"
+  done
+}
+
+exec > >(timestamp_output) 2>&1
+
+echo "${LOG_PREFIX} Logging to ${LOG_FILE}"
 
 contains_rejected_output() {
   local file="$1"
