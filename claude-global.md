@@ -74,21 +74,18 @@ Our codebase uses `bzl` to build and test packages.
   - Conclusion: <what that evidence proves, and any remaining inference>
 
   ## Implementation
-  List the implementation changes before describing validation.
+  Describe the implementation changes before validation.
 
-  Group changes by subsystem or behavior, not by file list.
-
-  For each major change, use this shape:
-
+  For each major change, use this format:
   - Change: <what will change>
     Why: <why this is needed>
-    How: <high-level implementation approach, preferring pseudocode or an ASCII diagram when it makes the approach easier to review>
+    How: <high-level implementation approach, using pseudocode or an ASCII diagram whenever possible>
 
-  Mention file paths only when they help locate the work or prevent ambiguity.
-
-  Do not write this section as a line-by-line diff.
-
-  Include relevant edge cases, failure modes, and compatibility concerns.
+  Rules:
+  - Group changes by subsystem or behavior, not by file list.
+  - **Strongly** prefer pseudocode or ASCII diagrams for non-trivial logic, data flow, sequencing, or state transitions.
+  - Mention file paths only when they help locate the work or remove ambiguity.
+  - Do not describe the plan as a line-by-line diff.
 
   ## Validation
   List the specific tests, commands, or manual checks that should prove the change works.
