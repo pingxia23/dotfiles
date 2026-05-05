@@ -28,7 +28,7 @@ description: "Babysit the GitHub PR associated with the current branch: check wh
 3. Load the PR associated with the current branch:
 
 ```bash
-if ! pr_meta_json="$(gh pr view --repo "$repo" --json number,url,baseRefName,headRefName,headRefOid)"; then
+if ! pr_meta_json="$(gh pr view --repo "$repo" "$branch" --json number,url,baseRefName,headRefName,headRefOid)"; then
   echo "FAILED: current branch has no associated PR"
   exit 1
 fi
