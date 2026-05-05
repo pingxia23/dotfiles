@@ -12,7 +12,7 @@ Create or update a top-level review-guidance comment for a GitHub pull request.
 - First, review the `# Global Rules` from your memory file and apply them before the skill-specific rules below.
 - Accept exactly one GitHub PR URL.
 - Do not rely on a local checkout.
-- Only update comments owned by this skill marker: `<!-- pr-review-guidance:v1 -->`.
+- Only update comments owned by this skill marker: `<!-- ping-xia-pr-review-guidance:v1 -->`.
 - Never delete or replace unmarked comments.
 - Do not post a draft as a reply or review-thread comment; use a normal top-level PR comment.
 
@@ -69,7 +69,7 @@ Build an actual model of behavior, data flow, risk, and review hotspots. Do not 
 The comment body must begin with the hidden marker:
 
 ```html
-<!-- pr-review-guidance:v1 -->
+<!-- ping-xia-pr-review-guidance:v1 -->
 ```
 
 Then use this visible structure:
@@ -78,6 +78,7 @@ Then use this visible structure:
 ## PR Summary & Review Guide
 
 ### What this PR does
+
 ...
 
 **Key changes, in dependency order:**

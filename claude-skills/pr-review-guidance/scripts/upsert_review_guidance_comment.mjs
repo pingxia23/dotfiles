@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
-const MARKER = "<!-- pr-review-guidance:v1 -->";
+const MARKER = "<!-- ping-xia-pr-review-guidance:v1 -->";
 
 function fail(message) {
   console.error(message);
@@ -13,7 +13,9 @@ function fail(message) {
 }
 
 function usage() {
-  fail(`Usage: ${path.basename(process.argv[1] ?? "upsert_review_guidance_comment.mjs")} <pr-url> [body|-]`);
+  fail(
+    `Usage: ${path.basename(process.argv[1] ?? "upsert_review_guidance_comment.mjs")} <pr-url> [body|-]`,
+  );
 }
 
 function readBody(argv) {
@@ -30,7 +32,12 @@ function main() {
   }
 
   const body = readBody(args);
-  const sharedScript = path.join(homedir(), "dotfiles", "scripts", "upsert_pr_comment.mjs");
+  const sharedScript = path.join(
+    homedir(),
+    "dotfiles",
+    "scripts",
+    "upsert_pr_comment.mjs",
+  );
   const result = spawnSync(
     process.execPath,
     [sharedScript, "--pr-url", args[0], "--marker", MARKER, "--body", body],

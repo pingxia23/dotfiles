@@ -5,7 +5,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
-const MARKER = "<!-- pr-review-summary:v1 -->";
+const MARKER = "<!-- ping-xia-pr-review-summary:v1 -->";
 
 function fail(message) {
   console.error(message);
@@ -13,16 +13,27 @@ function fail(message) {
 }
 
 function usage() {
-  fail(`Usage: ${path.basename(process.argv[1] ?? "upsert_review_summary_comment.mjs")} --pr-url <url> --review-file <file>`);
+  fail(
+    `Usage: ${path.basename(process.argv[1] ?? "upsert_review_summary_comment.mjs")} --pr-url <url> --review-file <file>`,
+  );
 }
 
 function runSharedUpsert(prUrl, body) {
-  const sharedScript = path.join(homedir(), "dotfiles", "scripts", "upsert_pr_comment.mjs");
+  const sharedScript = path.join(
+    homedir(),
+    "dotfiles",
+    "scripts",
+    "upsert_pr_comment.mjs",
+  );
   try {
-    return execFileSync(process.execPath, [sharedScript, "--pr-url", prUrl, "--marker", MARKER, "--body", body], {
-      encoding: "utf8",
-      stdio: ["pipe", "pipe", "pipe"],
-    });
+    return execFileSync(
+      process.execPath,
+      [sharedScript, "--pr-url", prUrl, "--marker", MARKER, "--body", body],
+      {
+        encoding: "utf8",
+        stdio: ["pipe", "pipe", "pipe"],
+      },
+    );
   } catch (error) {
     const stderr = error.stderr?.toString?.() ?? "";
     const stdout = error.stdout?.toString?.() ?? "";
@@ -65,7 +76,10 @@ function main() {
   if (!existsSync(args.reviewFile)) {
     fail(`Review file does not exist: ${args.reviewFile}`);
   }
-  if (!statSync(args.reviewFile).isFile() || statSync(args.reviewFile).size === 0) {
+  if (
+    !statSync(args.reviewFile).isFile() ||
+    statSync(args.reviewFile).size === 0
+  ) {
     fail(`Review file must not be empty: ${args.reviewFile}`);
   }
 

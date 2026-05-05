@@ -11,6 +11,7 @@ Perform a deterministic smart-commit workflow.
 - For pre-commit hook failures, inspect, fix, and retry until commit succeeds
 
 ## Step 0: Preflight
+
 1. Resolve repo scope and enforce the strict coding preflight:
    - `eval "$("$HOME/dotfiles/scripts/coding-preflight.mjs")"`
    - The helper must provide: `inside_worktree`, `worktree_root`, `worktree_path`, `branch`, `repo`, `in_dd_scope`, `origin_branch_ref`, `origin_branch_exists`, `local_ahead_count`, `origin_ahead_count`.
@@ -21,6 +22,7 @@ Perform a deterministic smart-commit workflow.
    - This applies only to the merge commit Git is already preparing.
 
 ## Step 1: Run Tests For Affected Packages (Disabled - handled by pre-commit)
+
 <!--
 0. Scope gate:
    - Apply this step ONLY when `in_dd_scope=true`.
@@ -42,6 +44,7 @@ Perform a deterministic smart-commit workflow.
 -->
 
 ## Step 2: Stage And Review Changes
+
 1. Stage changes while excluding working artifacts:
    ```bash
    git add -A -- ':(top,exclude)designs/' ':(top,exclude)plans/' ':(top,exclude)exploration/'
@@ -51,11 +54,13 @@ Perform a deterministic smart-commit workflow.
 3. If nothing is staged, stop and inform the user.
 
 ## Step 3: Compose Commit Message
+
 1. do not use `--no-verify` unless the user explicitly asks.
 2. If `merge_in_progress=false`, write a message that:
    - Explains why the change is needed.
    - Uses a concise subject and optional body.
    - commit using HEREDOC:
+
    ```bash
    git commit -m "$(cat <<'EOF'
    <subject>
@@ -66,34 +71,40 @@ Perform a deterministic smart-commit workflow.
    ```
 
 ## Step 4: Fix Pre-commit Failures Until Commit Succeeds
+
 If `git commit` fails due to hooks:
-  1. Parse hook output and identify the failing check.
-  2. Always preserve the full failed commit output for inspection before deciding the next action.
-  3. In dd-scope, treat the failure as Bazel disk pressure if either of these is true:
-     - the captured commit output contains any of:
-       - `No space left on device`
-       - `ENOSPC`
-       - `Disk quota exceeded`
-     - the hook failed in a Bazel-related phase (`bzl`, `bazel`, `sandbox`, `test.log`, `output base`, `tests failed`) and the agent can find any of the same disk-pressure strings in nearby Bazel log output or recent Bazel stderr/test logs
-     - Do not require the disk-pressure string and Bazel path text to appear on the same line.
-  4. If the failure matches the Bazel disk-pressure case:
-     - Follow the hard rule above: launch a fresh sub-agent and use the `disk-pressure-recovery` skill before retrying the commit.
-     - Retry the commit after the recovery step completes.
-     - For non-merge commits, do NOT use `--no-verify` unless the user explicitly asks you to use it.
-     - Do NOT use `bzl clean` for this issue.
-  5. If the failure is not a Bazel disk-pressure case, fix issues in code/config/message, re-stage, retry.
-  6. Repeat until `git commit` succeeds.
-  7. Stop only for external blockers (auth/network/tool outage) or when the same disk-pressure failure persists after the recovery step; report exact output in either case.
+
+1. Parse hook output and identify the failing check.
+2. Always preserve the full failed commit output for inspection before deciding the next action.
+3. In dd-scope, treat the failure as Bazel disk pressure if either of these is true:
+   - the captured commit output contains any of:
+     - `No space left on device`
+     - `ENOSPC`
+     - `Disk quota exceeded`
+   - the hook failed in a Bazel-related phase (`bzl`, `bazel`, `sandbox`, `test.log`, `output base`, `tests failed`) and the agent can find any of the same disk-pressure strings in nearby Bazel log output or recent Bazel stderr/test logs
+   - Do not require the disk-pressure string and Bazel path text to appear on the same line.
+4. If the failure matches the Bazel disk-pressure case:
+   - Follow the hard rule above: launch a fresh sub-agent and use the `disk-pressure-recovery` skill before retrying the commit.
+   - Retry the commit after the recovery step completes.
+   - For non-merge commits, do NOT use `--no-verify` unless the user explicitly asks you to use it.
+   - Do NOT use `bzl clean` for this issue.
+5. If the failure is not a Bazel disk-pressure case, fix issues in code/config/message, re-stage, retry.
+6. Repeat until `git commit` succeeds.
+7. Stop only for external blockers (auth/network/tool outage) or when the same disk-pressure failure persists after the recovery step; report exact output in either case.
 
 ## Step 5: Push
+
 1. Push after successful commit:
    - `git push`
 2. If push fails, stop and show exact error output.
 
 ## Step 6: Create Draft PR Only If Missing (WIP Title)
+
 Intent:
+
 - Create a new draft PR only when no open PR exists for the current branch.
 - If an open PR already exists for the branch, skip PR creation step and do not edit title/body/state.
+
 1. Confirm GitHub auth if needed:
    - `gh auth status`
 2. IMPORTANT: Pass `--repo "$repo"` to all `gh pr` commands in this step to avoid cwd/worktree/symlink repo-resolution failures.
@@ -106,8 +117,9 @@ Intent:
    - `latest_commit_body=$(git log -1 --pretty=%B)`
    - `git show --name-status --format=fuller --no-color HEAD`
 6. Build the PR body with this schema. The body must begin with the hidden marker:
+
    ```markdown
-   <!-- pr-body:v1 -->
+   <!-- ping-xia-pr-body:v1 -->
 
    ## Problem
 
@@ -119,9 +131,9 @@ Intent:
    ```
 
    **Focus on the high-level problem and approach**
-
    - Skip mechanical details such as added unit tests, renamed variables, changed function arguments, or other implementation minutiae unless they are essential to understanding the design.
-   - The goal is to state the problem clearly and lay out the high-level approach so reviewers can review the PR efficiently. 
+   - The goal is to state the problem clearly and lay out the high-level approach so reviewers can review the PR efficiently.
+
 7. Build PR title for creation:
    - Start from your generated title candidate.
    - Ensure the title includes `[WIP]` exactly once (prepend if missing).
@@ -131,6 +143,7 @@ Intent:
 9. Ensure `pr_url` is populated before returning success.
 
 ## Completion Checklist
+
 - Tests passed (or correctly skipped when out of `~/dd` scope or no applicable code-test targets)
 - Commit succeeded with hooks enabled
 - Push succeeded

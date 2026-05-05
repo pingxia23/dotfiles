@@ -1,6 +1,6 @@
 ---
 name: babysit-pr
-description: "Babysit a GitHub PR from a PR URL: check whether merging the latest base branch would conflict, resolve and commit merge conflicts with `commit-smart` when needed, then loop on `dd-gitlab/*` CI checks until they pass; when concrete dd-gitlab jobs fail, classify the fetched Mosaic traces, merge the latest base when failures look external, use `code-implement-loop` only for failures that are likely caused by the PR, update the PR body at the end, and run PR reviews."
+description: "Babysit the GitHub PR associated with the current branch: check whether merging the latest base branch would conflict, resolve and commit merge conflicts with `commit-smart` when needed, then loop on `dd-gitlab/*` CI checks until they pass; when concrete dd-gitlab jobs fail, classify the fetched Mosaic traces, merge the latest base when failures look external, use `code-implement-loop` only for failures that are likely caused by the PR, update the PR body at the end, and run PR reviews."
 ---
 
 # Babysit PR
@@ -8,19 +8,13 @@ description: "Babysit a GitHub PR from a PR URL: check whether merging the lates
 ## Hard Rules
 
 - First, review the `# Global Rules` from your memory file and apply them before the skill-specific rules below.
-- Assume the current checkout is already on the correct PR branch and commit for the input PR. Validate that assumption and stop on mismatch.
+- Infer the PR from the current branch with `gh`, then validate that local state matches the inferred PR.
 - Do not broaden scope beyond:
   - merge-conflict remediation against the latest PR base branch
   - fixing failing `dd-gitlab/*` CI jobs
   - updating the PR body at the end
   - parallel Codex and Claude PR reviews after checks are green
 - Treat `dd-gitlab/default-pipeline` as a rollup check, not a concrete job trace source.
-
-## Input Contract
-
-- Input: one PR URL such as `https://github.com/DataDog/dd-source/pull/406053`
-- If the URL is missing or malformed, stop and return:
-  - `FAILED: provide a PR URL`
 
 ## Workflow
 
@@ -31,27 +25,33 @@ description: "Babysit a GitHub PR from a PR URL: check whether merging the lates
    - The helper must provide: `inside_worktree`, `worktree_root`, `worktree_path`, `branch`, `repo`, `in_dd_scope`, `origin_branch_ref`, `origin_branch_exists`, `local_ahead_count`, `origin_ahead_count`.
    - If helper exits non-zero, stop and report blocked status with helper stderr.
 2. `cd "$worktree_root"`.
-3. Load PR context with:
+3. Load the PR associated with the current branch:
 
 ```bash
-pr_ctx_json="$(node "$HOME/dotfiles/scripts/fetch-pr-context.mjs" "<pr-url>")"
+if ! pr_meta_json="$(gh pr view --repo "$repo" --json number,url,baseRefName,headRefName,headRefOid)"; then
+  echo "FAILED: current branch has no associated PR"
+  exit 1
+fi
 ```
 
-4. Parse from `pr_ctx_json`:
-   - `repo`
+4. Parse from `pr_meta_json`:
    - `pr_number`
    - `pr_url`
-5. Load the current PR refs:
+   - `base_ref`
+   - `head_ref`
+   - `head_sha`
 
 ```bash
-pr_meta_json="$(gh pr view --repo "$repo" "$pr_number" --json baseRefName,headRefName,headRefOid,url)"
+pr_number="$(jq -r '.number' <<<"$pr_meta_json")"
+pr_url="$(jq -r '.url' <<<"$pr_meta_json")"
 base_ref="$(jq -r '.baseRefName' <<<"$pr_meta_json")"
 head_ref="$(jq -r '.headRefName' <<<"$pr_meta_json")"
 head_sha="$(jq -r '.headRefOid' <<<"$pr_meta_json")"
 ```
 
-6. Confirm the current checkout matches the PR you were given:
-   - `repo` from the helper must equal the PR repo
+If `pr_url` is empty or `null`, stop and return `FAILED: current branch has no associated PR`.
+
+5. Confirm the current checkout matches the inferred PR:
    - `branch` from the helper must equal `head_ref`
    - `git rev-parse HEAD` must equal `head_sha`
    - if any check fails, stop and report the mismatch
@@ -200,7 +200,7 @@ gh pr diff --repo "$repo" "$pr_url"
 Only update the PR body when the existing PR body starts with the hidden marker:
 
 ```html
-<!-- pr-body:v1 -->
+<!-- ping-xia-pr-body:v1 -->
 ```
 
 If the existing PR body does not start with this marker, treat it as manually edited and skip the PR body update.
@@ -217,22 +217,27 @@ Update the marked body by splicing new generated content into the existing body:
    - If a line exactly matching `## Approach` exists, replace that full section. The section starts at `## Approach` and ends immediately before the next `## ` heading, or at end of body.
    - If it does not exist, create a new `## Approach` section immediately after the `## Problem` section.
 6. The `## Problem` section must be:
+
    ```markdown
    ## Problem
 
    <why this change is needed>
    ```
+
 7. The `## Approach` section must be:
+
    ```markdown
    ## Approach
 
    <key implementation choices>
    ```
+
 8. Leave every byte outside those two managed sections unchanged. Do not edit, reorder, remove, or regenerate any other section or content.
 9. Then update the PR body with:
-  ```bash
-  gh pr edit --repo "$repo" "$pr_url" --body-file "<body-file>"
-  ```
+
+```bash
+gh pr edit --repo "$repo" "$pr_url" --body-file "<body-file>"
+```
 
 **Focus on the high-level problem and approach**
 
