@@ -197,26 +197,29 @@ gh pr view --repo "$repo" "$pr_url" --json title,body,commits,files
 gh pr diff --repo "$repo" "$pr_url"
 ```
 
-Only update the PR body when the existing PR body starts with the hidden marker:
+Only update the PR body when either:
+- the existing PR body is empty
+- the existing PR body starts with the hidden marker:
 
 ```html
 <!-- ping-xia-pr-body:v1 -->
 ```
 
-If the existing PR body does not start with this marker, treat it as manually edited and skip the PR body update.
+If the existing PR body is non-empty and does not start with this marker, treat it as manually edited and skip the PR body update.
 
-Update the marked body by splicing new generated content into the existing body:
+Update the managed body by splicing new generated content into the existing body:
 
-1. Keep the original body as the base text. Do not regenerate the whole body from scratch.
-2. Locate level-2 section headings with lines that start with `## `.
-3. Generate new content only for the managed `## Problem` and `## Approach` sections, using the PR title, existing marked body, commit list, changed files, and full PR diff.
-4. Upsert the `## Problem` section:
+1. If the existing PR body is empty, initialize the base text to the hidden marker followed by a blank line.
+2. Otherwise, keep the original body as the base text. Do not regenerate the whole body from scratch.
+3. Locate level-2 section headings with lines that start with `## `.
+4. Generate new content only for the managed `## Problem` and `## Approach` sections, using the PR title, managed body, commit list, changed files, and full PR diff.
+5. Upsert the `## Problem` section:
    - If a line exactly matching `## Problem` exists, replace that full section. The section starts at `## Problem` and ends immediately before the next `## ` heading, or at end of body.
    - If it does not exist, create a new `## Problem` section after the marker and any immediately following blank lines.
-5. Upsert the `## Approach` section:
+6. Upsert the `## Approach` section:
    - If a line exactly matching `## Approach` exists, replace that full section. The section starts at `## Approach` and ends immediately before the next `## ` heading, or at end of body.
    - If it does not exist, create a new `## Approach` section immediately after the `## Problem` section.
-6. The `## Problem` section must be:
+7. The `## Problem` section must be:
 
    ```markdown
    ## Problem
@@ -224,7 +227,7 @@ Update the marked body by splicing new generated content into the existing body:
    <why this change is needed>
    ```
 
-7. The `## Approach` section must be:
+8. The `## Approach` section must be:
 
    ```markdown
    ## Approach
@@ -232,8 +235,8 @@ Update the marked body by splicing new generated content into the existing body:
    <key implementation choices>
    ```
 
-8. Leave every byte outside those two managed sections unchanged. Do not edit, reorder, remove, or regenerate any other section or content.
-9. Then update the PR body with:
+9. Leave every byte outside those two managed sections unchanged. Do not edit, reorder, remove, or regenerate any other section or content.
+10. Then update the PR body with:
 
 ```bash
 gh pr edit --repo "$repo" "$pr_url" --body-file "<body-file>"
