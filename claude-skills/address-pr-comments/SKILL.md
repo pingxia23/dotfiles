@@ -90,7 +90,7 @@ Use this rubric:
   - no code, test, docs, or config change is needed
 - `implementation_needed`:
   - the reviewer requests or clearly implies a code, test, docs, or config change
-  - replying alone would overstate what has been fixed
+  - the reviewer calls out future work, a follow-up PR, an optional/non-blocking improvement, or a longer-term TODO; address this by adding a concise TODO comment in the relevant code path instead of implementing the future work in the current PR
   - the request is ambiguous; default here conservatively
 
 Before taking any action, create a comment address plan that covers every unresolved thread or direct top-level review in scope. Use this format for each item:
@@ -107,7 +107,7 @@ Reasoning:
 <why this classification is correct from the current code and PR state>
 
 Plan:
-<for reply_only, the exact reply to post; for implementation_needed, the concrete code, test, docs, or config changes needed>
+<for reply_only, the exact reply to post; for implementation_needed, the concrete code, test, docs, or config changes needed. For future-work comments, identify where the TODO comment should be added and what it should say.>
 ```
 
 Approval gate:
@@ -144,6 +144,7 @@ If one or more items are `implementation_needed`:
    - for a direct top-level review, use the input URL
 2. Invoke `code-implement-loop` once with those URLs as the entire implementation scope.
 3. Do not restate the requests or add broader work items if the links already identify the actionable unresolved feedback.
+4. If an item is actionable only because it requests future work, include the approved plan text for that item in the `code-implement-loop` handoff so the implementation scope is limited to adding the TODO comment, not implementing the future work.
 
 Example input to `code-implement-loop`:
 
