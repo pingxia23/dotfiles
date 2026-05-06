@@ -17,6 +17,12 @@ Process unresolved PR review threads for a pull request that is already checked 
 - Without `--auto-fix`, always stop after Step 5 and present the comment address plan to the user. The user may request plan revisions multiple times. Never proceed to Step 6 until the user explicitly approves the current plan.
 - Do not add scope beyond the unresolved actionable review feedback.
 - Do not post follow-up replies after `code-implement-loop` finishes.
+- Every GitHub reply or PR comment posted by this skill must start with exactly:
+
+```text
+AI generated Comment
+<actual comment>
+```
 
 ## Input Contract
 
@@ -107,7 +113,7 @@ Reasoning:
 <why this classification is correct from the current code and PR state>
 
 Plan:
-<for reply_only, the exact reply to post; for implementation_needed, the concrete code, test, docs, or config changes needed. For future-work comments, identify where the TODO comment should be added and what it should say.>
+<for reply_only, the exact prefixed reply to post; for implementation_needed, the concrete code, test, docs, or config changes needed. For future-work comments, identify where the TODO comment should be added and what it should say.>
 ```
 
 Approval gate:
@@ -125,15 +131,17 @@ Do this step only after Step 5 has produced a comment address plan and either th
 For each `reply_only` thread:
 
 1. Draft a concise factual reply.
-2. Reply with:
+2. Prefix the reply body with `AI generated Comment` on the first line, followed by the actual reply text on the next line.
+3. Reply with:
    - `"$HOME/dotfiles/claude-skills/address-pr-comments/scripts/reply_to_review_thread.sh" "$repo" "<pr-number>" "<last-comment-id>" "<reply-body>"`
-3. Do not resolve the thread.
+4. Do not resolve the thread.
 
 For a direct `reply_only` top-level review summary:
 
 1. Draft a concise factual reply.
-2. Post a normal PR comment that references the input review URL.
-3. Do not attempt to resolve anything.
+2. Prefix the comment body with `AI generated Comment` on the first line, followed by the actual comment text on the next line.
+3. Post a normal PR comment that references the input review URL.
+4. Do not attempt to resolve anything.
 
 ### 7) Delegate actionable items
 
