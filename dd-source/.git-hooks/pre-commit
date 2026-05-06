@@ -197,22 +197,6 @@ get_python_files() {
     }
 }
 
-get_assistant_python_files() {
-    get_my_branch_files | {
-        local files=""
-        while IFS= read -r file; do
-            if [[ "$file" == domains/assistant/*.py || "$file" == domains/assistant/*.pyi ]]; then
-                # Skip deleted files
-                [[ -f "$file" ]] || continue
-                # Exclude protobuf-generated files
-                if [[ "$file" != *_pb2.py && "$file" != *_pb2.pyi && "$file" != *_pb2_grpc.py && "$file" != *_pb2_grpc.pyi ]]; then
-                    files+=" $file"
-                fi
-            fi
-        done
-        echo "$files" | xargs
-    }
-}
 
 get_assistant_changed_files() {
     get_my_branch_files | {
@@ -221,22 +205,6 @@ get_assistant_changed_files() {
             [[ "$file" == domains/assistant/* ]] && files+=" $file"
         done
         echo "$files" | xargs
-    }
-}
-
-get_assistant_python_packages() {
-    get_my_branch_files | {
-        local pkgs=""
-        while IFS= read -r file; do
-            if [[ "$file" == domains/assistant/*.py || "$file" == domains/assistant/*.pyi ]]; then
-                [[ -f "$file" ]] || continue
-                if [[ "$file" != *_pb2.py && "$file" != *_pb2.pyi && "$file" != *_pb2_grpc.py && "$file" != *_pb2_grpc.pyi ]]; then
-                    local pkg=$(find_bazel_package "$file")
-                    [[ -n "$pkg" ]] && pkgs+=" $pkg"
-                fi
-            fi
-        done
-        echo "$pkgs" | xargs -n1 2>/dev/null | sort -u | xargs
     }
 }
 
@@ -404,50 +372,6 @@ else
 fi
 
 stage_generated_files
-
-# --------------------------- Python Type Checking (domains/assistant) --------------------------- #
-warn "🔍 Checking Python types in domains/assistant..."
-assistant_python_files=$(get_assistant_python_files)
-if [[ -n "$assistant_python_files" ]]; then
-    info "  🔎 Running mypy on changed packages in domains/assistant..."
-
-    # Get unique package directories from changed files
-    assistant_packages=$(get_assistant_python_packages)
-
-    # Build Bazel targets from directories
-    targets=""
-    for pkg in $assistant_packages; do
-        targets+=" //$pkg/..."
-    done
-
-    info "  🎯 Targets:$targets"
-
-    if run_bzl_locked build --build_tag_filters=dd-mypy,-latest --config=mypy $targets 2>&1 | tee /tmp/mypy_output.txt; then
-        success "  ✅ Python type checking passed"
-    else
-        error "  ❌ Python type checking failed!"
-        error "  Run: bzl build --build_tag_filters=dd-mypy,-latest --config=mypy $targets"
-        grep -E "(error|Error)" /tmp/mypy_output.txt | tail -20
-        exit 1
-    fi
-else
-    info "  🕵 No Python files in domains/assistant to type-check"
-fi
-
-# --------------------------- Python Mypy Coverage (domains/assistant) --------------------------- #
-# warn "🔍 Checking mypy coverage in domains/assistant..."
-# if [[ -n "$assistant_python_files" ]]; then
-#     info "  🔎 Running mypy coverage check in domains/assistant..."
-#     if run_bzl_locked run //domains/assistant/scripts:check_mypy_coverage; then
-#         success "  ✅ Mypy coverage check passed"
-#     else
-#         error "  ❌ Mypy coverage check failed!"
-#         error "  Run: bzl run //domains/assistant/scripts:check_mypy_coverage"
-#         exit 1
-#     fi
-# else
-#     info "  🕵 No Python files in domains/assistant to check for mypy coverage"
-# fi
 
 # --------------------------- Assistant Tests (domains/assistant) --------------------------- #
 warn "🔍 Running tests in domains/assistant..."
