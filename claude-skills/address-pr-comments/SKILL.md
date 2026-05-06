@@ -1,6 +1,6 @@
 ---
 name: address-pr-comments
-description: "Process unresolved PR review threads from a PR URL, or focus on one direct top-level review URL: no-op when nothing remains, create a comment address plan, reply when enough, and send actionable links to `code-implement-loop`."
+description: "Process unresolved PR review threads from a PR URL, or focus on one direct top-level review URL: no-op when nothing remains, create a comment address plan, stop for approval unless `--auto-fix` is supplied, reply when enough, and send actionable links to `code-implement-loop`."
 ---
 
 # Address PR Comments
@@ -13,15 +13,24 @@ Process unresolved PR review threads for a pull request that is already checked 
 - For a plain PR URL, inspect unresolved, non-outdated PR review threads.
 - For a direct `#pullrequestreview-{id}` URL, focus only on that one top-level review summary.
 - Ignore top-level PR conversation comments.
-- By default, stop at Step 5 and present the comment address plan to the user. Continue to the fixing steps only after the user approves the plan. If the user explicitly instructs the skill to auto-fix, do not stop at Step 5; continue directly to the fixing steps.
+- `--auto-fix` is the only input flag that may bypass the Step 5 approval stop.
+- Without `--auto-fix`, always stop after Step 5 and present the comment address plan to the user. The user may request plan revisions multiple times. Never proceed to Step 6 until the user explicitly approves the current plan.
 - Do not add scope beyond the unresolved actionable review feedback.
 - Do not post follow-up replies after `code-implement-loop` finishes.
 
 ## Input Contract
 
-- Accept exactly one PR URL.
+- Accept exactly one PR URL and, optionally, one `--auto-fix` flag.
+- Valid inputs:
+  - `<pr-url>`
+  - `<pr-url> --auto-fix`
+  - `--auto-fix <pr-url>`
 - If the PR URL is missing, stop and return:
   - `FAILED: provide a PR URL`
+- If an unknown flag is present, stop and return:
+  - `FAILED: unsupported flag: <flag>`
+- If multiple PR URLs are present, stop and return:
+  - `FAILED: provide exactly one PR URL`
 
 ## Workflow
 
@@ -101,9 +110,17 @@ Plan:
 <for reply_only, the exact reply to post; for implementation_needed, the concrete code, test, docs, or config changes needed>
 ```
 
+Approval gate:
+
+- If `--auto-fix` was supplied, continue to Step 6.
+- Otherwise, stop here and return only the plan plus:
+  - `PLAN_READY: approve this plan to continue, or request revisions.`
+- If the user requests revisions, update the plan and stop at this gate again.
+- Only treat an explicit approval of the current plan as permission to continue. Examples: `approved`, `approve this plan`, `looks good, proceed`, `continue with this plan`.
+
 ### 6) Reply to clarification-only items
 
-Do this step only after Step 5 has produced a comment address plan and either the user approved the plan or explicitly requested auto-fix.
+Do this step only after Step 5 has produced a comment address plan and either the user explicitly approved the current plan or the original input included `--auto-fix`.
 
 For each `reply_only` thread:
 
@@ -119,8 +136,6 @@ For a direct `reply_only` top-level review summary:
 3. Do not attempt to resolve anything.
 
 ### 7) Delegate actionable items
-
-Do this step only after Step 5 has produced a comment address plan and either the user approved the plan or explicitly requested auto-fix.
 
 If one or more items are `implementation_needed`:
 
