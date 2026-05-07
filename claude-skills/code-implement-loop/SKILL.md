@@ -10,6 +10,7 @@ description: "Trigger this skill when implementation should start: if Codex/Clau
 Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> TODO breakdown -> implementation (uncommitted) -> iterative review/fix loop -> conditional `commit-smart` when `in_dd_scope=true`. Each review round evaluates the current patch fresh; stop only on reviewer approval plus the required completion step for the current repo scope, or max-rounds blocked output.
 
 ## Hard Rules
+
 - First, review the `# Global Rules` from your memory file and apply them before the skill-specific rules below.
 - Never use destructive cleanup commands (`git reset --hard`, `git checkout -- .`, `git clean -fd`).
 - Approval definition: `approval` means the reviewer script returns `status="approved"`, never user confirmation.
@@ -78,7 +79,7 @@ Repo constraints:
 
 DO NOT COMMIT inside this step.
 
-Run a bounded loop with at most 2 rounds. Each round executes Steps 5a-5e below.
+Run a bounded loop with at most 5 rounds. Each round executes Steps 5a-5e below.
 
 #### 5a) Normalize Review Context
 
