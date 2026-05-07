@@ -151,8 +151,13 @@ Rules:
 
 Run this step only after Step 6 completes successfully in dd scope.
 
-- If `post_commit_babysit_pr=yes`, sleep for 10 minutes, clear the context, and run `babysit-pr` against the current branch.
 - If `post_commit_babysit_pr=no`, skip this step and return success to the caller.
+- If `post_commit_babysit_pr=yes`:
+  1. Sleep for 10 minutes.
+  2. Spawn a fresh worker subagent from the same worktree and current branch.
+  3. Invoke `$babysit-pr` in that worker without additional input.
+  4. Wait for the worker to finish.
+  5. Treat the worker's final status as the Step 7 result.
 
 Rules:
 
