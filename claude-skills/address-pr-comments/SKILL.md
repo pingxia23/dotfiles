@@ -1,20 +1,17 @@
 ---
 name: address-pr-comments
-description: "Process unresolved PR review threads from a PR URL, or focus on one direct top-level review URL: no-op when nothing remains, create a comment address plan, stop for approval unless `--auto-fix` is supplied, reply when enough, and send actionable links to `code-implement-loop`."
+description: "Process unresolved PR review threads for the PR associated with the current branch: no-op when nothing remains, create a comment address plan, stop for approval, reply when approved, and send actionable links to `code-implement-loop`."
 ---
 
 # Address PR Comments
 
-Process unresolved PR review threads for a pull request that is already checked out locally. If the input URL points to a specific top-level review summary, focus only on that review instead of scanning the whole PR.
+Process unresolved PR review threads for the pull request that is already checked out locally. Infer the PR from the current branch; do not accept PR URLs or review URLs as input.
 
 ## Hard Rules
 
 - First, review the `# Global Rules` from your memory file and apply them before the skill-specific rules below.
-- For a plain PR URL, inspect unresolved, non-outdated PR review threads.
-- For a direct `#pullrequestreview-{id}` URL, focus only on that one top-level review summary.
-- Ignore top-level PR conversation comments.
-- `--auto-fix` is the only input flag that may bypass the Step 5 approval stop.
-- Without `--auto-fix`, always stop after Step 5 and present the comment address plan to the user. The user may request plan revisions multiple times. Never proceed to Step 6 until the user explicitly approves the current plan.
+- Infer the PR from the current branch with `gh`, then validate that local state matches the inferred PR.
+- Always stop after Step 5 and present the comment address plan to the user. The user may request plan revisions multiple times. Never proceed to Step 6 until the user explicitly approves the current plan.
 - Do not add scope beyond the unresolved actionable review feedback.
 - Do not post follow-up replies after `code-implement-loop` finishes.
 - Every GitHub reply or PR comment posted by this skill must start with exactly:
@@ -26,44 +23,63 @@ AI generated Comment
 
 ## Input Contract
 
-- Accept exactly one PR URL and, optionally, one `--auto-fix` flag.
-- Valid inputs:
-  - `<pr-url>`
-  - `<pr-url> --auto-fix`
-  - `--auto-fix <pr-url>`
-- If the PR URL is missing, stop and return:
-  - `FAILED: provide a PR URL`
-- If an unknown flag is present, stop and return:
-  - `FAILED: unsupported flag: <flag>`
-- If multiple PR URLs are present, stop and return:
-  - `FAILED: provide exactly one PR URL`
+- Accept no input.
+- Always infer the PR URL from the current branch and run the unresolved-review-thread workflow.
 
 ## Workflow
 
 ### 0) Preflight
 
-### 1) Normalize local context
+1. Resolve repo scope and enforce the strict coding preflight:
+   - `eval "$("$HOME/dotfiles/scripts/coding-preflight.mjs")"`
+   - The helper must provide: `inside_worktree`, `worktree_root`, `worktree_path`, `branch`, `repo`, `in_dd_scope`, `origin_branch_ref`, `origin_branch_exists`, `local_ahead_count`, `origin_ahead_count`.
+   - If helper exits non-zero, stop and report blocked status with helper stderr.
+2. `cd "$worktree_root"`.
+3. Load the PR associated with the current branch:
 
-1. Load shared git context:
-   - `eval "$("$HOME/dotfiles/scripts/git-context.sh")"`
-2. Stop if the helper exits non-zero.
-3. Use `repo` from the helper and pass `--repo "$repo"` to all direct `gh` commands.
+```bash
+if ! pr_meta_json="$(gh pr view --repo "$repo" "$branch" --json number,url,baseRefName,headRefName,headRefOid)"; then
+  echo "FAILED: current branch has no associated PR"
+  exit 1
+fi
+```
 
-Purpose:
+4. Parse from `pr_meta_json`:
+   - `pr_number`
+   - `pr_url`
+   - `base_ref`
+   - `head_ref`
+   - `head_sha`
 
-- bind GitHub operations to the current checkout explicitly
-- keep local file reads and diffs anchored to the active repo
+```bash
+pr_number="$(jq -r '.number' <<<"$pr_meta_json")"
+pr_url="$(jq -r '.url' <<<"$pr_meta_json")"
+base_ref="$(jq -r '.baseRefName' <<<"$pr_meta_json")"
+head_ref="$(jq -r '.headRefName' <<<"$pr_meta_json")"
+head_sha="$(jq -r '.headRefOid' <<<"$pr_meta_json")"
+```
 
-### 2) Route by input URL
+If `pr_url` is empty or `null`, stop and return `FAILED: current branch has no associated PR`.
 
-1. If the input is a plain PR URL, do the usual unresolved-review-thread workflow below.
-2. If the input is a direct `#pullrequestreview-{id}` URL, focus only on that top-level review summary.
-3. Do not broaden a direct top-level review URL into a full-PR scan.
+5. Confirm the current checkout matches the inferred PR:
+   - `branch` from the helper must equal `head_ref`
+   - `git rev-parse HEAD` must equal `head_sha`
+   - if any check fails, stop and report the mismatch
 
-### 3) Plain PR URL: load unresolved review threads
+### 1) Parse input
+
+1. Parse the invocation arguments:
+   - reject any flag as `FAILED: unsupported flag: <flag>`
+   - reject any non-flag argument as `FAILED: unsupported input: <input>`
+
+### 2) Confirm inferred PR scope
+
+Use only the inferred `pr_url` for the rest of the workflow. Do not accept, parse, or route any PR URL or review URL from input.
+
+### 3) Load unresolved review threads
 
 1. Run:
-   - `"$HOME/dotfiles/claude-skills/address-pr-comments/scripts/list_unresolved_review_threads.sh" "<pr-url>"`
+   - `"$HOME/dotfiles/claude-skills/address-pr-comments/scripts/list_unresolved_review_threads.sh" "$pr_url"`
 2. Treat the script output as the source of truth for unresolved review threads.
 3. Each returned thread must include:
    - `thread_id`
@@ -76,14 +92,14 @@ Purpose:
    - `last_comment_body`
    - `comments[]`
 
-### 4) Plain PR URL: no-op when nothing remains
+### 4) No-op when nothing remains
 
 - If no unresolved, non-outdated review threads remain, stop and return:
   - `NOOP: no unresolved review threads`
 
 ### 5) Classify each item
 
-Classify each unresolved thread or direct top-level review into one of:
+Classify each unresolved thread into one of:
 
 - `reply_only`
 - `implementation_needed`
@@ -99,7 +115,7 @@ Use this rubric:
   - the reviewer calls out future work, a follow-up PR, an optional/non-blocking improvement, or a longer-term TODO; address this by adding a concise TODO comment in the relevant code path instead of implementing the future work in the current PR
   - the request is ambiguous; default here conservatively
 
-Before taking any action, create a comment address plan that covers every unresolved thread or direct top-level review in scope. Use this format for each item:
+Before taking any action, create a comment address plan that covers every unresolved thread in scope. Use this format for each item:
 
 ```markdown
 ## <comment-id-or-review-id> - <short title>
@@ -118,15 +134,14 @@ Plan:
 
 Approval gate:
 
-- If `--auto-fix` was supplied, continue to Step 6.
-- Otherwise, stop here and return only the plan plus:
+- Stop here and return only the plan plus:
   - `PLAN_READY: approve this plan to continue, or request revisions.`
 - If the user requests revisions, update the plan and stop at this gate again.
 - Only treat an explicit approval of the current plan as permission to continue. Examples: `approved`, `approve this plan`, `looks good, proceed`, `continue with this plan`.
 
 ### 6) Reply to clarification-only items
 
-Do this step only after Step 5 has produced a comment address plan and either the user explicitly approved the current plan or the original input included `--auto-fix`.
+Do this step only after Step 5 has produced a comment address plan and the user explicitly approved the current plan.
 
 For each `reply_only` thread:
 
@@ -136,20 +151,12 @@ For each `reply_only` thread:
    - `"$HOME/dotfiles/claude-skills/address-pr-comments/scripts/reply_to_review_thread.sh" "$repo" "<pr-number>" "<last-comment-id>" "<reply-body>"`
 4. Do not resolve the thread.
 
-For a direct `reply_only` top-level review summary:
-
-1. Draft a concise factual reply.
-2. Prefix the comment body with `AI generated Comment` on the first line, followed by the actual comment text on the next line.
-3. Post a normal PR comment that references the input review URL.
-4. Do not attempt to resolve anything.
-
 ### 7) Delegate actionable items
 
 If one or more items are `implementation_needed`:
 
 1. Collect only the actionable URLs:
    - for unresolved threads, use `comment_url`
-   - for a direct top-level review, use the input URL
 2. Invoke `code-implement-loop` once with those URLs as the entire implementation scope.
 3. Do not restate the requests or add broader work items if the links already identify the actionable unresolved feedback.
 4. If an item is actionable only because it requests future work, include the approved plan text for that item in the `code-implement-loop` handoff so the implementation scope is limited to adding the TODO comment, not implementing the future work.
@@ -168,6 +175,4 @@ Use one of these formats:
 - `SUCCESS: replied to {N} unresolved thread(s) | PR: {url}`
 - `SUCCESS: delegated {M} unresolved thread(s) to code-implement-loop | PR: {url}`
 - `SUCCESS: replied to {N} unresolved thread(s); delegated {M} unresolved thread(s) | PR: {url}`
-- `SUCCESS: replied to direct top-level review | PR: {url}`
-- `SUCCESS: delegated direct top-level review to code-implement-loop | PR: {url}`
 - `BLOCKED: {reason} | PR: {url}`

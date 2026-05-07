@@ -1,4 +1,4 @@
 interface:
   display_name: "Address PR Comments"
-  short_description: "Plan unresolved PR comment handling, then wait for approval unless auto-fix is set"
-  default_prompt: "Use $address-pr-comments on this PR URL to process unresolved review threads. Add --auto-fix to proceed without the plan approval stop."
+  short_description: "Plan unresolved PR comment handling, then wait for approval"
+  default_prompt: "Use $address-pr-comments to infer the current branch PR and process unresolved review threads."
