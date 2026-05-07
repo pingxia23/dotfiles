@@ -1,4 +1,4 @@
 interface:
   display_name: "Code Implement Loop"
-  short_description: "Implement code with a local-uncommitted review/fix loop"
-  default_prompt: "Implement from a provided plan (either in raw text or a file reference), then run up to 2 local-uncommitted review/fix rounds against the resolved implementation plan."
+  short_description: "Implement, review locally, commit, then review the full PR"
+  default_prompt: "Implement from a provided plan (either in raw text or a file reference), run local-uncommitted review/fix rounds, commit in dd scope, run up to 2 full PR review/fix rounds against the PR base, then commit review fixes if any."

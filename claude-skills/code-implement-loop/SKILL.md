@@ -1,13 +1,13 @@
 ---
 name: code-implement-loop
-description: "Trigger this skill when implementation should start: if Codex/Claude proposes a plan and the user says 'implement this', 'implement the proposed plan', 'implement it', or equivalent; or if the user explicitly invokes `code-implement-loop`. Accepted implementation input sources are: a Codex/Claude-proposed plan, a user-provided `.md` plan/design file, or user-provided inline implementation instructions."
+description: "Trigger this skill when implementation should start: if Codex/Claude proposes a plan and the user says 'implement this', 'implement the proposed plan', 'implement it', or equivalent; or if the user explicitly invokes `code-implement-loop`. Accepted implementation input sources are: a Codex/Claude-proposed plan, a user-provided `.md` plan/design file, or user-provided inline implementation instructions. In dd scope it runs local-uncommitted review rounds, commits with `commit-smart`, runs up to 2 full PR review rounds, then commits any review fixes."
 ---
 
 # Code Implement Loop
 
 ## Overview
 
-Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> TODO breakdown -> implementation (uncommitted) -> iterative review/fix loop -> conditional `commit-smart` when `in_dd_scope=true`. Each review round evaluates the current patch fresh; stop only on reviewer approval plus the required completion step for the current repo scope, or max-rounds blocked output.
+Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> TODO breakdown -> implementation (uncommitted) -> local-uncommitted review/fix loop -> conditional `commit-smart` when `in_dd_scope=true` -> full PR review/fix loop in dd scope -> conditional second `commit-smart` for review fixes. The first review loop evaluates only the current uncommitted patch. The second review loop evaluates the full local diff, including existing branch commits and any current uncommitted review fixes, against the fetched PR base.
 
 ## Hard Rules
 
@@ -15,6 +15,32 @@ Implement a task in a deterministic sequence: plan intake (`.md` file or direct 
 - Never use destructive cleanup commands (`git reset --hard`, `git checkout -- .`, `git clean -fd`).
 - Approval definition: `approval` means the reviewer script returns `status="approved"`, never user confirmation.
 - Autonomy rule: do not ask the user for approval or extra checkpoints during normal flow; only ask the user when blocked/stuck/failing.
+
+## Shared Review Result Handling
+
+Use this exact handling for both review loops after the loop-specific reviewer script returns. The only loop-specific inputs are:
+
+- `review_result`: the raw JSON string returned by the reviewer script
+- `current_round`: the current review round number, starting at 1
+- `max_rounds`: 5 for local-uncommitted review, 2 for full PR review
+
+### Parse Reviewer Output
+
+1. Parse `review_result` as strict JSON with no markdown fences or extra prose.
+2. The JSON must have:
+   - `status`: `approved`, `revise`, or `blocked`
+   - `findings`: actionable findings to fix, if any
+   - `overall_explanation`: short status explanation
+3. If `review_result` is not valid JSON or does not include these fields, stop and report blocked status with the raw output summary.
+
+### Review/Fix Loop Control
+
+- If `status="approved"`, stop the current review loop and continue with the next workflow step.
+- If `status="blocked"`, propagate that status without proceeding to commit.
+- If `status="revise"` and `findings` is empty, stop and report blocked status with the aggregate output because there is no actionable finding to fix.
+- If `status="revise"` has findings and `current_round < max_rounds`, fix those items only, prioritize by `priority` ascending (`0` -> `3`; unknown priority after known priorities), rerun targeted verification, and continue to the next review round.
+- If `status="revise"` has findings and `current_round >= max_rounds`, stop and emit blocked status with current findings and attempted fixes.
+- Only P0-P2 findings are actionable. Sub-P2 comments, nits, praise, and broad suggestions must be omitted from `findings` and must not force `status="revise"`.
 
 ## Workflow
 
@@ -79,7 +105,7 @@ Repo constraints:
 
 DO NOT COMMIT inside this step.
 
-Run a bounded loop with at most 5 rounds. Each round executes Steps 5a-5e below.
+Run a bounded loop with at most **5** rounds. Each round executes Steps 5a-5d below.
 
 #### 5a) Normalize Review Context
 
@@ -110,49 +136,142 @@ The reviewer script gathers and evaluates the local uncommitted patch set itself
    ```
 2. Do not hand-edit `review_result`.
 
-#### 5d) Parse Reviewer Output
+#### 5d) Handle Reviewer Result
 
-1. Parse `review_result` as strict JSON with no markdown fences or extra prose.
-2. The JSON must have:
-   - `status`: `approved`, `revise`, or `blocked`
-   - `findings`: actionable findings to fix, if any
-   - `overall_explanation`: short status explanation
-3. If `review_result` is not valid JSON or does not include these fields, stop and report blocked status with the raw output summary.
+Apply **Shared Review Result Handling** with:
 
-#### 5e) Review/Fix Loop Control
+- `review_result="$review_result"`
+- `current_round`: the current local-uncommitted review round number
+- `max_rounds=5`
 
-- If `status="approved"`, stop the loop and proceed to the next step.
-- If `status="blocked"`, propagate that status without proceeding to commit.
-- If `status="revise"` and `findings` is empty, stop and report blocked status with the aggregate output because there is no actionable finding to fix.
-- If `status="revise"` has findings, fix those items only, prioritize by `priority` ascending (`0` -> `3`; unknown priority after known priorities), rerun targeted verification, and continue until approval or max rounds.
-- If a review round returns blocked status, propagate that status without proceeding to commit.
-- If not approved after `MAX_ROUNDS`, emit blocked status with current findings and attempted fixes.
+### 6) Commit After Local Approval
 
-### 6) Completion After Approval
+After the local-uncommitted review loop returns approval:
 
-After the review loop returns approval:
-
-- If `in_dd_scope=true`, immediately invoke `commit-smart` to commit and push changes.
+- If `in_dd_scope=true`, immediately invoke `commit-smart` to commit and push changes, then continue to Step 7.
 - If `in_dd_scope=false`, stop after reporting success and leave the approved changes uncommitted in the worktree.
 
 Rules:
 
 - Do not ask the user for additional confirmation before running `commit-smart` when `in_dd_scope=true`.
-- Do not end the workflow as success until `commit-smart` has completed when `in_dd_scope=true`.
+- Do not proceed to the next step until `commit-smart` has completed when `in_dd_scope=true`.
 - If `commit-smart` fails in dd scope, report blocked status with the failure reason and attempted remediation.
 - Outside dd scope, do not invoke `commit-smart`, do not create or update a PR, and report success once the reviewed patch is complete.
 
-### 7) Return final status
+### 7) Run Full PR Review In DD Scope
+
+- Run a bounded loop with at most **2** rounds.
+
+Each round executes Steps 7a-7c below.
+
+#### 7a) Full PR Review Preflight
+
+1. Normalize checkout context through the shared helper:
+   - `eval "$("$HOME/dotfiles/scripts/git-context.sh")"`
+   - The helper must provide: `inside_worktree`, `worktree_root`, `worktree_path`, `branch`, `repo`, `in_dd_scope`.
+   - If helper exits non-zero, stop and report blocked status with helper stderr.
+2. `cd "$worktree_root"`.
+3. Load the PR associated with the current branch:
+
+```bash
+if ! pr_meta_json="$(gh pr view --repo "$repo" "$branch" --json number,url,baseRefName,headRefName,headRefOid)"; then
+  echo "FAILED: current branch has no associated PR"
+  exit 1
+fi
+```
+
+4. Parse from `pr_meta_json`:
+   - `pr_number`
+   - `pr_url`
+   - `base_ref`
+   - `head_ref`
+   - `head_sha`
+
+```bash
+pr_number="$(jq -r '.number' <<<"$pr_meta_json")"
+pr_url="$(jq -r '.url' <<<"$pr_meta_json")"
+base_ref="$(jq -r '.baseRefName' <<<"$pr_meta_json")"
+head_ref="$(jq -r '.headRefName' <<<"$pr_meta_json")"
+head_sha="$(jq -r '.headRefOid' <<<"$pr_meta_json")"
+```
+
+If `pr_url` is empty or `null`, stop and return `BLOCKED: no associated PR for full PR review`.
+
+5. Confirm the current checkout matches the inferred PR:
+   - `branch` from the helper must equal `head_ref`
+   - `git rev-parse HEAD` must equal `head_sha`
+   - if any check fails, stop and report the mismatch
+6. Do not require the worktree to be clean. Round 1 normally reviews the pushed PR branch with a clean worktree; later rounds must include uncommitted review fixes.
+
+#### 7b) Run Reviewer Script
+
+1. Run the shared structured full PR reviewer:
+
+```bash
+full_review_result="$(
+  node "$HOME/dotfiles/claude-skills/code-implement-loop/scripts/run_dual_pr_branch_review.mjs" \
+    --worktree-root "$worktree_root" \
+    --repo "$repo" \
+    --branch "$branch"
+)"
+```
+
+2. Do not hand-edit `full_review_result`.
+
+#### 7c) Handle Reviewer Result
+
+Apply **Shared Review Result Handling** with:
+
+- `review_result="$full_review_result"`
+- `current_round`: the current full PR review round number
+- `max_rounds=2`
+
+Rules:
+
+- The helper fetches `origin/$base_ref`, validates the current branch equals the PR head branch, computes `git merge-base HEAD origin/$base_ref`, and asks both reviewers to inspect `git diff <review_base>` plus untracked non-ignored files.
+- The helper does not require local `HEAD` to equal the remote PR head and does not require a clean worktree.
+- After assembling PR context and prompt, the helper uses the same `scripts/review-output.schema.json` schema, runner, parsing, and aggregation logic as the local-uncommitted review loop. Reviewer output must not be freeform prose.
+
+### 8) Commit Full PR Review Fixes
+
+After the full PR review loop returns approval:
+
+- If `git status --porcelain` is empty, skip this step and proceed to final success.
+- If there are uncommitted changes, immediately invoke `commit-smart` to commit and push the review fixes.
+
+Rules:
+
+- Do not ask the user for additional confirmation before running the second `commit-smart`.
+- Do not end the workflow as success until this second `commit-smart` has completed when review fixes exist.
+- If the second `commit-smart` fails, report blocked status with the failure reason and attempted remediation.
+
+### 9) Return final status
 
 Success format:
 
-- In dd scope: `SUCCESS: Implementation complete | PR: {url}`
+- In dd scope: `SUCCESS: Implementation complete, local review approved, full PR review approved | PR: {url}`
 - Outside dd scope: `SUCCESS: Implementation complete | PR: none`
 
 Blocked format:
 
-`BLOCKED: Not approved after {MAX_ROUNDS} rounds | PR: {url} | Findings: {summary} | Attempts: {summary}`
+`BLOCKED: local-uncommitted review not approved after 5 rounds | PR: {url} | Findings: {summary} | Attempts: {summary}`
 
 or
 
 `BLOCKED: commit-smart failed | PR: {url} | Error: {summary} | Attempts: {summary}`
+
+or
+
+`BLOCKED: Full PR review found issues | PR: {url} | Findings: {summary}`
+
+or
+
+`BLOCKED: Full PR review not approved after 2 rounds | PR: {url} | Findings: {summary} | Attempts: {summary}`
+
+or
+
+`BLOCKED: Full PR review failed | PR: {url} | Error: {summary}`
+
+or
+
+`BLOCKED: second commit-smart failed | PR: {url} | Error: {summary} | Attempts: {summary}`

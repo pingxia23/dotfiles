@@ -1,39 +1,167 @@
 #!/usr/bin/env node
 import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { renderReviewerPrompt } from "./render_reviewer_prompt.mjs";
+import {
+  DEFAULT_REVIEW_TIMEOUT_MS,
+  REVIEW_OUTPUT_SCHEMA_PATH,
+  runDualReviewPrompt,
+} from "./review_runner_utils.mjs";
 
-const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
-const TAG = "[dual-patch-review]";
-const LOG_FILE = path.join(SCRIPT_DIR, "run-dual-patch-review.log");
-export const PATCH_REVIEW_SCHEMA_PATH = path.join(
-  SCRIPT_DIR,
-  "patch-review-output.schema.json",
-);
-export const DEFAULT_REVIEW_TIMEOUT_MS = 15 * 60 * 1000;
-export const CLAUDE_REVIEW_MODEL = "claude-opus-4-7[1m]";
-export const CLAUDE_REVIEW_EFFORT = "xhigh";
-export const CODEX_REVIEW_MODEL = "gpt-5.5";
-export const CODEX_REVIEW_EFFORT = "high";
-export const CODEX_SERVICE_TIER = "fast";
+const REVIEWER_PROMPT_TEMPLATE = `# Reviewer Prompt
 
-const REVIEWERS = ["Codex", "Claude"];
-const SCHEMA_REMINDER =
-  "\n\nSchema reminder: return exactly one JSON object matching the supplied patch-review schema. Do not include markdown fences or prose outside the JSON object.";
+You are reviewing a proposed code change made by another engineer.
 
-function getText(value) {
-  return typeof value === "string" ? value.trim() : "";
+Your job is to find bugs in the current local uncommitted patch set. Return only issues that the original author would likely want to fix once they know about them.
+
+If more specific instructions appear elsewhere, follow those over this file.
+
+## What Counts As A Bug
+
+Flag an issue only when all of these are true:
+
+1. It meaningfully affects correctness, performance, security, or maintainability.
+2. It is discrete and actionable.
+3. Fixing it does not require a higher rigor bar than the rest of the codebase.
+4. It was introduced by the current patch set.
+5. The original author would likely fix it if notified.
+6. It does not depend on unstated assumptions about intent.
+7. You can identify the concrete code path or scenario that is affected.
+8. It is not obviously an intentional product or design choice.
+
+If no issue clearly meets that bar, return no findings.
+
+## Review Scope
+
+- Review the full current local uncommitted patch set only.
+- Re-review the full local uncommitted patch set each time the review loop runs.
+- Do not narrow review scope to only previously flagged hunks.
+- Compare the patch set against the implementation plan.
+- Focus on correctness, regressions, security, compatibility, performance, and tests.
+- Do not block on pure style, formatting, typos, documentation, or other nits.
+
+## How To Gather Review Inputs
+
+Inputs provided directly:
+- Worktree root: {worktree_root}
+- Resolved implementation plan for this run: {implementation_plan}
+
+
+Before reviewing, gather the local uncommitted patch set yourself:
+
+1. \`cd "{worktree_root}"\`.
+2. Build the patch set relative to \`HEAD\`:
+   - tracked changes: \`git diff --binary HEAD\`
+   - untracked non-ignored files: \`git ls-files --others --exclude-standard | LC_ALL=C sort\`
+   - for each untracked non-ignored file, append a synthetic new-file patch via \`git diff --no-index --binary -- /dev/null "$path" || true\`
+   - append untracked-file patches in stable sorted path order
+   - keep them in normal patch form with \`--- /dev/null\` and \`+++ b/<path>\`
+   - do not replace untracked-file patches with raw file blobs
+3. Build the changed-files list:
+   - tracked paths from \`git diff --name-status HEAD\`
+   - append each untracked non-ignored file as \`A<TAB><path>\` in the same stable sorted order
+4. For each changed path, inspect the current working-tree contents.
+   - truncate to the first 400 lines per file when reading context
+   - for tracked deletions, treat the file as \`<deleted from working tree; no current file contents>\`
+
+## Finding Rules
+
+- Findings may target tracked-file hunks or appended synthetic new-file hunks for untracked files.
+- \`code_location\` must overlap the relevant diff hunk.
+- Use one finding per distinct issue.
+- Keep ranges as short as possible. Avoid ranges longer than 5-10 lines.
+- Do not stop at the first valid finding. Return all valid findings.
+
+## Comment Rules
+
+For each finding:
+
+1. Make the title start with a priority tag, for example \`[P1] Wrong cache key for tenant lookup\`.
+2. Make the body brief, factual, and specific about why this is a bug.
+3. Explain the scenario, input, or environment required for the bug to happen when relevant.
+4. Keep the body to one paragraph.
+5. Do not include code snippets longer than 3 lines.
+6. Use \`suggestion\` blocks only for concrete replacement code.
+7. In any \`suggestion\` block, preserve exact leading whitespace.
+8. Do not add or remove outer indentation unless that is the actual fix.
+9. Avoid unnecessary file or location chatter in the prose; the inline location already provides context.
+10. Do not generate a PR fix unless a minimal \`suggestion\` block is genuinely needed.
+
+## Priority Scale
+
+- \`P0\` / \`priority: 0\`: release-blocking or universally severe issue
+- \`P1\` / \`priority: 1\`: urgent issue that should be fixed in the next cycle
+- \`P2\` / \`priority: 2\`: normal bug to fix eventually
+
+If priority is unclear or lower than P2, omit the finding.
+
+### Examples Of Lower-Severity Concerns To Omit
+
+Only P0, P1, and P2 bugs count as findings. Do not return lower-severity
+concerns at all.
+
+Do not report examples like these:
+
+- "This should be more defensive" is not a finding when the existing callers,
+  types, schema, or surrounding code already guarantee the value is valid.
+- "This could break with malformed input" is not a finding when that input
+  cannot reach this code path without bypassing an existing parser, validator,
+  authorization check, or documented caller contract.
+- "This message/name/comment/log could be clearer" is not a finding when the
+  issue does not change runtime behavior.
+- "This could be simpler/faster/more idiomatic" is not a finding unless the
+  patch introduced a measurable regression or a concrete maintainability bug.
+- "This should add validation/fallback/cleanup/telemetry/compatibility handling"
+  is not a finding unless the implementation plan or existing surrounding
+  patterns require it.
+
+These concerns must not appear in \`findings\` and must not affect
+\`overall_correctness\`.
+
+## Overall Verdict
+
+At the end, decide whether the patch is correct.
+
+- \`"correct"\` means the patch has no P0, P1, or P2 findings.
+- \`"incorrect"\` means at least one P0, P1, or P2 finding remains.
+
+Ignore sub-P2 concerns when choosing the overall verdict. If the patch has only
+sub-P2 concerns, return \`findings: []\` and \`overall_correctness: "correct"\`.
+
+## Output Format
+
+Return strict JSON only. Do not include markdown fences or extra prose.
+
+The JSON must match this schema exactly:
+
+{
+  "findings": [
+    {
+      "title": "<≤ 80 chars, imperative>",
+      "body": "<valid Markdown explaining *why* this is a problem; cite files/lines/functions>",
+      "confidence_score": <float 0.0-1.0>,
+      "priority": <int 0-2>,
+      "code_location": {
+        "absolute_file_path": "<file path>",
+        "line_range": {"start": <int>, "end": <int>}
+      }
+    }
+  ],
+  "overall_correctness": "correct" | "incorrect",
+  "overall_explanation": "<1-3 sentence explanation justifying the overall_correctness verdict>",
+  "overall_confidence_score": <float 0.0-1.0>
 }
 
-function log(message) {
-  const line = `${new Date().toISOString()} ${TAG} ${message}\n`;
-  try {
-    fs.appendFileSync(LOG_FILE, line);
-  } catch {}
-}
+Additional output rules:
+
+- \`code_location.absolute_file_path\` is required.
+- \`code_location.line_range.start\` and \`code_location.line_range.end\` are required.
+- The \`code_location\` range must overlap the diff, including appended synthetic new-file hunks for untracked files.
+- Do not wrap the JSON in markdown fences or extra prose.
+- The code_location field is required and must include absolute_file_path and line_range.
+- Line ranges must be as short as possible for interpreting the issue (avoid ranges over 5-10 lines; pick the most suitable subrange).
+- The code_location should overlap with the diff.
+- Do not generate a PR fix.
+`;
 
 function parseArgs(argv) {
   const args = {
@@ -66,629 +194,38 @@ function parseArgs(argv) {
   return args;
 }
 
-export function parseJsonObject(value) {
-  try {
-    const parsed = JSON.parse(value);
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? parsed
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-function hasOnlyKeys(value, allowedKeys) {
-  const allowed = new Set(allowedKeys);
-  return Object.keys(value).every((key) => allowed.has(key));
-}
-
-function isActionablePriority(priority) {
-  return Number.isInteger(priority) && priority >= 0 && priority <= 2;
-}
-
-export function normalizePatchReview(review) {
-  const findings = review.findings.filter((finding) =>
-    isActionablePriority(finding.priority),
-  );
-  const overallCorrectness = findings.length > 0 ? "incorrect" : "correct";
-  let overallExplanation = review.overall_explanation;
-
-  if (overallCorrectness !== review.overall_correctness) {
-    overallExplanation =
-      findings.length > 0
-        ? "P0-P2 findings were returned."
-        : "No P0-P2 findings were returned.";
-  }
-
-  return {
-    ...review,
-    findings,
-    overall_correctness: overallCorrectness,
-    overall_explanation: overallExplanation,
+function renderReviewerPrompt(args) {
+  const replacements = {
+    "{worktree_root}": args.worktreeRoot,
+    "{implementation_plan}": args.implementationPlan,
   };
-}
+  const pattern = /\{worktree_root\}|\{implementation_plan\}/g;
 
-function normalizeReviewResult(result) {
-  return result.review
-    ? { ...result, review: normalizePatchReview(result.review) }
-    : result;
-}
-
-export function validatePatchReview(value) {
-  const errors = [];
-
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return { valid: false, errors: ["review must be an object"] };
-  }
-
-  if (
-    !hasOnlyKeys(value, [
-      "findings",
-      "overall_correctness",
-      "overall_explanation",
-      "overall_confidence_score",
-    ])
-  ) {
-    errors.push("review contains additional properties");
-  }
-
-  if (!Array.isArray(value.findings)) {
-    errors.push("findings must be an array");
-  } else {
-    value.findings.forEach((finding, index) => {
-      const prefix = `findings[${index}]`;
-      if (!finding || typeof finding !== "object" || Array.isArray(finding)) {
-        errors.push(`${prefix} must be an object`);
-        return;
-      }
-      if (
-        !hasOnlyKeys(finding, [
-          "title",
-          "body",
-          "confidence_score",
-          "priority",
-          "code_location",
-        ])
-      ) {
-        errors.push(`${prefix} contains additional properties`);
-      }
-      if (typeof finding.title !== "string" || finding.title.length === 0) {
-        errors.push(`${prefix}.title must be a non-empty string`);
-      } else if (finding.title.length > 80) {
-        errors.push(`${prefix}.title must be at most 80 characters`);
-      }
-      if (typeof finding.body !== "string" || finding.body.length === 0) {
-        errors.push(`${prefix}.body must be a non-empty string`);
-      }
-      if (
-        typeof finding.confidence_score !== "number" ||
-        finding.confidence_score < 0 ||
-        finding.confidence_score > 1
-      ) {
-        errors.push(`${prefix}.confidence_score must be a number from 0 to 1`);
-      }
-      // The generation schema only permits P0-P2, but accept legacy lower
-      // severities here so they can be discarded before aggregation.
-      if (!("priority" in finding)) {
-        errors.push(`${prefix}.priority is required`);
-      } else if (
-        finding.priority !== null &&
-        (!Number.isInteger(finding.priority) ||
-          finding.priority < 0 ||
-          finding.priority > 3)
-      ) {
-        errors.push(`${prefix}.priority must be an integer from 0 to 3 or null`);
-      }
-
-      const location = finding.code_location;
-      if (!location || typeof location !== "object" || Array.isArray(location)) {
-        errors.push(`${prefix}.code_location must be an object`);
-        return;
-      }
-      if (!hasOnlyKeys(location, ["absolute_file_path", "line_range"])) {
-        errors.push(`${prefix}.code_location contains additional properties`);
-      }
-      if (
-        typeof location.absolute_file_path !== "string" ||
-        location.absolute_file_path.length === 0
-      ) {
-        errors.push(
-          `${prefix}.code_location.absolute_file_path must be a non-empty string`,
-        );
-      }
-
-      const lineRange = location.line_range;
-      if (!lineRange || typeof lineRange !== "object" || Array.isArray(lineRange)) {
-        errors.push(`${prefix}.code_location.line_range must be an object`);
-        return;
-      }
-      if (!hasOnlyKeys(lineRange, ["start", "end"])) {
-        errors.push(`${prefix}.code_location.line_range contains additional properties`);
-      }
-      if (!Number.isInteger(lineRange.start) || lineRange.start < 1) {
-        errors.push(`${prefix}.code_location.line_range.start must be an integer >= 1`);
-      }
-      if (!Number.isInteger(lineRange.end) || lineRange.end < 1) {
-        errors.push(`${prefix}.code_location.line_range.end must be an integer >= 1`);
-      } else if (
-        Number.isInteger(lineRange.start) &&
-        lineRange.start >= 1 &&
-        lineRange.end < lineRange.start
-      ) {
-        errors.push(
-          `${prefix}.code_location.line_range.end must be >= line_range.start`,
-        );
-      }
-    });
-  }
-
-  if (!["correct", "incorrect"].includes(value.overall_correctness)) {
-    errors.push("overall_correctness must be a valid patch verdict");
-  }
-  if (
-    typeof value.overall_explanation !== "string" ||
-    value.overall_explanation.length === 0
-  ) {
-    errors.push("overall_explanation must be a non-empty string");
-  }
-  if (
-    typeof value.overall_confidence_score !== "number" ||
-    value.overall_confidence_score < 0 ||
-    value.overall_confidence_score > 1
-  ) {
-    errors.push("overall_confidence_score must be a number from 0 to 1");
-  }
-
-  return { valid: errors.length === 0, errors };
-}
-
-function parsePatchReviewObject(value) {
-  const validation = validatePatchReview(value);
-  if (!validation.valid) {
-    return { review: null, errors: validation.errors };
-  }
-
-  return { review: normalizePatchReview(value), errors: [] };
-}
-
-export function parseCodexPatchReviewOutput(output) {
-  const parsed = parseJsonObject(output);
-  if (!parsed) {
-    return { review: null, errors: ["output is not a JSON object"] };
-  }
-
-  return parsePatchReviewObject(parsed);
-}
-
-export function parseClaudePatchReviewOutput(output) {
-  const parsed = parseJsonObject(output);
-  if (!parsed) {
-    return { review: null, errors: ["output is not a JSON object"] };
-  }
-
-  const direct = parsePatchReviewObject(parsed);
-  if (direct.review) {
-    return direct;
-  }
-
-  if (
-    parsed.structured_output &&
-    typeof parsed.structured_output === "object" &&
-    !Array.isArray(parsed.structured_output)
-  ) {
-    const structured = parsePatchReviewObject(parsed.structured_output);
-    if (structured.review) {
-      return structured;
-    }
-
-    return {
-      review: null,
-      errors: structured.errors.map((error) => `structured_output.${error}`),
-    };
-  }
-
-  return { review: null, errors: direct.errors };
-}
-
-function spawnWithTimeout(command, args, options = {}) {
-  return new Promise((resolve) => {
-    let stdout = "";
-    let stderr = "";
-    let settled = false;
-    let timedOut = false;
-    let timeout = null;
-
-    const child = spawn(command, args, {
-      cwd: options.cwd,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    child.stdout.setEncoding("utf8");
-    child.stderr.setEncoding("utf8");
-
-    const settle = (result) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      if (timeout) {
-        clearTimeout(timeout);
-      }
-      resolve({ stdout, stderr, ...result });
-    };
-
-    timeout = setTimeout(() => {
-      timedOut = true;
-      child.kill("SIGTERM");
-      setTimeout(() => {
-        if (!settled) {
-          child.kill("SIGKILL");
-        }
-      }, 5_000).unref();
-    }, options.timeout || DEFAULT_REVIEW_TIMEOUT_MS);
-    timeout.unref();
-
-    child.stdout.on("data", (chunk) => {
-      stdout += chunk;
-    });
-    child.stderr.on("data", (chunk) => {
-      stderr += chunk;
-    });
-    child.on("error", (error) => {
-      settle({ status: null, signal: null, error });
-    });
-    child.on("close", (status, signal) => {
-      settle({
-        status,
-        signal,
-        error: timedOut
-          ? new Error(`timed out after ${options.timeout}ms`)
-          : null,
-      });
-    });
-  });
-}
-
-async function runClaudeReview({
-  prompt,
-  cwd,
-  reviewSchema,
-  timeout = DEFAULT_REVIEW_TIMEOUT_MS,
-}) {
-  log(
-    `running claude in cwd=${cwd} model=${CLAUDE_REVIEW_MODEL} effort=${CLAUDE_REVIEW_EFFORT}`,
+  return REVIEWER_PROMPT_TEMPLATE.replace(
+    pattern,
+    (match) => replacements[match],
   );
-  const result = await spawnWithTimeout(
-    "claude",
-    [
-      "-p",
-      "--model",
-      CLAUDE_REVIEW_MODEL,
-      "--effort",
-      CLAUDE_REVIEW_EFFORT,
-      "--no-session-persistence",
-      "--allowedTools",
-      "Read,Bash,Glob,Grep",
-      "--output-format",
-      "json",
-      "--json-schema",
-      reviewSchema,
-      prompt,
-    ],
-    { cwd, timeout },
-  );
-  log(
-    `claude exit=${result.status ?? "null"} signal=${
-      result.signal ?? "null"
-    } stderr_chars=${getText(result.stderr).length}`,
-  );
-
-  if (result.error) {
-    return {
-      review: null,
-      reason: `claude spawn failed: ${result.error.message}`,
-    };
-  }
-  if (result.status !== 0) {
-    return {
-      review: null,
-      reason: `claude non-zero exit: ${result.status}${
-        getText(result.stderr) ? `: ${getText(result.stderr)}` : ""
-      }`,
-    };
-  }
-
-  const output = (result.stdout || "").trim();
-  log(`trimmed claude review output:\n${output}`);
-
-  const parsed = parseClaudePatchReviewOutput(output);
-  if (!parsed.review) {
-    log(
-      `invalid claude review stdout=${JSON.stringify(
-        (result.stdout || "").slice(0, 500),
-      )}`,
-    );
-    return {
-      review: null,
-      reason: `invalid claude review output: ${parsed.errors.join("; ")}`,
-    };
-  }
-
-  return { review: parsed.review, reason: null };
-}
-
-async function runCodexReview({
-  prompt,
-  cwd,
-  reviewSchemaPath,
-  timeout = DEFAULT_REVIEW_TIMEOUT_MS,
-}) {
-  log(`checking codex auth in cwd=${cwd}`);
-  const authResult = spawnSync("codex", ["login", "status"], {
-    cwd,
-    encoding: "utf8",
-    timeout: 15_000,
-  });
-
-  if (authResult.error) {
-    return {
-      review: null,
-      reason: `codex auth spawn failed: ${authResult.error.message}`,
-    };
-  }
-  if (authResult.status !== 0) {
-    return {
-      review: null,
-      reason: `codex auth check failed: ${
-        getText(authResult.stderr) || authResult.status
-      }`,
-    };
-  }
-
-  const tmpFile = path.join(
-    os.tmpdir(),
-    `code-implement-loop-codex-review-${Date.now()}-${process.pid}.json`,
-  );
-  log(
-    `running codex in cwd=${cwd} model=${CODEX_REVIEW_MODEL} effort=${CODEX_REVIEW_EFFORT} service_tier=${CODEX_SERVICE_TIER} output=${tmpFile}`,
-  );
-  const result = await spawnWithTimeout(
-    "codex",
-    [
-      "exec",
-      "--model",
-      CODEX_REVIEW_MODEL,
-      "-c",
-      `model_reasoning_effort="${CODEX_REVIEW_EFFORT}"`,
-      "-c",
-      `service_tier="${CODEX_SERVICE_TIER}"`,
-      "--sandbox",
-      "read-only",
-      "--ephemeral",
-      "--output-schema",
-      reviewSchemaPath,
-      "-o",
-      tmpFile,
-      prompt,
-    ],
-    { cwd, timeout },
-  );
-  log(
-    `codex exit=${result.status ?? "null"} signal=${
-      result.signal ?? "null"
-    } stderr_chars=${getText(result.stderr).length}`,
-  );
-
-  if (result.error) {
-    try {
-      fs.unlinkSync(tmpFile);
-    } catch {}
-    return {
-      review: null,
-      reason: `codex spawn failed: ${result.error.message}`,
-    };
-  }
-  if (result.status !== 0) {
-    try {
-      fs.unlinkSync(tmpFile);
-    } catch {}
-    return {
-      review: null,
-      reason: `codex non-zero exit: ${result.status}${
-        getText(result.stderr) ? `: ${getText(result.stderr)}` : ""
-      }`,
-    };
-  }
-
-  let output = "";
-  try {
-    output = fs.readFileSync(tmpFile, "utf8").trim();
-  } catch (error) {
-    return {
-      review: null,
-      reason: `failed to read codex output: ${error.message}`,
-    };
-  } finally {
-    try {
-      fs.unlinkSync(tmpFile);
-    } catch {}
-  }
-
-  log(`trimmed codex review output:\n${output}`);
-
-  const parsed = parseCodexPatchReviewOutput(output);
-  if (!parsed.review) {
-    log(`invalid codex review stdout=${JSON.stringify(output.slice(0, 500))}`);
-    return {
-      review: null,
-      reason: `invalid codex review output: ${parsed.errors.join("; ")}`,
-    };
-  }
-
-  return { review: parsed.review, reason: null };
-}
-
-export async function runReviewerWithRetries({
-  reviewer,
-  runReview,
-  prompt,
-}) {
-  let result = normalizeReviewResult(await runReview(prompt));
-
-  if (!result.review) {
-    log(
-      `${reviewer} review attempt 1 unavailable: ${
-        result.reason || "invalid review output"
-      }`,
-    );
-    log(`${reviewer} review attempt 2 launched with schema reminder`);
-    result = normalizeReviewResult(
-      await runReview(`${prompt}${SCHEMA_REMINDER}`),
-    );
-  }
-
-  if (
-    result.review &&
-    result.review.findings.length === 0 &&
-    result.review.overall_correctness === "incorrect"
-  ) {
-    log(`${reviewer} review consistency retry launched`);
-    const rerun = normalizeReviewResult(
-      await runReview(`${prompt}${SCHEMA_REMINDER}`),
-    );
-    if (
-      !rerun.review ||
-      (rerun.review.findings.length === 0 &&
-        rerun.review.overall_correctness === "incorrect")
-    ) {
-      return {
-        reviewer,
-        review: null,
-        reason:
-          "inconsistent review: empty findings with incorrect patch verdict",
-      };
-    }
-    result = rerun;
-  }
-
-  if (result.review) {
-    log(
-      `${reviewer} verdict: ${result.review.overall_correctness} (${result.review.findings.length} findings)`,
-    );
-  } else {
-    log(`${reviewer} review unavailable: ${result.reason || "invalid review output"}`);
-  }
-
-  return { reviewer, ...result };
-}
-
-export function aggregatePatchReviews(results) {
-  const reviews = {};
-  const unavailable = [];
-
-  for (const reviewer of REVIEWERS) {
-    const result = results.find((candidate) => candidate.reviewer === reviewer);
-    if (!result || !result.review) {
-      unavailable.push({
-        reviewer,
-        reason: result?.reason || "review unavailable",
-      });
-      reviews[reviewer] = null;
-    } else {
-      reviews[reviewer] = normalizePatchReview(result.review);
-    }
-  }
-
-  if (unavailable.length > 0) {
-    return {
-      status: "blocked",
-      findings: [],
-      reviews,
-      unavailable,
-      overall_explanation: unavailable
-        .map(({ reviewer, reason }) => `${reviewer}: ${reason}`)
-        .join("; "),
-    };
-  }
-
-  const findings = [];
-  for (const reviewer of REVIEWERS) {
-    const review = reviews[reviewer];
-    review.findings.forEach((finding, sourceIndex) => {
-      findings.push({
-        reviewer,
-        source_index: sourceIndex,
-        ...finding,
-      });
-    });
-  }
-
-  const incorrectReviewers = REVIEWERS.filter(
-    (reviewer) => reviews[reviewer].overall_correctness === "incorrect",
-  );
-
-  if (findings.length > 0 || incorrectReviewers.length > 0) {
-    return {
-      status: "revise",
-      findings,
-      reviews,
-      unavailable: [],
-      overall_explanation:
-        findings.length > 0
-          ? `${findings.length} reviewer finding(s) require fixes.`
-          : `${incorrectReviewers.join(", ")} returned an incorrect patch verdict.`,
-    };
-  }
-
-  return {
-    status: "approved",
-    findings: [],
-    reviews,
-    unavailable: [],
-    overall_explanation: "Both reviewers approved the patch.",
-  };
 }
 
 export async function runDualPatchReview({
   worktreeRoot,
   implementationPlan,
-  reviewSchemaPath = PATCH_REVIEW_SCHEMA_PATH,
+  reviewSchemaPath = REVIEW_OUTPUT_SCHEMA_PATH,
   reviewSchema = fs.readFileSync(reviewSchemaPath, "utf8").trim(),
   timeout = DEFAULT_REVIEW_TIMEOUT_MS,
 }) {
-  log(`worktree_root=${worktreeRoot}`);
   const prompt = renderReviewerPrompt({
     worktreeRoot,
     implementationPlan,
   });
 
-  log("reviewers launched: Codex, Claude");
-  const claudeReview = runReviewerWithRetries({
-    reviewer: "Claude",
+  return runDualReviewPrompt({
+    worktreeRoot,
     prompt,
-    runReview: (reviewPrompt) =>
-      runClaudeReview({
-        prompt: reviewPrompt,
-        cwd: worktreeRoot,
-        reviewSchema,
-        timeout,
-      }),
+    reviewSchemaPath,
+    reviewSchema,
+    timeout,
   });
-  const codexReview = runReviewerWithRetries({
-    reviewer: "Codex",
-    prompt,
-    runReview: (reviewPrompt) =>
-      runCodexReview({
-        prompt: reviewPrompt,
-        cwd: worktreeRoot,
-        reviewSchemaPath,
-        timeout,
-      }),
-  });
-
-  const results = await Promise.all([codexReview, claudeReview]);
-  const aggregate = aggregatePatchReviews(results);
-  log(`aggregate status=${aggregate.status}`);
-  return aggregate;
 }
 
 async function main() {
