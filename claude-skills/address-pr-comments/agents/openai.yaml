@@ -1,4 +1,4 @@
 interface:
   display_name: "Address PR Comments"
-  short_description: "Plan unresolved PR comment handling, then wait for approval"
-  default_prompt: "Use $address-pr-comments to infer the current branch PR and process unresolved review threads."
+  short_description: "Plan unresolved or provided PR comment handling, then wait for approval"
+  default_prompt: "Use $address-pr-comments to infer the current branch PR and process unresolved review threads. Optionally paste reviewer comment text to classify that text instead."
