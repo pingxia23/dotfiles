@@ -1,4 +1,4 @@
 interface:
   display_name: "Code Implement Loop"
-  short_description: "Implement code, review locally, commit, and babysit PRs"
-  default_prompt: "Implement from a provided plan (either in raw text or a file reference), then run up to 5 local-uncommitted review/fix rounds against the resolved implementation plan, commit in dd scope, and run post-commit babysit-pr by default."
+  short_description: "Implement code with a local-uncommitted review/fix loop"
+  default_prompt: "Implement from a provided plan (either in raw text or a file reference), then run up to 2 local-uncommitted review/fix rounds against the resolved implementation plan."

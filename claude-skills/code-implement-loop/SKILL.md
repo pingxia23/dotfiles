@@ -1,13 +1,13 @@
 ---
 name: code-implement-loop
-description: "Trigger this skill when implementation should start: if Codex/Claude proposes a plan and the user says 'implement this', 'implement the proposed plan', 'implement it', or equivalent; or if the user explicitly invokes `code-implement-loop`. Accepted implementation input sources are: a Codex/Claude-proposed plan, a user-provided `.md` plan/design file, or user-provided inline implementation instructions. In dd scope it commits with `commit-smart` and runs post-commit `babysit-pr` by default unless `post_commit_babysit_pr: no` is supplied."
+description: "Trigger this skill when implementation should start: if Codex/Claude proposes a plan and the user says 'implement this', 'implement the proposed plan', 'implement it', or equivalent; or if the user explicitly invokes `code-implement-loop`. Accepted implementation input sources are: a Codex/Claude-proposed plan, a user-provided `.md` plan/design file, or user-provided inline implementation instructions."
 ---
 
 # Code Implement Loop
 
 ## Overview
 
-Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions, plus optional control flags) -> TODO breakdown -> implementation (uncommitted) -> iterative review/fix loop -> conditional `commit-smart` when `in_dd_scope=true` -> dedicated optional post-commit `babysit-pr` step. Each review round evaluates the current patch fresh; stop only on reviewer approval plus the required completion step for the current repo scope, or max-rounds blocked output.
+Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> TODO breakdown -> implementation (uncommitted) -> iterative review/fix loop -> conditional `commit-smart` when `in_dd_scope=true`. Each review round evaluates the current patch fresh; stop only on reviewer approval plus the required completion step for the current repo scope, or max-rounds blocked output.
 
 ## Hard Rules
 
@@ -33,13 +33,8 @@ Accept one of the following as the implementation source:
 1. **`.md` file path** — a path to a plan/design document.
 2. **Direct user instructions** — inline text describing the changes to implement.
 
-Also accept this optional control flag:
-
-- `post_commit_babysit_pr`: `yes` or `no`; defaults to `yes` when omitted.
-
 Resolution order:
 
-- First parse `post_commit_babysit_pr` if the input includes it. The flag controls only Step 7 after `commit-smart`; it is not part of the implementation scope handed to the reviewer.
 - If the argument is a path ending in `.md`, use that file as the implementation source.
 - Otherwise, treat the entire user input as direct implementation instructions.
 - If input is completely empty (no file path and no instructions), stop and return:
@@ -147,29 +142,11 @@ Rules:
 - If `commit-smart` fails in dd scope, report blocked status with the failure reason and attempted remediation.
 - Outside dd scope, do not invoke `commit-smart`, do not create or update a PR, and report success once the reviewed patch is complete.
 
-### 7) Post-Commit Babysit PR
-
-Run this step only after Step 6 completes successfully in dd scope.
-
-- If `post_commit_babysit_pr=no`, skip this step and return success to the caller.
-- If `post_commit_babysit_pr=yes`:
-  1. Sleep for 10 minutes.
-  2. Spawn a fresh worker subagent from the same worktree and current branch.
-  3. Invoke `$babysit-pr` in that worker without additional input.
-  4. Wait for the worker to finish.
-  5. Treat the worker's final status as the Step 7 result.
-
-Rules:
-
-- When `post_commit_babysit_pr=yes`, do not end the workflow as success until `babysit-pr` has completed.
-- If `babysit-pr` fails after the post-commit sleep, report blocked status with the failure reason and attempted remediation.
-
-### 8) Return final status
+### 7) Return final status
 
 Success format:
 
-- In dd scope with `post_commit_babysit_pr=yes`: `SUCCESS: Implementation complete and post-commit babysit-pr completed | PR: {url}`
-- In dd scope with `post_commit_babysit_pr=no`: `SUCCESS: Implementation complete; post-commit babysit-pr skipped | PR: {url}`
+- In dd scope: `SUCCESS: Implementation complete | PR: {url}`
 - Outside dd scope: `SUCCESS: Implementation complete | PR: none`
 
 Blocked format:
@@ -179,7 +156,3 @@ Blocked format:
 or
 
 `BLOCKED: commit-smart failed | PR: {url} | Error: {summary} | Attempts: {summary}`
-
-or
-
-`BLOCKED: babysit-pr failed | PR: {url} | Error: {summary} | Attempts: {summary}`

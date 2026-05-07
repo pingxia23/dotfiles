@@ -166,13 +166,12 @@ dd_gitlab_checks_json="$(
 
 10. Hand off `fetchable_failed_jobs` that are still classified as `likely caused by this PR` to `code-implement-loop`. The handoff must include, for each such job:
 
-- `post_commit_babysit_pr: no`, so the nested `code-implement-loop` returns to this existing `babysit-pr` CI loop after `commit-smart` instead of starting another `babysit-pr` run
 - the PR URL
 - the GitLab job URL from `web_url`
 - the local trace file path from `trace_file`
 - the failure summary extracted from the trace
 
-12. Invoke `code-implement-loop` with that raw failure context and `post_commit_babysit_pr: no` as the only control flag.
+12. Invoke `code-implement-loop` with that raw failure context as the entire implementation scope.
 13. If `code-implement-loop` returns blocked status, propagate it and stop.
 14. If `code-implement-loop` succeeds, continue the loop and return to Step 3.1 to repoll the `dd-gitlab/*` checks.
 
@@ -180,8 +179,6 @@ Example handoff to `code-implement-loop`:
 
 ```text
 Fix the failing dd-gitlab CI jobs for PR https://github.com/DataDog/dd-source/pull/406053 only.
-
-post_commit_babysit_pr: no
 
 - dd-gitlab/test-all:unit
   PR: https://github.com/DataDog/dd-source/pull/406053
