@@ -9,6 +9,7 @@ Perform a deterministic smart-commit workflow.
 
 - First, review the `# Global Rules` from your memory file and apply them before the skill-specific rules below.
 - For pre-commit hook failures, inspect, fix, and retry until commit succeeds
+- Never create an unsigned commit. Git signing must be enabled before every commit attempt.
 
 ## Step 0: Preflight
 
@@ -20,6 +21,10 @@ Perform a deterministic smart-commit workflow.
 3. Detect merge-commit state:
    - Set `merge_in_progress=true` when `git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1` succeeds.
    - This applies only to the merge commit Git is already preparing.
+4. Verify Git commit signing is enabled before any commit attempt:
+   - Run `git config --bool commit.gpgsign`.
+   - If the value is not exactly `true`, run `git config commit.gpgsign true`, then verify again.
+   - If signing still is not enabled, stop and report the exact command output.
 
 ## Step 1: Run Tests For Affected Packages (Disabled - handled by pre-commit)
 
@@ -45,18 +50,26 @@ Perform a deterministic smart-commit workflow.
 
 ## Step 2: Stage And Review Changes
 
-1. Stage changes while excluding working artifacts:
+1. Remove temporary files created during development before staging:
+   - Delete only files that are clearly temporary artifacts from this workflow, such as plan scratch files, test output files, logs, caches, or one-off debugging artifacts.
+   - Do not delete user-authored source, docs, configs, or unrelated untracked files.
+   - If unsure whether an untracked file is a user file or a temporary artifact, leave it alone and call it out before committing.
+2. Stage changes while excluding working artifacts:
    ```bash
    git add -A -- ':(top,exclude)designs/' ':(top,exclude)plans/' ':(top,exclude)exploration/'
    ```
-2. Review staged contents before commit:
+3. Review staged contents before commit:
    - `git diff --cached --name-status`
-3. If nothing is staged, stop and inform the user.
+4. If nothing is staged, stop and inform the user.
 
 ## Step 3: Compose Commit Message
 
 1. do not use `--no-verify` unless the user explicitly asks.
-2. If `merge_in_progress=false`, write a message that:
+2. Commit with signing and hooks enabled.
+   - Rely on `commit.gpgsign=true` from Step 0; do not pass `--no-gpg-sign`.
+   - If the commit command hangs, interrupt it and retry the same commit command once.
+   - If the retry also hangs, stop and ask the user for help. Report the exact command and the last visible output.
+3. If `merge_in_progress=false`, write a message that:
    - Explains why the change is needed.
    - Uses a concise subject and optional body.
    - commit using HEREDOC:

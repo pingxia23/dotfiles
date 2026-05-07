@@ -14,16 +14,11 @@ These rules apply to all projects and working directories.
 - **Never change the current git branch name** unless I explicitly asked you to do so
 - NEVER force push unless I explicitly asked you to do so
 
-## Code Commit 
-1. Remove any temporary files created during development (e.g., plan files, test outputs)
-2. **ALWAYS** use `commit-smart` skill to commit
-3. **NEVER** commit without Git signing enabled. If a commit hangs, retry once. If it still does not work, stop and ask the user for help.
-
-
 ## Python Code Style
 1. **ALWAYS** perfer top-level import than inline import
 2. Absolute imports only, never relative.
-3. Mock with `patch.object()` on imported modules, not long path strings.
+3. Mock with `patch.object()` on imported modules, not long path strings
+4. Prefer Parametrized tests.
 
 ## Bazel / bzl Commands
 
@@ -50,6 +45,11 @@ Our codebase uses `bzl` to build and test packages.
   - Decision Check Before Changing Anything
   - Before making any change, ask: is this required to complete the approved scope?
   - If not, leave it out.
+
+# Skill Routing Override
+
+- **ALWAYS** use `commit-smart` skill to commit
+- **ALWAYS** `code-implement-loop` skill to implement a plan, if the current working directory is within `~/dd` (or its resolved absolute path), and the latest assistant response proposed an implementation plan and the user replies with `implement this`, `implement it`, `implement the proposed plan`, `carry out the plan`, or equivalent.
 
 # Plan Mode Output Template
 
@@ -96,9 +96,4 @@ Our codebase uses `bzl` to build and test packages.
   List remaining risks or review points.
   ```
 
-  
 
-# Skill Routing Override
-
-- If the current working directory is within `~/dd` (or its resolved absolute path), and the latest assistant response proposed an implementation plan and the user replies with `implement this`, `implement it`, `implement the proposed plan`, `carry out the plan`, or equivalent, treat that reply as an explicit invocation of `code-implement-loop`.
-- This override takes precedence over generic default behavior such as "assume the user wants implementation."
