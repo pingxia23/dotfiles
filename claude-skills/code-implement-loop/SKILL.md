@@ -29,7 +29,7 @@ Use this exact handling for both review loops after the loop-specific reviewer s
 1. Parse `review_result` as strict JSON with no markdown fences or extra prose.
 2. The JSON must have:
    - `status`: `approved`, `revise`, or `blocked`
-   - `findings`: actionable findings to fix, if any
+   - `findings`: actionable findings to fix, if any; each finding must follow the shared review schema, including concrete `evidence`
    - `overall_explanation`: short status explanation
 3. If `review_result` is not valid JSON or does not include these fields, stop and report blocked status with the raw output summary.
 
@@ -41,6 +41,7 @@ Use this exact handling for both review loops after the loop-specific reviewer s
 - If `status="revise"` has findings and `current_round < max_rounds`, fix those items only, prioritize by `priority` ascending (`0` -> `3`; unknown priority after known priorities), rerun targeted verification, and continue to the next review round.
 - If `status="revise"` has findings and `current_round >= max_rounds`, stop and emit blocked status with current findings and attempted fixes.
 - Only P0-P2 findings are actionable. Sub-P2 comments, nits, praise, and broad suggestions must be omitted from `findings` and must not force `status="revise"`.
+- Both review loops use the same structured runner and schema after prompt/context assembly. The prompts require an internal scout pass, applicable specialist review lenses, mandatory evidence per finding, and a self-challenge pass before output.
 
 ## Workflow
 
@@ -228,8 +229,8 @@ Apply **Shared Review Result Handling** with:
 
 Rules:
 
-- The helper fetches `origin/$base_ref`, validates the current branch equals the PR head branch, computes `git merge-base HEAD origin/$base_ref`, and asks both reviewers to inspect `git diff <review_base>` plus untracked non-ignored files.
-- The helper does not require local `HEAD` to equal the remote PR head and does not require a clean worktree.
+- The helper fetches `origin/$base_ref`, validates the current branch equals the PR head branch, validates local `HEAD` equals the remote PR head, computes `git merge-base HEAD origin/$base_ref`, and asks both reviewers to inspect `git diff <review_base>` plus untracked non-ignored files.
+- The helper does not require a clean worktree, so later rounds include uncommitted review fixes.
 - After assembling PR context and prompt, the helper uses the same `scripts/review-output.schema.json` schema, runner, parsing, and aggregation logic as the local-uncommitted review loop. Reviewer output must not be freeform prose.
 
 ### 8) Commit Full PR Review Fixes

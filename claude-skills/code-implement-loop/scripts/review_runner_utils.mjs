@@ -214,6 +214,7 @@ export function validateReviewOutput(value) {
         !hasOnlyKeys(finding, [
           "title",
           "body",
+          "evidence",
           "confidence_score",
           "priority",
           "code_location",
@@ -228,6 +229,12 @@ export function validateReviewOutput(value) {
       }
       if (typeof finding.body !== "string" || finding.body.length === 0) {
         errors.push(`${prefix}.body must be a non-empty string`);
+      }
+      if (
+        typeof finding.evidence !== "string" ||
+        finding.evidence.length === 0
+      ) {
+        errors.push(`${prefix}.evidence must be a non-empty string`);
       }
       if (
         typeof finding.confidence_score !== "number" ||

@@ -63,6 +63,30 @@ Before reviewing, gather the local uncommitted patch set yourself:
    - truncate to the first 400 lines per file when reading context
    - for tracked deletions, treat the file as \`<deleted from working tree; no current file contents>\`
 
+## Required Internal Scout Pass
+
+Before producing findings, build a short internal scout summary from the implementation plan and the local patch set. Do not output the scout summary.
+
+The scout summary must cover:
+
+- intended change and expected behavior
+- changed surface area and likely blast radius
+- relevant tool, framework, language, config, schema, API, auth, or data-flow context
+- implementation-plan-vs-patch consistency
+- pre-existing or out-of-scope issues that should not be reported
+
+Use the scout summary to guide review. If the patch differs semantically from the implementation plan, flag that mismatch only when it creates a P0-P2 correctness, compatibility, security, performance, or maintainability bug.
+
+## Required Review Lenses
+
+Review the patch through every lens that applies to the changed files:
+
+- functional correctness and regressions
+- structure, contracts, and cross-module coupling
+- language-specific issues, especially Python typing/import/test patterns when Python files change
+- tests, fixtures, mocks, generated files, and build metadata
+- config, schema, API, auth, security, tenant, operational, retry, or observability behavior when touched
+
 ## Finding Rules
 
 - Findings may target tracked-file hunks or appended synthetic new-file hunks for untracked files.
@@ -79,12 +103,14 @@ For each finding:
 2. Make the body brief, factual, and specific about why this is a bug.
 3. Explain the scenario, input, or environment required for the bug to happen when relevant.
 4. Keep the body to one paragraph.
-5. Do not include code snippets longer than 3 lines.
-6. Use \`suggestion\` blocks only for concrete replacement code.
-7. In any \`suggestion\` block, preserve exact leading whitespace.
-8. Do not add or remove outer indentation unless that is the actual fix.
-9. Avoid unnecessary file or location chatter in the prose; the inline location already provides context.
-10. Do not generate a PR fix unless a minimal \`suggestion\` block is genuinely needed.
+5. Put mandatory supporting detail in \`evidence\`: exact file/function/line/config/test/external source actually inspected, plus any necessary inference.
+6. Do not let \`evidence\` merely restate the finding.
+7. Do not include code snippets longer than 3 lines.
+8. Use \`suggestion\` blocks only for concrete replacement code.
+9. In any \`suggestion\` block, preserve exact leading whitespace.
+10. Do not add or remove outer indentation unless that is the actual fix.
+11. Avoid unnecessary file or location chatter in the prose; the inline location already provides context.
+12. Do not generate a PR fix unless a minimal \`suggestion\` block is genuinely needed.
 
 ## Priority Scale
 
@@ -117,6 +143,16 @@ Do not report examples like these:
 These concerns must not appear in \`findings\` and must not affect
 \`overall_correctness\`.
 
+## Self-Challenge Before Output
+
+Before returning JSON, challenge every candidate finding:
+
+- Keep it only if the evidence proves the issue is introduced by the current patch set.
+- Drop it if it is speculative, pre-existing, intentional, sub-P2, or based on a missing unstated requirement.
+- Merge duplicates that describe the same root cause.
+- Demote severity when the scenario is narrower than first assumed.
+- Confirm the changed-line anchor is the best available location for the bug.
+
 ## Overall Verdict
 
 At the end, decide whether the patch is correct.
@@ -138,6 +174,7 @@ The JSON must match this schema exactly:
     {
       "title": "<≤ 80 chars, imperative>",
       "body": "<valid Markdown explaining *why* this is a problem; cite files/lines/functions>",
+      "evidence": "<specific code/config/test/source evidence supporting the finding>",
       "confidence_score": <float 0.0-1.0>,
       "priority": <int 0-2>,
       "code_location": {
@@ -155,6 +192,7 @@ Additional output rules:
 
 - \`code_location.absolute_file_path\` is required.
 - \`code_location.line_range.start\` and \`code_location.line_range.end\` are required.
+- \`evidence\` is required for every finding and must describe the concrete source you inspected, not just repeat the body.
 - The \`code_location\` range must overlap the diff, including appended synthetic new-file hunks for untracked files.
 - Do not wrap the JSON in markdown fences or extra prose.
 - The code_location field is required and must include absolute_file_path and line_range.

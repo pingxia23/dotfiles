@@ -38,6 +38,8 @@ Flag an issue only when all of these are true:
 7. You can identify the concrete code path or scenario that is affected.
 8. It is not obviously an intentional product or design choice.
 
+It is not enough to speculate that the change may disrupt another part of the codebase. To flag a bug, identify the other code path, caller, state transition, or runtime scenario that is concretely affected.
+
 If no issue clearly meets that bar, return no findings.
 
 ## Review Scope
@@ -62,25 +64,45 @@ If no issue clearly meets that bar, return no findings.
 - Remote PR head commit: {remote_head_sha}
 - Local branch: {head_ref}
 
+PR body:
+{pr_body}
+
 Changed files:
 {changed_files}
 
 ## How To Gather Review Inputs
 
-Before reviewing, gather the exact full local patch yourself:
+Before reviewing:
 
-1. \`cd "{worktree_root}"\`.
-2. Verify \`git rev-parse HEAD\` prints \`{head_sha}\`.
-3. Build the tracked-file diff with \`git diff --binary {review_base}\`.
-4. Build the changed-files list with \`git diff --name-status {review_base}\`.
-5. For each changed path, inspect the current working-tree contents.
-   - truncate to the first 400 lines per file when reading context
-   - for tracked deletions, treat the file as \`<deleted from working tree; no current file contents>\`
-6. Append untracked non-ignored files:
-   - list them with \`git ls-files --others --exclude-standard | LC_ALL=C sort\`
-   - append each to the changed-files list as \`A<TAB><path>\`
-   - for each file, append a synthetic new-file patch with \`git diff --no-index --binary -- /dev/null "$path" || true\`
-   - keep synthetic patches in stable sorted path order
+1. Read the PR URL and PR body above to understand the intended problem, approach, and reviewer context.
+2. Treat the local checkout as the source of truth. The runner has already validated that local \`HEAD\` equals the remote PR head commit \`{head_sha}\`.
+3. Review the full local PR change against review base \`{review_base}\`.
+4. Include committed branch changes, staged changes, unstaged tracked changes, and untracked non-ignored files.
+5. Inspect current working-tree contents for changed paths when needed to understand behavior.
+
+## Required Internal Scout Pass
+
+Before producing findings, build a short internal scout summary from the PR title, PR body, changed-files list, full local diff, and current file contents. Do not output the scout summary.
+
+The scout summary must cover:
+
+- intended change and expected behavior
+- changed surface area and likely blast radius
+- relevant tool, framework, language, config, schema, API, auth, data-flow, or domain context
+- PR-description-vs-diff consistency
+- pre-existing or out-of-scope issues that should not be reported
+
+Use the scout summary to guide review. Explicitly compare the PR body/title to the actual local diff. Flag semantic mismatches only when they create a P0-P2 bug, such as hidden public API changes, removed flags, unannounced behavior changes, broken downstream consumer contracts, or missing rollout/test coverage for a changed contract.
+
+## Required Review Lenses
+
+Review the full local diff through every lens that applies to the changed files:
+
+- functional correctness and regressions
+- structure, contracts, and cross-module coupling
+- language-specific issues, especially Python typing/import/test patterns when Python files change
+- tests, fixtures, mocks, generated files, and build metadata
+- config, schema, API, auth, security, tenant, operational, retry, or observability behavior when touched
 
 ## Finding Rules
 
@@ -98,20 +120,34 @@ For each finding:
 2. Make the body brief, factual, and specific about why this is a bug.
 3. Explain the scenario, input, or environment required for the bug to happen when relevant.
 4. Keep the body to one paragraph.
-5. Do not include code snippets longer than 3 lines.
-6. Use \`suggestion\` blocks only for concrete replacement code.
-7. In any \`suggestion\` block, preserve exact leading whitespace.
-8. Do not add or remove outer indentation unless that is the actual fix.
-9. Avoid unnecessary file or location chatter in the prose; the inline location already provides context.
-10. Do not generate a PR fix unless a minimal \`suggestion\` block is genuinely needed.
+5. Put mandatory supporting detail in \`evidence\`: exact file/function/line/config/test/external source actually inspected, plus any necessary inference.
+6. Do not let \`evidence\` merely restate the finding.
+7. Do not include code snippets longer than 3 lines.
+8. Use \`suggestion\` blocks only for concrete replacement code.
+9. In any \`suggestion\` block, preserve exact leading whitespace.
+10. Do not add or remove outer indentation unless that is the actual fix.
+11. Avoid unnecessary file or location chatter in the prose; the inline location already provides context.
+12. Do not overstate severity; make the required scenario, environment, or input immediately clear when severity depends on it.
+13. Use a matter-of-fact, non-accusatory tone. Do not include praise or human-style review filler.
+14. Do not generate a PR fix unless a minimal \`suggestion\` block is genuinely needed.
 
 ## Priority Scale
 
-- \`P0\` / \`priority: 0\`: release-blocking or universally severe issue
+- \`P0\` / \`priority: 0\`: release-blocking or universally severe issue that does not depend on assumptions about inputs or environment
 - \`P1\` / \`priority: 1\`: urgent issue that should be fixed in the next cycle
 - \`P2\` / \`priority: 2\`: normal bug to fix eventually
 
 If priority is unclear or lower than P2, omit the finding.
+
+## Self-Challenge Before Output
+
+Before returning JSON, challenge every candidate finding:
+
+- Keep it only if the evidence proves the issue is introduced by the full local diff against \`{review_base}\`.
+- Drop it if it is speculative, pre-existing, intentional, sub-P2, or based on a missing unstated requirement.
+- Merge duplicates that describe the same root cause.
+- Demote severity when the scenario is narrower than first assumed.
+- Confirm the changed-line anchor is the best available location for the bug.
 
 ## Overall Verdict
 
@@ -133,6 +169,7 @@ The JSON must match this schema exactly:
     {
       "title": "<≤ 80 chars, imperative>",
       "body": "<valid Markdown explaining *why* this is a problem; cite files/lines/functions>",
+      "evidence": "<specific code/config/test/source evidence supporting the finding>",
       "confidence_score": <float 0.0-1.0>,
       "priority": <int 0-2>,
       "code_location": {
@@ -150,6 +187,7 @@ Additional output rules:
 
 - \`code_location.absolute_file_path\` is required.
 - \`code_location.line_range.start\` and \`code_location.line_range.end\` are required.
+- \`evidence\` is required for every finding and must describe the concrete source you inspected, not just repeat the body.
 - The \`code_location\` range should overlap the diff.
 - Do not wrap the JSON in markdown fences or extra prose.
 - Do not generate a PR fix.
@@ -214,6 +252,7 @@ function renderPrReviewerPrompt(args) {
     "{pr_number}": args.prNumber,
     "{pr_url}": args.prUrl,
     "{pr_title}": args.prTitle,
+    "{pr_body}": args.prBody,
     "{base_ref}": args.baseRef,
     "{head_ref}": args.headRef,
     "{head_sha}": args.headSha,
@@ -222,7 +261,7 @@ function renderPrReviewerPrompt(args) {
     "{changed_files}": args.changedFiles,
   };
   const pattern =
-    /\{worktree_root\}|\{repo\}|\{pr_number\}|\{pr_url\}|\{pr_title\}|\{base_ref\}|\{head_ref\}|\{head_sha\}|\{remote_head_sha\}|\{review_base\}|\{changed_files\}/g;
+    /\{worktree_root\}|\{repo\}|\{pr_number\}|\{pr_url\}|\{pr_title\}|\{pr_body\}|\{base_ref\}|\{head_ref\}|\{head_sha\}|\{remote_head_sha\}|\{review_base\}|\{changed_files\}/g;
 
   return PR_REVIEWER_PROMPT_TEMPLATE.replace(pattern, (match) =>
     String(replacements[match]),
@@ -248,7 +287,7 @@ function loadPrMetadata({ worktreeRoot, repo, prNumber, branch }) {
       repo,
       selector,
       "--json",
-      "number,url,title,baseRefName,headRefName,headRefOid",
+      "number,url,title,body,baseRefName,headRefName,headRefOid",
     ],
     { cwd: worktreeRoot, log },
   );
@@ -350,6 +389,7 @@ function buildReviewMetadata({
     pr_number: String(pr.number),
     pr_url: pr.url,
     pr_title: pr.title,
+    pr_body: getText(pr.body) || "<empty>",
     base_ref: pr.baseRefName,
     head_ref: pr.headRefName,
     head_sha: localHead,
@@ -387,6 +427,7 @@ export async function runDualPrBranchReview({
     prNumber: metadata.pr_number,
     prUrl: metadata.pr_url,
     prTitle: metadata.pr_title,
+    prBody: metadata.pr_body,
     baseRef: metadata.base_ref,
     headRef: metadata.head_ref,
     headSha: metadata.head_sha,

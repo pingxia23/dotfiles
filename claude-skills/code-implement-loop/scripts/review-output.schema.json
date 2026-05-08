@@ -15,6 +15,10 @@
             "type": "string",
             "minLength": 1
           },
+          "evidence": {
+            "type": "string",
+            "minLength": 1
+          },
           "confidence_score": {
             "type": "number",
             "minimum": 0,
@@ -55,6 +59,7 @@
         "required": [
           "title",
           "body",
+          "evidence",
           "confidence_score",
           "priority",
           "code_location"
