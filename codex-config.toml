@@ -8,7 +8,7 @@ service_tier = "fast"
 plan_mode_reasoning_effort = "high"
 
 [features]
-codex_hooks = true
+hooks = true
 multi_agent = true
 goals = true
 memories = true
@@ -21,6 +21,10 @@ url = "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp?toolsets=core,llmob
 
 [mcp_servers.datadog_staging]
 url = "https://mcp.datad0g.com/api/unstable/mcp-server/mcp?toolsets=core,llmobs,ddsql"
+
+[mcp_servers.trajectory]
+command = "/Users/ping.xia/.trajectory/bin/trajectory"
+args = ["mcp"]
 
 
 [tui]
@@ -55,12 +59,12 @@ trust_level = "trusted"
 "gpt-5.3-codex" = "gpt-5.4"
 
 [marketplaces.openai-bundled]
-last_updated = "2026-05-06T17:46:46Z"
+last_updated = "2026-05-08T19:11:44Z"
 source_type = "local"
 source = "/Users/ping.xia/.codex/.tmp/bundled-marketplaces/openai-bundled"
 
 [marketplaces.openai-primary-runtime]
-last_updated = "2026-05-06T17:48:13Z"
+last_updated = "2026-05-08T19:48:09Z"
 source_type = "local"
 source = "/Users/ping.xia/.cache/codex-runtimes/codex-primary-runtime/plugins/openai-primary-runtime"
 
@@ -85,3 +89,12 @@ enabled = true
 [memories]
 generate_memories = true
 use_memories = true
+
+[hooks.state]
+
+[hooks.state."/Users/ping.xia/.codex/hooks.json:stop:0:0"]
+trusted_hash = "sha256:1d374ea956912e71bf3682f86a44c794c6aac8bde169b17222c4dfc71ca27b00"
+
+[hooks.state."/Users/ping.xia/.codex/hooks.json:stop:1:0"]
+enabled = true
+trusted_hash = "sha256:58def438adcf11ccc3170429aee88a653ddf9dbbdcb23ab194d7f66b2cfa2050"

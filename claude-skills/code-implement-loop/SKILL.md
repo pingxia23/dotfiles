@@ -16,6 +16,35 @@ Implement a task in a deterministic sequence: plan intake (`.md` file or direct 
 - Approval definition: `approval` means the reviewer script returns `status="approved"`, never user confirmation.
 - Autonomy rule: do not ask the user for approval or extra checkpoints during normal flow; only ask the user when blocked/stuck/failing.
 
+## Implementation Discipline
+
+These rules apply to **both initial implementation and review-fix rounds**.
+
+### Simplicity First
+Minimum code that solves the problem. Nothing speculative.
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+### Surgical Changes
+Touch only what you must. Clean up only your own mess.
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: Every changed line should trace directly to the `implementation_plan` from step 2.
+
 ## Shared Review Result Handling
 
 Use this exact handling for both review loops after the loop-specific reviewer script returns. The only loop-specific inputs are:
@@ -62,10 +91,10 @@ Accept one of the following as the implementation source:
 
 Resolution order:
 
-- If the argument is a path ending in `.md`, use that file as the implementation source.
-- Otherwise, treat the entire user input as direct implementation instructions.
 - If input is completely empty (no file path and no instructions), stop and return:
   - `FAILED: provide a .md plan file or describe the changes to implement`
+- If the argument is a path ending in `.md`, set `implementation_plan` to the contents of that file.
+- Otherwise, set `implementation_plan` to the inline instruction text exactly as provided to the skill.
 - Do not run explore-intent in this skill.
 
 ### 3) Create decision-complete TODOs
@@ -77,6 +106,7 @@ Before creating implementation TODOs:
 
 Build an ordered TODO checklist before editing code.
 
+- Use the resolved `implementation_plan` from Step 2 as the implementation source.
 - Include exact files to change.
 - Include tests to add/update for each TODO.
 - Include verification command per TODO.
@@ -118,11 +148,9 @@ Run a bounded loop with at most **5** rounds. Each round executes Steps 5a-5d be
 
 #### 5b) Assemble Reviewer Inputs
 
-The reviewer script gathers and evaluates the local uncommitted patch set itself. The orchestrator only resolves the implementation plan and supporting context.
+The reviewer script gathers and evaluates the local uncommitted patch set itself. The orchestrator only passes the already-resolved implementation plan and supporting context.
 
-1. Resolve `implementation_plan` from Step 2:
-   - if the implementation input is a `.md` path, use the contents of that file
-   - otherwise use the inline instruction text exactly as provided to the skill
+1. Use `implementation_plan` exactly as resolved in Step 2.
 2. Include `worktree_root` from Step 5a so the reviewer script can `cd` there before gathering the patch set.
 
 #### 5c) Run Reviewer Script
