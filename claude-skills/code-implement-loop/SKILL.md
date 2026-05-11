@@ -45,6 +45,12 @@ When your changes create orphans:
 
 The test: Every changed line should trace directly to the `implementation_plan` from step 2.
 
+### Handling Gaps
+- If something necessary is missing, make the smallest change needed to unblock the planned work.
+- If a required change would materially expand scope, stop and surface it instead of proceeding on your own.
+- Before making any change, ask: is this required to complete the approved scope? If not, leave it out.
+
+
 ## Shared Review Result Handling
 
 Use this exact handling for both review loops after the loop-specific reviewer script returns. The only loop-specific inputs are:

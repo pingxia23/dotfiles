@@ -14,6 +14,10 @@ These rules apply to all projects and working directories.
 - **Never change the current git branch name** unless I explicitly asked you to do so
 - NEVER force push unless I explicitly asked you to do so
 
+## Understanding / Investigation
+- Use both the codebase and Atlassian MCP as knowledge sources for understanding and investigation tasks.
+- Ground conclusions in concrete code or Atlassian references.
+
 ## Python Code Style
 1. **ALWAYS** perfer top-level import than inline import
 2. Absolute imports only, never relative.
@@ -30,21 +34,36 @@ Our codebase uses `bzl` to build and test packages.
 - Never run multiple `bzl` commands in parallel (lockfile conflicts)
 - Always print `bzl` output 
 
-## Scope Control
-**Primary Rule**
-  - Keep plans tightly focused on the user’s explicit request.
-  - Implement only the approved plan.
+## Implementation Discipline
+Implement only the approved plan.
 
-**What Not To Add**
-  - Do not add refactors, abstractions, cleanup, extra wiring, or behavior changes unless they are required to complete the requested
-    work.
-  - Do not include adjacent improvements, opportunistic fixes, or “while we’re here” changes unless the user explicitly approves them.
-**How To Handle Gaps**
-  - If something necessary is missing, make the smallest change needed to unblock the planned work.
-  - If a required change would materially expand scope, stop and surface it instead of proceeding on your own.
-  - Decision Check Before Changing Anything
-  - Before making any change, ask: is this required to complete the approved scope?
-  - If not, leave it out.
+### Simplicity First
+Minimum code that solves the problem. Nothing speculative.
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+### Surgical Changes
+Touch only what you must. Clean up only your own mess.
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+### Handling Gaps
+- If something necessary is missing, make the smallest change needed to unblock the planned work.
+- If a required change would materially expand scope, stop and surface it instead of proceeding on your own.
+- Before making any change, ask: is this required to complete the approved scope? If not, leave it out.
 
 # Skill Routing Override
 
@@ -95,5 +114,3 @@ Our codebase uses `bzl` to build and test packages.
 
   List remaining risks or review points.
   ```
-
-
