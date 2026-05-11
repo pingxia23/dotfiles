@@ -97,3 +97,9 @@ trusted_hash = "sha256:1d374ea956912e71bf3682f86a44c794c6aac8bde169b17222c4dfc71
 [hooks.state."/Users/ping.xia/.codex/hooks.json:stop:1:0"]
 enabled = true
 trusted_hash = "sha256:58def438adcf11ccc3170429aee88a653ddf9dbbdcb23ab194d7f66b2cfa2050"
+
+[hooks.state."/home/bits/.codex/hooks.json:stop:0:0"]
+trusted_hash = "sha256:1d374ea956912e71bf3682f86a44c794c6aac8bde169b17222c4dfc71ca27b00"
+
+[hooks.state."/home/bits/.codex/hooks.json:stop:1:0"]
+trusted_hash = "sha256:58def438adcf11ccc3170429aee88a653ddf9dbbdcb23ab194d7f66b2cfa2050"
