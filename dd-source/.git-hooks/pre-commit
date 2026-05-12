@@ -379,6 +379,15 @@ assistant_changed_files=$(get_assistant_changed_files)
 if [[ -n "$assistant_changed_files" ]]; then
     assistant_test_targets="//domains/assistant/...:all"
 
+    info "  🏗️ Running: bzl build --config=ty //domains/assistant/..."
+    if run_bzl_locked build --config=ty //domains/assistant/...; then
+        success "  ✅ domains/assistant build passed"
+    else
+        error "  ❌ domains/assistant build failed!"
+        error "  Run: bzl build --config=ty //domains/assistant/..."
+        exit 1
+    fi
+
     info "  🧪 Running: bzl test --build_tests_only $assistant_test_targets"
     if run_bzl_locked test --build_tests_only $assistant_test_targets; then
         success "  ✅ domains/assistant tests passed"
