@@ -399,6 +399,88 @@ function buildReviewMetadata({
   };
 }
 
+function isBranchBlockingPriority(priority) {
+  return Number.isInteger(priority) && priority >= 0 && priority <= 1;
+}
+
+function filterBranchReview(review) {
+  if (!review) {
+    return review;
+  }
+
+  const findings = review.findings.filter((finding) =>
+    isBranchBlockingPriority(finding.priority),
+  );
+  const overallCorrectness = findings.length > 0 ? "incorrect" : "correct";
+  let overallExplanation = review.overall_explanation;
+
+  if (
+    findings.length !== review.findings.length ||
+    overallCorrectness !== review.overall_correctness
+  ) {
+    overallExplanation =
+      findings.length > 0
+        ? "P0-P1 findings were returned."
+        : "No P0-P1 findings were returned.";
+  }
+
+  return {
+    ...review,
+    findings,
+    overall_correctness: overallCorrectness,
+    overall_explanation: overallExplanation,
+  };
+}
+
+function filterBranchReviewAggregate(aggregate) {
+  const reviews = Object.fromEntries(
+    Object.entries(aggregate.reviews || {}).map(([reviewer, review]) => [
+      reviewer,
+      filterBranchReview(review),
+    ]),
+  );
+  const unavailable = aggregate.unavailable || [];
+
+  if (unavailable.length > 0) {
+    return {
+      ...aggregate,
+      findings: [],
+      reviews,
+      unavailable,
+    };
+  }
+
+  const findings = (aggregate.findings || []).filter((finding) =>
+    isBranchBlockingPriority(finding.priority),
+  );
+  const incorrectReviewers = Object.entries(reviews)
+    .filter(([, review]) => review?.overall_correctness === "incorrect")
+    .map(([reviewer]) => reviewer);
+
+  if (findings.length > 0 || incorrectReviewers.length > 0) {
+    return {
+      ...aggregate,
+      status: "revise",
+      findings,
+      reviews,
+      unavailable,
+      overall_explanation:
+        findings.length > 0
+          ? `${findings.length} P0-P1 reviewer finding(s) require fixes.`
+          : `${incorrectReviewers.join(", ")} returned an incorrect review verdict.`,
+    };
+  }
+
+  return {
+    ...aggregate,
+    status: "approved",
+    findings: [],
+    reviews,
+    unavailable,
+    overall_explanation: "Both reviewers approved the change.",
+  };
+}
+
 export async function runDualPrBranchReview({
   worktreeRoot,
   repo,
@@ -444,8 +526,9 @@ export async function runDualPrBranchReview({
     timeout,
   });
 
-  log(`aggregate status=${aggregate.status}`);
-  return aggregate;
+  const filteredAggregate = filterBranchReviewAggregate(aggregate);
+  log(`aggregate status=${filteredAggregate.status}`);
+  return filteredAggregate;
 }
 
 async function main() {
