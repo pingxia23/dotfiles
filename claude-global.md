@@ -15,11 +15,12 @@ These rules apply to all projects and working directories.
 - NEVER force push unless I explicitly asked you to do so
 
 ## Understanding / Investigation
-- Use both the codebase and Atlassian MCP as knowledge sources for understanding and investigation tasks.
-- Ground conclusions in concrete code or Atlassian references.
+- Prefer codebase evidence first for understanding and investigation tasks.
+- If codebase evidence is missing, weak, or not enough to support a conclusion, also search Atlassian MCP for supporting context.
+- Ground conclusions in concrete code references, Atlassian references, or both. State which source supports each important claim.
 
 ## Python Code Style
-1. **ALWAYS** perfer top-level import than inline import
+1. **ALWAYS** prefer top-level import than inline import
 2. Absolute imports only, never relative.
 3. Mock with `patch.object()` on imported modules, not long path strings
 4. Prefer Parametrized tests.
@@ -33,6 +34,7 @@ Our codebase uses `bzl` to build and test packages.
 - Always run `bzl run //:gazelle` after modifying import statements.
 - Never run multiple `bzl` commands in parallel (lockfile conflicts)
 - Always print `bzl` output 
+- Stop and notify user whenever bzl command waits for OIDC device auth
 
 ## Implementation Discipline
 Implement only the approved plan.
