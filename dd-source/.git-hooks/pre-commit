@@ -198,13 +198,42 @@ get_python_files() {
 }
 
 
-get_assistant_changed_files() {
+get_assistant_changed_coding_files() {
     get_my_branch_files | {
         local files=""
         while IFS= read -r file; do
-            [[ "$file" == domains/assistant/* ]] && files+=" $file"
+            if [[ "$file" != domains/assistant/* ]]; then
+                continue
+            fi
+
+            if [[ "$file" == *.md || "$file" == *.tf ]]; then
+                continue
+            fi
+
+            files+=" $file"
         done
         echo "$files" | xargs
+    }
+}
+
+get_terraform_lint_targets() {
+    get_my_branch_files | {
+        local targets=""
+        local package=""
+        while IFS= read -r file; do
+            if [[ "$file" != *.tf ]]; then
+                continue
+            fi
+
+            package=$(find_bazel_package "$file")
+            if [[ -z "$package" ]]; then
+                error "  ❌ Could not find a Bazel package for $file" >&2
+                return 1
+            fi
+
+            targets+=" //$package:tflint_test"
+        done
+        echo "$targets" | xargs -n1 2>/dev/null | sort -u | xargs
     }
 }
 
@@ -373,9 +402,25 @@ fi
 
 stage_generated_files
 
+# --------------------------- Terraform Linting --------------------------- #
+warn "🔍 Checking Terraform files..."
+terraform_lint_targets=$(get_terraform_lint_targets)
+if [[ -n "$terraform_lint_targets" ]]; then
+    info "  🧪 Running: bzl test $terraform_lint_targets"
+    if run_bzl_locked test $terraform_lint_targets; then
+        success "  ✅ Terraform linting passed"
+    else
+        error "  ❌ Terraform linting failed!"
+        error "  Run: bzl test $terraform_lint_targets"
+        exit 1
+    fi
+else
+    info "  🕵 No Terraform files to lint"
+fi
+
 # --------------------------- Assistant Tests (domains/assistant) --------------------------- #
 warn "🔍 Running tests in domains/assistant..."
-assistant_changed_files=$(get_assistant_changed_files)
+assistant_changed_files=$(get_assistant_changed_coding_files)
 if [[ -n "$assistant_changed_files" ]]; then
     assistant_test_targets="//domains/assistant/...:all"
 
