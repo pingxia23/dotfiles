@@ -57,6 +57,9 @@ trust_level = "trusted"
 [projects."/Users/ping.xia/Documents/codex"]
 trust_level = "trusted"
 
+[projects."/home/bits/dotfiles"]
+trust_level = "trusted"
+
 [marketplaces.openai-bundled]
 last_updated = "2026-05-08T19:11:44Z"
 source_type = "local"

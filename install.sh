@@ -521,6 +521,11 @@ setup_vim
 # Setup tmux configuration (symlinked)
 create_symlink "$DOTFILES_DIR/tmux.conf" "$HOME/.tmux.conf"
 
+# Setup local signing-agent helper on Linux workspaces
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  create_symlink "$DOTFILES_DIR/scripts/ensure-local-signing-agent.sh" "$HOME/.local/bin/ensure-local-signing-agent.sh"
+fi
+
 # Setup Git configuration
 setup_gitconfig_if_not_exist
 
