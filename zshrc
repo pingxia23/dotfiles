@@ -79,8 +79,10 @@ trigger-tribunal() {
 }
 
 # Ensure workspace SSH key is loaded for git commit signing
-export SSH_AUTH_SOCK="$HOME/.ssh/ssh_auth_sock"
-"$HOME/.local/bin/ensure-local-signing-agent.sh" >/dev/null
+if [[ "$(uname -s)" == "Linux" ]]; then
+  export SSH_AUTH_SOCK="$HOME/.ssh/ssh_auth_sock"
+  "$HOME/.local/bin/ensure-local-signing-agent.sh" >/dev/null
+fi
 
 eval "$(codex completion zsh)"
 
