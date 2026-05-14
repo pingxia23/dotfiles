@@ -67,6 +67,9 @@ When your changes create orphans:
 - If a required change would materially expand scope, stop and surface it instead of proceeding on your own.
 - Before making any change, ask: is this required to complete the approved scope? If not, leave it out.
 
+### Compatibility Discipline
+- Do not add backward-compatibility scaffolding for code, schema fields, proto tags, APIs, or behaviors introduced only in the current PR. Before reserving proto tags, preserving old names, adding compatibility shims, or avoiding renumbering, verify the thing existed in the base branch or has already shipped. If it only exists in the current PR, remove or rewrite it cleanly instead of carrying speculative compatibility baggage.
+
 # Skill Routing Override
 
 - **ALWAYS** use `commit-smart` skill to commit
