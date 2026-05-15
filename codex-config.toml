@@ -70,12 +70,6 @@ last_updated = "2026-05-08T19:48:09Z"
 source_type = "local"
 source = "/Users/ping.xia/.cache/codex-runtimes/codex-primary-runtime/plugins/openai-primary-runtime"
 
-[marketplaces.datadog-claude-plugins]
-last_updated = "2026-05-13T20:54:19Z"
-last_revision = "0c26a480d04f6d200d73044be2244d15b6d9153c"
-source_type = "git"
-source = "https://github.com/DataDog/claude-marketplace.git"
-
 [plugins."documents@openai-primary-runtime"]
 enabled = true
 

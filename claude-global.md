@@ -110,6 +110,7 @@ When your changes create orphans:
   - **Strongly** prefer pseudocode or ASCII diagrams for non-trivial logic, data flow, sequencing, or state transitions.
   - Mention file paths only when they help locate the work or remove ambiguity.
   - Do not describe the plan as a line-by-line diff.
+  - Do not write no-op `Change:` entries such as `Change: no change needed` or `Change: leave X unchanged`; omit them or state the scope boundary in Approach or Assumptions.
 
   ## Validation
   List the specific tests, commands, or manual checks that should prove the change works.
