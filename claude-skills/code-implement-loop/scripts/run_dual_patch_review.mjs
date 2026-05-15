@@ -39,6 +39,12 @@ If no issue clearly meets that bar, return no findings.
 - Focus on correctness, regressions, security, compatibility, performance, and tests.
 - Do not block on pure style, formatting, typos, documentation, or other nits.
 
+## Implementation Discipline Checks
+
+Read the \`## Implementation Discipline\` section from  \`$HOME/dotfiles/claude-global.md\`. 
+
+Review the change against these disciplines. For any obvious violation introduced by the change, flag a P2 finding.
+
 ## How To Gather Review Inputs
 
 Inputs provided directly:

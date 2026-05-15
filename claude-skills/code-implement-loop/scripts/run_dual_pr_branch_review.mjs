@@ -51,6 +51,12 @@ If no issue clearly meets that bar, return no findings.
 - Do not block on pure style, formatting, typos, documentation, or other nits.
 - Do not include P3/nit/freeform suggestions in findings.
 
+## Implementation Discipline Checks
+
+Read the \`## Implementation Discipline\` section from  \`$HOME/dotfiles/claude-global.md\`. 
+
+Review the change against these disciplines. For any obvious violation introduced by the change, flag a P2 finding.
+
 ## PR Context
 
 - Worktree root: {worktree_root}

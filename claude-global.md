@@ -19,11 +19,8 @@ These rules apply to all projects and working directories.
 - If codebase evidence is missing, weak, or not enough to support a conclusion, also search Atlassian MCP for supporting context.
 - Ground conclusions in concrete code references, Atlassian references, or both. State which source supports each important claim.
 
-## Python Code Style
-1. **ALWAYS** prefer top-level import than inline import
-2. Absolute imports only, never relative.
-3. Mock with `patch.object()` on imported modules, not long path strings
-4. Prefer Parametrized tests.
+## Explanation Style
+- **ALWAYS** prefer pseudocode, example walkthroughs, and diagrams over prose.
 
 ## Bazel / bzl Commands
 
@@ -69,6 +66,12 @@ When your changes create orphans:
 
 ### Compatibility Discipline
 - Do not add backward-compatibility scaffolding for code, schema fields, proto tags, APIs, or behaviors introduced only in the current PR. Before reserving proto tags, preserving old names, adding compatibility shims, or avoiding renumbering, verify the thing existed in the base branch or has already shipped. If it only exists in the current PR, remove or rewrite it cleanly instead of carrying speculative compatibility baggage.
+
+### Python Code Style
+1. **ALWAYS** prefer top-level import than inline import
+2. Absolute imports only, never relative.
+3. Mock with `patch.object()` on imported modules, not long path strings
+4. Prefer Parametrized tests.
 
 # Skill Routing Override
 

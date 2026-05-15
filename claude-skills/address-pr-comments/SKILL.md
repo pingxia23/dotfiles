@@ -154,7 +154,11 @@ Reasoning:
 <why this classification is correct from the current code and PR state>
 
 Plan:
-<for reply_only, set reply_body to the exact prefixed reply. For implementation_needed, describe the concrete code, test, docs, or config changes needed. For future-work comments, identify where the TODO comment should be added and what it should say.>
+<for reply_only, set reply_body to the exact prefixed reply.>
+
+<for implementation_needed, describe the concrete code, test, docs, or config changes needed. Prefer pseudocode over prose.>
+
+<for future-work comments, identify where the TODO comment should be added and what it should say.>
 ```
 
 Approval gate:
