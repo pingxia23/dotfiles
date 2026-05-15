@@ -111,10 +111,15 @@ function findPlanForTurn(entries, turnId) {
   return match;
 }
 
-function findLatestUserRequest(entries) {
-  let latestUserRequest = "";
+function findRecentUserInputs(entries, beforeIndex, limit = 10) {
+  const userInputs = [];
 
-  for (const { entry } of entries) {
+  for (let entryIndex = entries.length - 1; entryIndex >= 0; entryIndex -= 1) {
+    const { index: transcriptIndex, entry } = entries[entryIndex];
+    if (transcriptIndex >= beforeIndex) {
+      continue;
+    }
+
     if (entry?.type !== "event_msg" || !entry.payload) {
       continue;
     }
@@ -125,11 +130,14 @@ function findLatestUserRequest(entries) {
 
     const text = getText(entry.payload.message);
     if (text) {
-      latestUserRequest = text;
+      userInputs.push(text);
+      if (userInputs.length >= limit) {
+        break;
+      }
     }
   }
 
-  return latestUserRequest;
+  return userInputs.reverse();
 }
 
 function findTurnBounds(entries, turnId) {
@@ -168,16 +176,30 @@ function buildPrompt({
   transcriptPath,
   turnId,
   latestUserRequest,
+  recentUserInputs,
   planContent,
   reviewSchema,
 }) {
+  const recentUserInputsText =
+    recentUserInputs.length > 0
+      ? recentUserInputs.map((text, index) => `${index + 1}. ${text}`).join("\n\n")
+      : "No prior user inputs found.";
+
   return `
 Review this implementation plan before it's presented for user approval.
-The latest user request, plan content, and the latest-turn context are provided below, all extracted
-from the transcript. Use them as primary context.
+The latest user request, recent user inputs, plan content, and the latest-turn context are provided
+below, all extracted from the transcript. Use them as primary context.
 <latest_user_request>
 ${latestUserRequest}
 </latest_user_request>
+
+<recent_user_inputs>
+These are at most the last 10 user inputs from this session before the plan, oldest to newest.
+Use them to detect whether the plan ignored explicit user constraints, corrections, or scope
+boundaries. When these conflict, newer user inputs take priority.
+
+${recentUserInputsText}
+</recent_user_inputs>
 
 <plan>
 ${planContent}
@@ -232,7 +254,11 @@ if (!planMatch) {
 }
 
 const planContent = planMatch.text;
-const latestUserRequest = findLatestUserRequest(transcriptEntries);
+const recentUserInputs = findRecentUserInputs(
+  transcriptEntries,
+  planMatch.index,
+);
+const latestUserRequest = recentUserInputs.at(-1) || "";
 const turnBounds = findTurnBounds(transcriptEntries, turnId);
 if (!turnBounds) {
   allow("skip missing turn bounds");
@@ -252,6 +278,7 @@ const prompt = buildPrompt({
   transcriptPath,
   turnId,
   latestUserRequest,
+  recentUserInputs,
   planContent,
   reviewSchema,
 });

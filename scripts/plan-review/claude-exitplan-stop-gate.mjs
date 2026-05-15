@@ -109,23 +109,9 @@ function extractTextContent(content) {
     .join("\n");
 }
 
-function readLatestTranscriptContext(transcriptPath) {
+function readLatestClaudeResponse(transcriptPath) {
   const transcriptLines = fs.readFileSync(transcriptPath, "utf8").trim().split("\n");
-  let userRequest = "";
   let claudeResponse = "";
-
-  for (let index = transcriptLines.length - 1; index >= 0; index -= 1) {
-    try {
-      const entry = JSON.parse(transcriptLines[index]);
-      if (entry.type === "human" && entry.message?.content) {
-        const text = extractTextContent(entry.message.content);
-        if (text.trim()) {
-          userRequest = text;
-          break;
-        }
-      }
-    } catch {}
-  }
 
   for (let index = transcriptLines.length - 1; index >= 0; index -= 1) {
     try {
@@ -140,23 +126,61 @@ function readLatestTranscriptContext(transcriptPath) {
     } catch {}
   }
 
-  return { userRequest, claudeResponse };
+  return claudeResponse;
+}
+
+function readRecentUserInputs(transcriptPath, limit = 10) {
+  const transcriptLines = fs.readFileSync(transcriptPath, "utf8").trim().split("\n");
+  const userInputs = [];
+
+  for (let index = transcriptLines.length - 1; index >= 0; index -= 1) {
+    try {
+      const entry = JSON.parse(transcriptLines[index]);
+      if (entry.type !== "human" || !entry.message?.content) {
+        continue;
+      }
+
+      const text = extractTextContent(entry.message.content);
+      if (text.trim()) {
+        userInputs.push(text);
+        if (userInputs.length >= limit) {
+          break;
+        }
+      }
+    } catch {}
+  }
+
+  return userInputs.reverse();
 }
 
 function buildPrompt({
   userRequest,
+  recentUserInputs,
   claudeResponse,
   planContent,
   transcriptPath,
   reviewSchema,
 }) {
+  const recentUserInputsText =
+    recentUserInputs.length > 0
+      ? recentUserInputs.map((text, index) => `${index + 1}. ${text}`).join("\n\n")
+      : "No prior user inputs found.";
+
   return `<task>
 Review this implementation plan before it's presented for user approval.
-The user's last request and Claude's last response are provided for context.
+The user's last request, recent user inputs, and Claude's last response are provided for context.
 
 <user_request>
 ${userRequest}
 </user_request>
+
+<recent_user_inputs>
+These are at most the last 10 user inputs from this session before the plan, oldest to newest.
+Use them to detect whether the plan ignored explicit user constraints, corrections, or scope
+boundaries. When these conflict, newer user inputs take priority.
+
+${recentUserInputsText}
+</recent_user_inputs>
 
 <claude_last_response>
 ${claudeResponse}
@@ -224,10 +248,12 @@ if (!reviewSchema) {
   exitAllow(`failed to load review schema from ${REVIEW_SCHEMA_PATH}, allowing`);
 }
 
-const { userRequest, claudeResponse } =
-  readLatestTranscriptContext(transcriptPath);
+const recentUserInputs = readRecentUserInputs(transcriptPath);
+const userRequest = recentUserInputs.at(-1) || "";
+const claudeResponse = readLatestClaudeResponse(transcriptPath);
 const prompt = buildPrompt({
   userRequest,
+  recentUserInputs,
   claudeResponse,
   planContent,
   transcriptPath,
