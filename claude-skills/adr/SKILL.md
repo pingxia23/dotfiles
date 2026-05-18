@@ -14,6 +14,7 @@ Write ADRs for reviewable design, not audit logs. The reader should understand t
 These are hard requirements. If a draft violates any of them, rewrite it before presenting or saving the ADR.
 
 - Strongly bias toward pseudocode, example walkthroughs, and ASCII diagrams. For any non-trivial control flow, state transition, retry path, validation path, lifecycle, or data movement, use pseudocode or a concrete walkthrough as the primary explanation; prose should only support or summarize it.
+- When an ADR contains code blocks, add a short `## Pseudocode Note` near the top before the first code block. State that all code examples are pseudocode for control flow, ownership boundaries, and contracts, not exact implementation. Also label implementation-shaped code blocks with an in-block `# Pseudocode: ...` comment when useful.
 - Use concrete names from the codebase only after explaining the behavior they implement. Do not open a section with a file list or component catalog.
 - Ground every non-trivial claim in concrete code or docs. If evidence is missing, mark the statement as an assumption or risk.
 - Mark assumptions explicitly. Do not present guesses, inferred behavior, or unverified future implementation details as facts.
@@ -25,6 +26,7 @@ Default to a reader-first structure:
 # ADR-<number>: <Title>
 
 ## Metadata
+## Pseudocode Note
 ## Context
 ## Approach
 ## <Component A> Design
@@ -92,6 +94,10 @@ Use this template by default:
 - **Components**: `<component>`
 - **Authors**: <team or owner>
 
+## Pseudocode Note
+
+All code examples in this ADR are pseudocode. They show intended control flow, ownership boundaries, and endpoint contracts, not exact implementation code. Names, imports, request fields, and helper functions should be adapted to the final code shape during implementation.
+
 ## Context
 
 Explain the problem and why it matters.
@@ -127,6 +133,7 @@ State the core contract in one or two paragraphs.
 Explain the component's role.
 
 ```python
+# Pseudocode: component A control flow.
 def component_a_handler(req):
     validate(req)
     state = load_state(req.key)
@@ -142,6 +149,7 @@ Call out important validation, state, retries, side effects, and stop conditions
 Explain the component's role.
 
 ```python
+# Pseudocode: component B workflow state and drain control flow.
 class ComponentBWorkflow:
     def accept_update(self, update):
         if update.id in self.seen_ids:
