@@ -4,7 +4,13 @@ if [ -n "$WORKSPACE_NAME" ]; then
 fi
 
 # Editor
-export EDITOR='vim'
+if [[ "$(uname -s)" == "Darwin" ]] && command -v code >/dev/null 2>&1; then
+  export VISUAL="code --wait"
+  export EDITOR="$VISUAL"
+else
+  export EDITOR="${EDITOR:-vim}"
+  export VISUAL="${VISUAL:-$EDITOR}"
+fi
 
 # Aliases
 alias ls='ls --color=auto'

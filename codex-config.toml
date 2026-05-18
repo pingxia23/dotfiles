@@ -61,7 +61,7 @@ trust_level = "trusted"
 trust_level = "trusted"
 
 [marketplaces.openai-bundled]
-last_updated = "2026-05-08T19:11:44Z"
+last_updated = "2026-05-18T14:51:51Z"
 source_type = "local"
 source = "/Users/ping.xia/.codex/.tmp/bundled-marketplaces/openai-bundled"
 
@@ -79,9 +79,6 @@ enabled = true
 [plugins."presentations@openai-primary-runtime"]
 enabled = true
 
-[plugins."browser-use@openai-bundled"]
-enabled = true
-
 [plugins."computer-use@openai-bundled"]
 enabled = true
 
@@ -89,6 +86,9 @@ enabled = true
 enabled = true
 
 [plugins."dd@datadog-claude-plugins"]
+enabled = true
+
+[plugins."browser-use@openai-bundled"]
 enabled = true
 
 [memories]
