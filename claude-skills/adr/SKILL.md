@@ -18,6 +18,8 @@ These are hard requirements. If a draft violates any of them, rewrite it before 
 - Use concrete names from the codebase only after explaining the behavior they implement. Do not open a section with a file list or component catalog.
 - Ground every non-trivial claim in concrete code or docs. If evidence is missing, mark the statement as an assumption or risk.
 - Mark assumptions explicitly. Do not present guesses, inferred behavior, or unverified future implementation details as facts.
+- Capture user-stated preferences, constraints, and accepted tradeoffs in `## Key Assumptions / Agreements` before `## Approach`. Treat these as design inputs, not optional commentary.
+- Do not add backward-compatibility scaffolding, migration logic, reserved fields, compatibility aliases, fallback behavior, or generalized extension points unless the section's assumptions/agreements or repo evidence explicitly require it.
 - Preserve worked examples when they clarify the design. Do not remove examples for brevity unless they are wrong or duplicated.
 
 Default to a reader-first structure:
@@ -28,16 +30,16 @@ Default to a reader-first structure:
 ## Metadata
 ## Pseudocode Note
 ## Context
+## Key Assumptions / Agreements
 ## Approach
 ## <Component A> Design
 ## <Component B> Design
 ## Decisions
 ## Consequences
-## Decision Log
 ## References
 ```
 
-Omit sections that add no value for a small ADR, but keep `Context`, `Approach`, component design sections when there is non-trivial mechanics, and `Decisions`.
+Omit sections that add no value for a small ADR, but keep `Context`, `Key Assumptions / Agreements`, `Approach`, component design sections when there is non-trivial mechanics, and `Decisions`.
 
 ## Workflow
 
@@ -51,12 +53,20 @@ Omit sections that add no value for a small ADR, but keep `Context`, `Approach`,
 - For internal systems, use internal docs only when repo evidence is missing or too weak.
 - Keep evidence compact. Use it to support claims, not as the document's opening structure.
 
-3. Write the high-level approach before decisions.
+3. Capture key assumptions and agreements.
+- List explicit user preferences, scope boundaries, accepted risks, non-goals, and compatibility decisions before proposing mechanics.
+- Separate confirmed agreements from open assumptions. Use this shape when useful:
+  - `Agreement`: `<explicit user preference or constraint>`.
+  - `Assumption`: `<inference that still needs confirmation or evidence>`.
+  - `Non-goal`: `<thing the ADR must not design or implement>`.
+- If a future-proofing or compatibility change would contradict an explicit agreement, do not include it. Surface it as a risk or question instead.
+
+4. Write the high-level approach before decisions.
 - Start with the problem and the end-to-end design walkthrough.
 - Use an ASCII flow diagram for the whole system when the ADR covers multiple components.
 - Put component mechanics and pseudocode before the `Decisions` section.
 
-4. Add component design sections.
+5. Add component design sections.
 - Use one section per meaningful component, boundary, endpoint, workflow, storage path, or background process.
 - Name sections by behavior or component, for example:
   - `## Ingress Endpoint Design`
@@ -65,7 +75,7 @@ Omit sections that add no value for a small ADR, but keep `Context`, `Approach`,
   - `## Retry and Idempotency Design`
 - Prefer pseudocode over prose for request handling, state transitions, retry loops, validation, and lifecycle logic.
 
-5. Write decisions after the design walkthrough.
+6. Write decisions after the design walkthrough.
 - Use decisions for the deeper rationale that shaped the design.
 - Keep behavior out of decisions if it is already explained in the approach or component sections.
 - Each decision should clearly state:
@@ -74,9 +84,9 @@ Omit sections that add no value for a small ADR, but keep `Context`, `Approach`,
   - rationale and tradeoff.
   - evidence or pointer to the component section when useful.
 
-6. Finish supporting sections.
+7. Finish supporting sections.
 - Consequences: split into positive, negative, and risks when useful.
-- Decision Log: record durable decisions, not every edit.
+- Do not add a decision log by default. Use `Decisions` for rationale and `Key Assumptions / Agreements` for user preferences and accepted constraints.
 - References: list the strongest code/doc sources.
 
 ## Output Contract
@@ -106,6 +116,13 @@ Include concise evidence:
 
 - `<file or doc>` proves `<fact>`.
 - `<file or doc>` proves `<fact>`.
+
+## Key Assumptions / Agreements
+
+- **Agreement**: <explicit user preference or constraint that the design must honor>.
+- **Agreement**: <accepted tradeoff or scope boundary>.
+- **Assumption**: <inference that needs confirmation or evidence>.
+- **Non-goal**: <thing this ADR must not design or implement>.
 
 ## Approach
 
@@ -196,12 +213,6 @@ Explain tradeoffs and constraints.
 ### Risks
 
 - <risk and mitigation>
-
-## Decision Log
-
-| Date | Decision | Rationale |
-|------|----------|-----------|
-| YYYY-MM-DD | <decision> | <rationale> |
 
 ## References
 

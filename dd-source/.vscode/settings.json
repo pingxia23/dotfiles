@@ -78,6 +78,7 @@
 			"+domains/ai_platform",
 			"+domains/chatbot/",
 			"+domains/assistant/",
+			"+domains/odp/apps/apis/lassie-ng/",
 		],
 		"analyses": {
 			"unusedparams": false,

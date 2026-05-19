@@ -1,4 +1,4 @@
 interface:
   display_name: "ADR"
-  short_description: "Write readable, evidence-backed ADRs"
-  default_prompt: "Use $adr to draft or revise an ADR with context, approach, component pseudocode, decisions, and consequences."
+  short_description: "Write readable ADRs with explicit assumptions"
+  default_prompt: "Use $adr to draft or revise an ADR with context, key assumptions and agreements, approach, component pseudocode, decisions, and consequences."
