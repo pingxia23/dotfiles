@@ -288,20 +288,20 @@ if [[ -f "$GIT_DIR/MERGE_HEAD" ]]; then
 fi
 
 # --------------------------- Protobuf Generation --------------------------- #
-warn "🔍 Checking for modified .proto files..."
-proto_dirs=$(get_proto_dirs)
-if [[ -z "$proto_dirs" ]]; then
-    info "  🕵 No .proto file edited. Skipping protobuf generation."
-else
-    warn "  🕵 Modified .proto files detected. Generating protobuf..."
-    # Batch all proto directories into a single bzl run command
-    targets=""
-    for dir in $proto_dirs; do
-        targets+=" //$dir/..."
-    done
-    info "  🚀 Running: bzl run //:snapshot --$targets"
-    run_bzl_locked run //:snapshot --$targets
-fi
+# warn "🔍 Checking for modified .proto files..."
+# proto_dirs=$(get_proto_dirs)
+# if [[ -z "$proto_dirs" ]]; then
+#     info "  🕵 No .proto file edited. Skipping protobuf generation."
+# else
+#     warn "  🕵 Modified .proto files detected. Generating protobuf..."
+#     # Batch all proto directories into a single bzl run command
+#     targets=""
+#     for dir in $proto_dirs; do
+#         targets+=" //$dir/..."
+#     done
+#     info "  🚀 Running: bzl run //:snapshot --$targets"
+#     run_bzl_locked run //:snapshot --$targets
+# fi
 
 # --------------------------- Go Generate Handling --------------------------- #
 warn "🔍 Checking for '//go:generate' directives..."
