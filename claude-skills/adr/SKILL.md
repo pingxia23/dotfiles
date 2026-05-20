@@ -1,6 +1,6 @@
 ---
 name: adr
-description: Draft or revise Architecture Decision Records and design ADRs. Use when the user asks to create an ADR, update an existing ADR, write a design record, restructure an ADR, document architecture decisions, or turn a technical design discussion into a readable Markdown decision document with context, approach, component pseudocode, decisions, consequences, and evidence.
+description: Draft Architecture Decision Records and design ADRs. Use when the user asks to create an ADR, update an existing ADR, write a design record, restructure an ADR, document architecture decisions, or turn a technical design discussion into a readable Markdown decision document with context, approach, component pseudocode, decisions, consequences, and evidence. This skill always creates a new ADR; existing ADRs are references only.
 ---
 
 # ADR
@@ -19,6 +19,7 @@ These are hard requirements. If a draft violates any of them, rewrite it before 
 - Ground every non-trivial claim in concrete code or docs. If evidence is missing, mark the statement as an assumption or risk.
 - Mark assumptions explicitly. Do not present guesses, inferred behavior, or unverified future implementation details as facts.
 - Capture user-stated preferences, constraints, and accepted tradeoffs in `## Key Assumptions / Agreements` before `## Approach`. Treat these as design inputs, not optional commentary.
+- Always create a new ADR. Do not edit, revise, restructure, supersede in place, or append to an existing ADR. If the user asks to update or revise an ADR, create a new ADR that references the older ADR and explains the relationship.
 - Do not add backward-compatibility scaffolding, migration logic, reserved fields, compatibility aliases, fallback behavior, or generalized extension points unless the section's assumptions/agreements or repo evidence explicitly require it.
 - Preserve worked examples when they clarify the design. Do not remove examples for brevity unless they are wrong or duplicated.
 
@@ -44,8 +45,9 @@ Omit sections that add no value for a small ADR, but keep `Context`, `Key Assump
 ## Workflow
 
 1. Establish scope.
-- If updating an existing ADR, read the full ADR before editing.
-- If creating a new ADR, inspect the local ADR directory, naming convention, and index before choosing a filename or ADR number.
+- Always create a new ADR, even when the user asks to update, revise, restructure, supersede, or amend an existing ADR.
+- Inspect the local ADR directory, naming convention, and index before choosing a filename or ADR number.
+- If the request references an existing ADR, read the full ADR and use it as evidence/context for the new ADR. Do not edit the referenced ADR.
 - Identify whether the user wants doc-only work or implementation. If they asked for an ADR, do not change code unless explicitly requested.
 
 2. Gather evidence.

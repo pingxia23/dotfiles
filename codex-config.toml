@@ -13,7 +13,6 @@ notify = ["/Users/ping.xia/.codex/computer-use/Codex Computer Use.app/Contents/S
 hooks = true
 multi_agent = true
 goals = true
-memories = true
 
 [mcp_servers.atlassian]
 url = "https://mcp.atlassian.com/v1/mcp"
