@@ -148,6 +148,7 @@ delete-worktree() {
     return 1
   fi
 
+  local branch="ping.xia/$feature"
   local target="$HOME/dd/$feature"
   local resolved_datadog_root=""
   local resolved_target=""
@@ -171,7 +172,14 @@ delete-worktree() {
     fi
 
     # Force remove the git worktree
-    git -C "$DD_SOURCE_ROOT" worktree remove --force "$target"
+    if ! git -C "$DD_SOURCE_ROOT" worktree remove --force "$target"; then
+      return 1
+    fi
+    if git -C "$DD_SOURCE_ROOT" show-ref --verify --quiet "refs/heads/$branch"; then
+      if ! git -C "$DD_SOURCE_ROOT" branch -D "$branch"; then
+        echo "Local branch '$branch' was not deleted"
+      fi
+    fi
   fi
 
   # Delete Bazel output bases that belong to this worktree.
