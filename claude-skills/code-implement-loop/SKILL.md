@@ -14,13 +14,12 @@ Implement a task in a deterministic sequence: plan intake (`.md` file or direct 
 - First, review the `# Global Rules` from your memory file and apply them before the skill-specific rules below.
 - Never use destructive cleanup commands (`git reset --hard`, `git checkout -- .`, `git clean -fd`).
 - Approval definition: `approval` means the reviewer script returns `status="approved"`, never user confirmation.
+- Stop and notify user whenever bzl command waits for OIDC device auth
 - Autonomy rule: do not ask the user for approval or extra checkpoints during normal flow; only ask the user when blocked/stuck/failing.
 
 ## Implementation Discipline
 
-
-
-Read the `## Implementation Discipline` section from `$HOME/dotfiles/claude-global.md`.
+Read the `# Implementation Discipline` section from `$HOME/dotfiles/claude-global.md`.
 
 These rules apply to **both initial implementation and review-fix rounds**.
 

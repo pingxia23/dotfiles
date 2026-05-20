@@ -1,4 +1,0 @@
-interface:
-  display_name: "Implement Orchestrator"
-  short_description: "Convert plan into implementation steps"
-  default_prompt: "Use implement-orchestrator to convert this planning outcome into implementation steps and execute each step with code-implement-loop."

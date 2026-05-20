@@ -41,7 +41,7 @@ If no issue clearly meets that bar, return no findings.
 
 ## Implementation Discipline Checks
 
-Read the \`## Implementation Discipline\` section from  \`$HOME/dotfiles/claude-global.md\`. 
+Read the \`# Implementation Discipline\` section from  \`$HOME/dotfiles/claude-global.md\`. 
 
 Review the change against these disciplines. For any obvious violation introduced by the change, flag a P2 finding.
 
