@@ -116,8 +116,10 @@ Rules:
 ## Validation
 List the specific tests, commands, or manual checks that should prove the change works.
 
-## Assumptions and Risks
-List assumptions made by the plan.
-
-List remaining risks or review points.
+## Assumptions / Agreements
+- List explicit user preferences, scope boundaries, accepted risks, non-goals, and compatibility decisions before proposing mechanics.
+- Separate confirmed agreements from open assumptions. Use this shape when useful:
+  - `Agreement`: `<explicit user preference or constraint>`.
+  - `Assumption`: `<inference that still needs confirmation or evidence>`.
+  - `Non-goal`: `<thing the ADR must not design or implement>`.
 ```
