@@ -31,6 +31,8 @@ args = ["mcp"]
 [tui]
 theme = "catppuccin-macchiato"
 alternate_screen = "never"
+status_line = ["model-with-reasoning", "current-dir", "context-remaining"]
+status_line_use_colors = true
 
 [tui.model_availability_nux]
 "gpt-5.5" = 4
