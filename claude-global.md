@@ -13,6 +13,8 @@ These rules apply to all projects and working directories.
 - **ONLY** address unresolved Github comments
 - **Never change the current git branch name** unless I explicitly asked you to do so
 - NEVER force push unless I explicitly asked you to do so
+- Always create commits through the normal `git commit` path. Never create commits with low-level plumbing such as `git commit-tree`, `git hash-object`, `git update-ref`, or manual `.git` metadata edits. 
+  - `git commit --no-verify` is still on the normal `git commit` path, but it bypasses hooks; use it only when I explicitly ask for `--no-verify`.
 
 ## Understanding / Investigation
 - Prefer codebase evidence first for understanding and investigation tasks.

@@ -108,3 +108,9 @@ trusted_hash = "sha256:1d374ea956912e71bf3682f86a44c794c6aac8bde169b17222c4dfc71
 
 [hooks.state."/home/bits/.codex/hooks.json:stop:1:0"]
 trusted_hash = "sha256:58def438adcf11ccc3170429aee88a653ddf9dbbdcb23ab194d7f66b2cfa2050"
+
+[hooks.state."dd@datadog-claude-plugins:hooks/hooks.json:session_start:0:0"]
+trusted_hash = "sha256:a506e76ca69c4e69723a414d9251cf4b02db5b0432058c64ca3f6c8684786c73"
+
+[hooks.state."dd@datadog-claude-plugins:hooks/hooks.json:user_prompt_submit:0:0"]
+trusted_hash = "sha256:6a58e770acd72ebdd9038420c45d024a9b1478a89cc7145d5e1751792216b884"

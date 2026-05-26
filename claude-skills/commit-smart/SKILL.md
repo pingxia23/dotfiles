@@ -126,34 +126,16 @@ Intent:
 4. If `pr_url` exists:
    - Skip the rest of Step 6.
    - Reuse the existing URL only for the final user-facing PR link.
-5. If `pr_url` is empty, read latest commit context:
-   - `latest_commit_body=$(git log -1 --pretty=%B)`
-   - `git show --name-status --format=fuller --no-color HEAD`
-6. Build the PR body with this schema. The body must begin with the hidden marker:
-
-   ```markdown
-   <!-- ping-xia-pr-body:v1 -->
-
-   ## Problem
-
-   <why this change is needed>
-
-   ## Approach
-
-   <key implementation choices>
-   ```
-
-   **Focus on the high-level problem and approach**
-   - Skip mechanical details such as added unit tests, renamed variables, changed function arguments, or other implementation minutiae unless they are essential to understanding the design.
-   - The goal is to state the problem clearly and lay out the high-level approach so reviewers can review the PR efficiently.
-
-7. Build PR title for creation:
+5. Build PR title for creation:
    - Start from your generated title candidate.
    - Ensure the title includes `[WIP]` exactly once (prepend if missing).
-8. Create a draft PR path (`pr_url` is empty):
-   - Create a new draft PR from the template body:
-     - `gh pr create --repo "$repo" --head "$branch" --title "<wip_title>" --body "<description>" --draft`
-9. Ensure `pr_url` is populated before returning success.
+6. Create a draft PR path (`pr_url` is empty):
+   - Create a new draft PR with an intentionally empty body:
+     - `pr_url=$(gh pr create --repo "$repo" --head "$branch" --title "<wip_title>" --body "" --draft)`
+7. Ensure `pr_url` is populated.
+8. Invoke the `pr-body` skill at `$HOME/dotfiles/claude-skills/pr-body/SKILL.md` with `pr_url`.
+   - Treat `UPDATED` and `SKIPPED` results from `pr-body` as successful completion of this step.
+   - Treat `BLOCKED` as a blocked status and stop.
 
 ## Completion Checklist
 
