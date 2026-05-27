@@ -44,11 +44,14 @@ Omit sections that add no value for a small ADR, but keep `Context`, `Key Assump
 
 ## Workflow
 
-1. Establish scope.
-- Always create a new ADR, even when the user asks to update, revise, restructure, supersede, or amend an existing ADR.
-- Inspect the local ADR directory, naming convention, and index before choosing a filename or ADR number.
-- If the request references an existing ADR, read the full ADR and use it as evidence/context for the new ADR. Do not edit the referenced ADR.
-- Identify whether the user wants doc-only work or implementation. If they asked for an ADR, do not change code unless explicitly requested.
+1. Establish Scope
+
+- Inspect the local ADR directory, ADR index, and existing naming/numbering convention before choosing a filename or ADR number.
+- If the request references an existing ADR, read the full ADR and use it as evidence/context for the new ADR.
+- Do not change code unless explicitly requested.
+- Do not edit any ADR that has already been committed to git.
+- If the relevant ADR has not been committed yet, it may be updated instead of creating a new ADR. Otherwise, always create a new ADR.
+
 
 2. Gather evidence.
 - Prefer repo evidence first: current code paths, tests, existing docs, generated clients, API contracts, and nearby ADRs.

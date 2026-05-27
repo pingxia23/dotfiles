@@ -194,7 +194,17 @@ After all `dd-gitlab/*` checks pass, invoke the `pr-body` skill at `$HOME/dotfil
 
 Treat `UPDATED` and `SKIPPED` results from `pr-body` as successful completion of this step. Treat `BLOCKED` as a blocked status and stop.
 
-### 5) Run dual PR review and update PR
+### 5) Request Codex review
+
+Post `@codex review` as a top-level PR comment:
+
+```bash
+gh pr comment --repo "$repo" "$pr_url" --body "@codex review"
+```
+
+If the comment fails to post, carry the failure into the final status but continue to Step 6.
+
+### 6) Run dual PR review and update PR
 
 Run the bundled helper:
 
