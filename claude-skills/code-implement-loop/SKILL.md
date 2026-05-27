@@ -1,13 +1,13 @@
 ---
 name: code-implement-loop
-description: "Trigger this skill when implementation should start: if Codex/Claude proposes a plan and the user says 'implement this', 'implement the proposed plan', 'implement it', or equivalent; or if the user explicitly invokes `code-implement-loop`. Accepted implementation input sources are: a Codex/Claude-proposed plan, a user-provided `.md` plan/design file, or user-provided inline implementation instructions. In dd scope it runs local-uncommitted review rounds, commits with `commit-smart`, runs up to 2 full PR review rounds, then commits any review fixes."
+description: "Trigger this skill when implementation should start: if Codex/Claude proposes a plan and the user says 'implement this', 'implement the proposed plan', 'implement it', or equivalent; or if the user explicitly invokes `code-implement-loop`. Accepted implementation input sources are: a Codex/Claude-proposed plan, a user-provided `.md` plan/design file, or user-provided inline implementation instructions. In dd scope it runs local-uncommitted review rounds, commits with `commit-smart`, runs up to 2 full PR review rounds, commits any review fixes, then runs a non-blocking dual PR review update."
 ---
 
 # Code Implement Loop
 
 ## Overview
 
-Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> TODO breakdown -> implementation (uncommitted) -> local-uncommitted review/fix loop -> conditional `commit-smart` when `in_dd_scope=true` -> full PR review/fix loop in dd scope -> conditional second `commit-smart` for review fixes. The first review loop evaluates only the current uncommitted patch. The second review loop evaluates the full local diff, including existing branch commits and any current uncommitted review fixes, against the fetched PR base.
+Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> TODO breakdown -> implementation (uncommitted) -> local-uncommitted review/fix loop -> conditional `commit-smart` when `in_dd_scope=true` -> full PR review/fix loop in dd scope -> conditional second `commit-smart` for review fixes -> non-blocking PR review comments. The first review loop evaluates only the current uncommitted patch. The second review loop evaluates the full local diff, including existing branch commits and any current uncommitted review fixes, against the fetched PR base.
 
 ## Hard Rules
 
@@ -157,8 +157,8 @@ Apply **Shared Review Result Handling** with:
 
 After the local-uncommitted review loop returns approval:
 
-- If `in_dd_scope=true`, immediately invoke `commit-smart` to commit and push changes, then continue to Step 7.
 - If `in_dd_scope=false`, stop after reporting success and leave the approved changes uncommitted in the worktree.
+- Otherwise, immediately invoke `commit-smart` to commit and push changes.
 
 Rules:
 
@@ -245,7 +245,7 @@ Rules:
 
 After the full PR review loop returns approval:
 
-- If `git status --porcelain` is empty, skip this step and proceed to final success.
+- If `git status --porcelain` is empty, skip this step and proceed to Step 9.
 - If there are uncommitted changes, immediately invoke `commit-smart` to commit and push the review fixes.
 
 Rules:
@@ -254,7 +254,29 @@ Rules:
 - Do not end the workflow as success until this second `commit-smart` has completed when review fixes exist.
 - If the second `commit-smart` fails, report blocked status with the failure reason and attempted remediation.
 
-### 9) Return final status
+### 9) Run PR Review And Update PR
+
+After Step 8 completes or is skipped, run the bundled helper:
+
+```bash
+review_result="$(
+  node "$HOME/dotfiles/claude-skills/babysit-pr/scripts/run_dual_pr_review.mjs" \
+    --worktree-root "$worktree_root" \
+    --repo "$repo" \
+    --pr-number "$pr_number" \
+    --pr-url "$pr_url" \
+    --base-ref "$base_ref"
+)"
+```
+
+Rules:
+
+- Wait for the helper command to finish.
+- Do not block on any result from this step, including helper failures, `status=="error"`, or invalid JSON.
+- Do not apply **Shared Review Result Handling** to this step.
+- Do not use this helper output for workflow control.
+
+### 10) Return final status
 
 Success format:
 
