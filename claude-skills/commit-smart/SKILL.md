@@ -1,6 +1,6 @@
 ---
 name: commit-smart
-description: "Deterministic workflow to stage changes, run bzl tests when applicable, commit with hooks, push, and create a draft GitHub PR only when one does not already exist. Trigger this skill whenever the user asks to commit (for example: 'commit', 'commit this', 'please commit')."
+description: "Deterministic workflow to stage changes, commit with hooks, push, create a draft GitHub PR only when one does not already exist, and refresh the managed PR body after each push. Trigger this skill whenever the user asks to commit (for example: 'commit', 'commit this', 'please commit')."
 ---
 
 Perform a deterministic smart-commit workflow.
@@ -26,29 +26,7 @@ Perform a deterministic smart-commit workflow.
    - If the value is not exactly `true`, run `git config commit.gpgsign true`, then verify again.
    - If signing still is not enabled, stop and report the exact command output.
 
-## Step 1: Run Tests For Affected Packages (Disabled - handled by pre-commit)
-
-<!--
-0. Scope gate:
-   - Apply this step ONLY when `in_dd_scope=true`.
-   - If `in_dd_scope=false`, skip Step 1 and proceed to Step 2.
-1. Check if any code files are changed:
-   - Use `git diff --name-only` and `git diff --cached --name-only` to get all changed files.
-   - Code file extensions include: `.py`, `.go`, `.c`, `.cc`, `.cpp`, `.h`, `.hpp`, `.java`, `.js`, `.ts`, `.tsx`, `.jsx`, `.rs`, `.rb`, `.swift`, `.kt`, `.scala`, `.sh`, `.bash`.
-   - If NO code files are changed (only config, docs, markdown, yaml, json, etc.), **skip all testing** and proceed directly to Step 2.
-2. Discover test targets:
-   - Run via absolute path so it works from any nested cwd inside the primary checkout or a linked worktree:
-     - `"$HOME/dotfiles/claude-skills/commit-smart/discover-test-targets.sh"`
-   - The script walks up from each changed file to find the nearest `BUILD.bazel` directory,
-     checks for sibling `tests/` directories, and queries bzl for test targets.
-3. Execute tests:
-   - If the script outputs targets: `bzl test --test_output=summary <targets...>`.
-   - If no targets found: skip testing (no test targets associated with changed files).
-4. Do not skip or comment out failing tests.
-5. Never use `--test_filter`.
--->
-
-## Step 2: Stage And Review Changes
+## Step 1: Stage And Review Changes
 
 1. Remove temporary files created during development before staging:
    - Delete only files that are clearly temporary artifacts from this workflow, such as plan scratch files, test output files, logs, caches, or one-off debugging artifacts.
@@ -62,7 +40,7 @@ Perform a deterministic smart-commit workflow.
    - `git diff --cached --name-status`
 4. If nothing is staged, stop and inform the user.
 
-## Step 3: Compose Commit Message
+## Step 2: Compose Commit Message
 
 1. do not use `--no-verify` unless the user explicitly asks.
 2. Commit with signing and hooks enabled.
@@ -83,7 +61,7 @@ Perform a deterministic smart-commit workflow.
    )"
    ```
 
-## Step 4: Fix Pre-commit Failures Until Commit Succeeds
+## Step 3: Fix Pre-commit Failures Until Commit Succeeds
 
 If `git commit` fails due to hooks:
 
@@ -105,18 +83,19 @@ If `git commit` fails due to hooks:
 6. Repeat until `git commit` succeeds.
 7. Stop only for external blockers (auth/network/tool outage) or when the same disk-pressure failure persists after the recovery step; report exact output in either case.
 
-## Step 5: Push
+## Step 4: Push
 
 1. Push after successful commit:
    - `git push`
 2. If push fails, stop and show exact error output.
 
-## Step 6: Create Draft PR Only If Missing (WIP Title)
+## Step 5: Create Draft PR If Missing
 
 Intent:
 
 - Create a new draft PR only when no open PR exists for the current branch.
-- If an open PR already exists for the branch, skip PR creation step and do not edit title/body/state.
+- If an open PR already exists for the branch, skip PR creation and do not edit title/state.
+- Produce a `pr_url` for the next step, whether the PR was newly created or already existed.
 
 1. Confirm GitHub auth if needed:
    - `gh auth status`
@@ -124,23 +103,32 @@ Intent:
 3. Detect whether a PR already exists for the current branch:
    - `pr_url=$(gh pr list --repo "$repo" --head "$branch" --state open --json url --jq '.[0].url // empty' 2>/dev/null)`
 4. If `pr_url` exists:
-   - Skip the rest of Step 6.
-   - Reuse the existing URL only for the final user-facing PR link.
-5. Build PR title for creation:
+   - Reuse the existing URL for the `pr-body` refresh and final user-facing PR link.
+   - Do not edit the existing PR title or draft/ready state.
+5. If `pr_url` is empty, build PR title for creation:
    - Start from your generated title candidate.
    - Ensure the title includes `[WIP]` exactly once (prepend if missing).
-6. Create a draft PR path (`pr_url` is empty):
    - Create a new draft PR with an intentionally empty body:
      - `pr_url=$(gh pr create --repo "$repo" --head "$branch" --title "<wip_title>" --body "" --draft)`
-7. Ensure `pr_url` is populated.
-8. Invoke the `pr-body` skill at `$HOME/dotfiles/claude-skills/pr-body/SKILL.md` with `pr_url`.
+6. Ensure `pr_url` is populated.
+
+## Step 6: Refresh Managed PR Body
+
+Intent:
+
+- After every successful push, invoke `pr-body` for `pr_url`, whether the PR was newly created or already existed.
+- Let `pr-body` decide whether the body is managed and safe to update.
+- A `SKIPPED` result means the PR body was manually edited and must be left unchanged.
+
+Invoke the `pr-body` skill at `$HOME/dotfiles/claude-skills/pr-body/SKILL.md` with `pr_url`.
    - Treat `UPDATED` and `SKIPPED` results from `pr-body` as successful completion of this step.
    - Treat `BLOCKED` as a blocked status and stop.
 
 ## Completion Checklist
 
-- Tests passed (or correctly skipped when out of `~/dd` scope or no applicable code-test targets)
+- Pre-commit checks passed through the normal commit path
 - Commit succeeded with hooks enabled
 - Push succeeded
-- Draft PR created, or existing open PR detected and left unchanged
+- Draft PR created, or existing open PR detected without title/state changes
+- Managed PR body refreshed after push, or intentionally skipped by `pr-body`
 - PR link shared with user
