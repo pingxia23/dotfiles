@@ -75,20 +75,40 @@ Update the managed body by splicing new generated content into the existing body
    - State the user-visible or reviewer-visible outcome this PR enables.
    - Keep it to 1-2 short paragraphs or 2-3 bullets.
    - Avoid umbrella phrases like "end-to-end path" unless the following text names the concrete boundaries.
-8. The `## Approach` section must be concise and reviewer-digestible:
+8. The `## Approach` section must be concise, reviewer-digestible, and organized into two subsections:
 
    ```markdown
    ## Approach
 
-   <key implementation choices>
+   ### What this PR does
+
+   <plain-language walkthrough of the PR at a high level>
+
+   ### Key Implementation Decisions
+
+   <chosen implementation decisions and why they matter for review>
    ```
 
-   Requirements:
-   - Organize by review boundary, not by commit order.
-   - For multi-subsystem PRs, prefer 3-5 bullets with bold labels.
-   - Each bullet should name what changed and why that boundary matters.
-   - Mention tests only when they clarify behavior coverage or reviewer risk.
+   Requirements for the whole `## Approach` section:
+   - Always include both `### What this PR does` and `### Key Implementation Decisions`.
    - Keep implementation detail high-level enough that a reviewer can choose where to dive into the diff.
+   - Mention tests only when they clarify behavior coverage or reviewer risk.
+
+   Requirements for `### What this PR does`:
+   - Explain the PR in simple language before naming implementation details.
+   - Prefer an example, ASCII diagram, before/after flow, or short pseudocode when it makes the behavior easier to review.
+   - Keep the walkthrough high-level: describe the user-visible or system-visible flow, not every file touched.
+   - Focus on what changes for the caller, user, operator, or adjacent system.
+
+   Requirements for `### Key Implementation Decisions`:
+   - Write compact key implementation decisions, not a component inventory.
+   - Organize decisions by review boundary, not by commit order.
+   - For multi-subsystem PRs, prefer 3-5 decision blocks.
+   - Prefer this shape for each decision:
+     - `#### D<n>: <decision name>`
+     - `**Chosen:** <what this PR does>.`
+     - `**Why this matters for review:** <what reviewers should inspect and why>.`
+   - Use small diagrams or pseudocode for contracts, validation paths, state transitions, and persistence behavior when they make the decision easier to review.
 9. Leave every byte outside those two managed sections unchanged. Do not edit, reorder, remove, or regenerate any other section or content.
 10. Then update the PR body with:
 
@@ -102,19 +122,60 @@ gh pr edit --repo "$repo" "$pr_url" --body-file "<body-file>"
 - The goal is to state the problem clearly and lay out the high-level approach so reviewers can review the PR efficiently.
 - The output should help reviewers triage the diff. If the generated text reads like an abstract design summary, rewrite it around concrete review boundaries.
 
-For a large background-worker PR, prefer this shape over a dense paragraph:
+For a PR that changes a request flow, prefer this shape over a dense paragraph:
 
 ```markdown
 ## Problem
 
-Foreground assistant requests need to accept long-running work quickly without keeping the request open. Today there is no typed handoff to a background worker that can report progress and write the final result back to the conversation.
+The worker currently builds an LLM "background task completed" prompt itself before calling the conversation API. That makes the worker own user-visible prompt wording and leaves the API without a clear place to use persisted task history when producing the final assistant response.
 
-This PR adds that handoff, so reviewers should focus on the API-to-worker contract, callback validation, and persistence behavior.
+This PR moves that prompt construction and inference back behind an internal API boundary, so reviewers should focus on the worker-to-API contract and how persisted task history is read.
 
 ## Approach
 
-- **Worker contract:** Add typed start-task and worker-message callback payloads, including callback context and `PROGRESS`/`FINAL` event shapes.
-- **Worker runtime:** Implement the assistant-agent-worker workflow, activity execution, demo agent, and callback client.
-- **API integration:** Expose the start-background-task tool from assistant_api, start the worker workflow, and validate worker callbacks before persisting conversation updates.
-- **Shared definitions and docs:** Keep shared agent definitions in the assistant library and document the V1 boundary in ADR-004.
+### What this PR does
+
+Replaces the worker -> router call that used to construct an LLM "background task completed" prompt client-side with a new internal endpoint that constructs it server-side and runs LLM inference over the persisted task history.
+
+Old shape, where the worker fabricates the user-visible prompt:
+
+```text
+worker -> POST /api/v2/assistant/conversation/{id}
+          body: {
+            data: {
+              attributes: {
+                message: "Background task ... completed ...",
+                profile: "background_worker",
+                client_tools: []
+              }
+            }
+          }
+```
+
+New shape, where the worker only names the task and the API builds the prompt:
+
+```text
+worker -> POST /internal/assistant/v1/conversation/{id}/process-task
+          body: { "task_id": "assistant-task.123" }
+```
+
+### Key Implementation Decisions
+
+#### D1: Worker reports task identity; API owns completion inference
+
+**Chosen:** Replace the public conversation message call with an internal `process-task` request that passes only the task id.
+
+**Why this matters for review:** This is the main ownership boundary. Review the request shape, auth boundary, and API-side prompt construction because the worker should report completion while the API owns conversation behavior.
+
+#### D2: API validates persisted final task state before inference
+
+**Chosen:** Run completion inference only after the API confirms the task's final update is already persisted in conversation history.
+
+**Why this matters for review:** This prevents the LLM turn from running over incomplete task history. Review how task history is selected, how the final update is detected, and what happens when validation fails.
+
+#### D3: Completion trigger is visible to the LLM but not persisted as user content
+
+**Chosen:** Keep the final assistant response written through the API path while avoiding persistence of the synthetic "background task completed" trigger as a user message.
+
+**Why this matters for review:** This is the key conversation state transition. Review that the LLM has enough context to answer, while ChatStore records the worker updates and assistant response without adding a fake user-authored message.
 ```
