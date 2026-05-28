@@ -78,7 +78,7 @@
 			"+domains/ai_platform",
 			"+domains/chatbot/",
 			"+domains/assistant/",
-			"+domains/odp/apps/apis/lassie-ng/",
+			"+domains/odp/apps/apis/lassie-ng/"
 		],
 		"analyses": {
 			"unusedparams": false,
@@ -108,9 +108,15 @@
 			"vendor": false
 		},
 		"verboseOutput": true
-	},
+		},
+		"go.alternateTools": {
+			"gopls": "dd-gopls"
+		},
+		"go.toolsEnvVars": {
+			"GOPLS_DISABLE_MODULE_LOADS": "1"
+		},
 
-	// in cursor, don't bother indexing the git graph. It's quite large and slows things down
+		// in cursor, don't bother indexing the git graph. It's quite large and slows things down
 	"cursor.general.gitGraphIndexing": "disabled",
 	"editor.formatOnSave": true,
 	"bazel.enableCodeLens": true,
