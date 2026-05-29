@@ -33,6 +33,7 @@ theme = "catppuccin-macchiato"
 alternate_screen = "never"
 status_line = ["model-with-reasoning", "current-dir", "context-remaining"]
 status_line_use_colors = true
+terminal_title = ["activity", "project-name", "git-branch"]
 
 [tui.model_availability_nux]
 "gpt-5.5" = 4
@@ -59,6 +60,9 @@ trust_level = "trusted"
 trust_level = "trusted"
 
 [projects."/home/bits/dotfiles"]
+trust_level = "trusted"
+
+[projects."/home/bits/go/src/github.com/DataDog/consul-config"]
 trust_level = "trusted"
 
 [marketplaces.openai-bundled]
