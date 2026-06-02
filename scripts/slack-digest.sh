@@ -2,12 +2,13 @@
 set -euo pipefail
 
 # --- Config ---
+export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:${HOME}/.local/bin:/opt/dogbrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
 CHANNEL_ID="C08V7DFTUMS"
 DIGEST_DIR="$HOME/Documents/obsidian/Digests"
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 LOG_FILE="${SCRIPT_DIR}/slack-digest.log"
 LOG_PREFIX="[slack-digest]"
-DIGEST_REVIEW_FOOTER="- [ ] Review AI slack digest ${YESTERDAY:-} 📅 ${YESTERDAY:-}"
+DIGEST_REVIEW_FOOTER="- [ ] Review AI slack digest ${TARGET_FRIDAY:-} 📅 ${TARGET_FRIDAY:-}"
 
 timestamp_output() {
   while IFS= read -r line; do
@@ -23,7 +24,7 @@ contains_rejected_output() {
   local file="$1"
 
   grep -Eiq \
-    'failed to authenticate\. api error:|invalid internal auth token|not enough segments|^\{"errors"|^\[\{"status"|title":"unauthorized"' \
+    'failed to authenticate\. api error:|invalid_auth_token|invalid internal auth token|not enough segments|^\{"errors"|^\[\{"status"|title":"unauthorized"' \
     "$file"
 }
 
@@ -36,7 +37,7 @@ is_valid_digest_output() {
     return 1
   fi
 
-  if [[ "$content" == "Nothing interesting yesterday." ]]; then
+  if [[ "$content" == "Nothing interesting this week." ]]; then
     return 0
   fi
 
@@ -46,21 +47,33 @@ is_valid_digest_output() {
   [[ "$first_line" == '## '* && "$last_nonempty_line" == "$DIGEST_REVIEW_FOOTER" ]]
 }
 
-# --- Compute yesterday's date range (Unix timestamps) ---
+# --- Compute the most recent completed Friday-to-Friday range (Unix timestamps) ---
 if date --version >/dev/null 2>&1; then
-  YESTERDAY=$(date -d "yesterday" +%Y-%m-%d)
-  OLDEST=$(date -d "yesterday 00:00:00" +%s)
-  LATEST=$(date -d "yesterday 23:59:59" +%s)
+  TODAY_WEEKDAY=$(date +%u)
+  DAYS_SINCE_FRIDAY=$(((TODAY_WEEKDAY + 2) % 7))
+  if [[ "$DAYS_SINCE_FRIDAY" -eq 0 ]]; then
+    DAYS_SINCE_FRIDAY=7
+  fi
+  TARGET_FRIDAY=$(date -d "${DAYS_SINCE_FRIDAY} days ago" +%Y-%m-%d)
+  RANGE_START=$(date -d "${TARGET_FRIDAY} -7 days" +%Y-%m-%d)
+  OLDEST=$(date -d "${RANGE_START} 00:00:00" +%s)
+  LATEST=$(date -d "${TARGET_FRIDAY} 23:59:59" +%s)
 else
-  YESTERDAY=$(/bin/date -v-1d +%Y-%m-%d)
-  OLDEST=$(/bin/date -v-1d -j -f "%H:%M:%S" "00:00:00" +%s)
-  LATEST=$(/bin/date -v-1d -j -f "%H:%M:%S" "23:59:59" +%s)
+  TODAY_WEEKDAY=$(/bin/date +%u)
+  DAYS_SINCE_FRIDAY=$(((TODAY_WEEKDAY + 2) % 7))
+  if [[ "$DAYS_SINCE_FRIDAY" -eq 0 ]]; then
+    DAYS_SINCE_FRIDAY=7
+  fi
+  TARGET_FRIDAY=$(/bin/date -v-"${DAYS_SINCE_FRIDAY}"d +%Y-%m-%d)
+  RANGE_START=$(/bin/date -j -v-7d -f "%Y-%m-%d" "$TARGET_FRIDAY" +%Y-%m-%d)
+  OLDEST=$(/bin/date -j -f "%Y-%m-%d %H:%M:%S" "${RANGE_START} 00:00:00" +%s)
+  LATEST=$(/bin/date -j -f "%Y-%m-%d %H:%M:%S" "${TARGET_FRIDAY} 23:59:59" +%s)
 fi
 
-DIGEST_FILE="${DIGEST_DIR}/${YESTERDAY}-ai-slack-digest.md"
-DIGEST_REVIEW_FOOTER="- [ ] Review AI slack digest ${YESTERDAY} 📅 ${YESTERDAY}"
+DIGEST_FILE="${DIGEST_DIR}/${TARGET_FRIDAY}-ai-slack-digest.md"
+DIGEST_REVIEW_FOOTER="- [ ] Review AI slack digest ${TARGET_FRIDAY} 📅 ${TARGET_FRIDAY}"
 
-echo "${LOG_PREFIX} Generating digest for ${YESTERDAY}"
+echo "${LOG_PREFIX} Generating weekly digest for ${RANGE_START} through ${TARGET_FRIDAY}"
 echo "${LOG_PREFIX} Time range: ${OLDEST} - ${LATEST}"
 
 # --- Idempotency check ---
@@ -82,10 +95,11 @@ fi
 # --- Write prompt to temp file ---
 PROMPT_FILE=$(mktemp /tmp/slack-digest-prompt.XXXXXX)
 OUTPUT_FILE=$(mktemp /tmp/slack-digest-output.XXXXXX)
-trap 'rm -f "$PROMPT_FILE" "$OUTPUT_FILE"' EXIT
+CLAUDE_STDOUT_FILE=$(mktemp /tmp/slack-digest-claude-stdout.XXXXXX)
+trap 'rm -f "$PROMPT_FILE" "$OUTPUT_FILE" "$CLAUDE_STDOUT_FILE"' EXIT
 
 cat > "$PROMPT_FILE" <<PROMPT_EOF
-Produce a technical learning digest from Slack for yesterday (${YESTERDAY}).
+Produce a weekly technical learning digest from Slack for the week ending Friday (${TARGET_FRIDAY}).
 
 GOAL
 
@@ -97,7 +111,8 @@ Use plain English as much as possible. Avoid dense, abstract phrasing. Say what 
 
 DATE AND FILE RULES
 
-- Yesterday's date: ${YESTERDAY}
+- Week start date: ${RANGE_START}
+- Week end date: ${TARGET_FRIDAY}
 - Write the digest to: ${OUTPUT_FILE}
 
 STEP 1 — IDEMPOTENCY CHECK
@@ -106,7 +121,7 @@ Already handled by the calling script. Proceed to Step 2.
 
 STEP 2 — READ SLACK
 
-- Read all messages in Slack channel ${CHANNEL_ID} from yesterday.
+- Read all messages in Slack channel ${CHANNEL_ID} from ${RANGE_START} 00:00:00 through ${TARGET_FRIDAY} 23:59:59.
   Use mcp__plugin_slack_slack__slack_read_channel with:
   - channel_id: "${CHANNEL_ID}"
   - oldest: "${OLDEST}"
@@ -128,8 +143,8 @@ STEP 3 — READ LINKED SOURCES
 STEP 4 — FILTER AND GROUP
 
 - Merge all messages and threads about the same topic into one digest item.
-- Select only the strongest technical discussions from yesterday.
-- Target 5-8 items, but do NOT include filler. If only 2-4 discussions are truly worthwhile, include only those.
+- Select only the strongest technical discussions from the week.
+- Target up to 20 items, but do NOT include filler. If only a few discussions are truly worthwhile, include only those.
 - Prioritize topics with real technical depth, such as:
   - architecture decisions
   - system design tradeoffs
@@ -155,7 +170,7 @@ STEP 5 — WRITE A SELF-CONTAINED TECHNICAL DIGEST
 
 If there are no relevant discussions, write exactly:
 
-Nothing interesting yesterday.
+Nothing interesting this week.
 
 Otherwise:
 
@@ -210,11 +225,11 @@ ENDING
 
 For successful digests only, at the very end add one blank line and then exactly:
 
-- [ ] Review AI slack digest ${YESTERDAY} 📅 ${YESTERDAY}
+- [ ] Review AI slack digest ${TARGET_FRIDAY} 📅 ${TARGET_FRIDAY}
 
 IMPORTANT: Write ONLY the final markdown content to ${OUTPUT_FILE}. No preamble, no code fences, no commentary.
 IMPORTANT: The file must be exactly one of these forms:
-- The exact text: Nothing interesting yesterday.
+- The exact text: Nothing interesting this week.
 - A markdown digest that starts with ## on the first line and ends with the exact review checkbox line above.
 IMPORTANT: If any API call fails (authentication errors, 401/403, token errors, MCP tool failures, missing tools, browsing failures, etc.), do NOT write ${OUTPUT_FILE}. Do not write error messages, do not write partial digests, do not write explanations.
 IMPORTANT: Never write raw error text or payloads such as:
@@ -232,14 +247,19 @@ if ! claude -p "$(cat "$PROMPT_FILE")" \
   --model 'claude-opus-4-7[1m]' \
   --no-session-persistence \
   --allowedTools "Read,Write,Edit,Bash,Glob,Grep,WebFetch,WebSearch,mcp__plugin_slack_slack__*" \
-  > /dev/null; then
+  > "$CLAUDE_STDOUT_FILE"; then
   echo "${LOG_PREFIX} Claude invocation failed; digest not created."
   exit 1
 fi
 
 if [[ ! -f "$OUTPUT_FILE" || ! -s "$OUTPUT_FILE" ]]; then
-  echo "${LOG_PREFIX} Claude did not write the digest file; digest not created."
-  exit 1
+  if [[ -s "$CLAUDE_STDOUT_FILE" ]]; then
+    echo "${LOG_PREFIX} Claude wrote to stdout instead of the requested file; validating stdout."
+    mv "$CLAUDE_STDOUT_FILE" "$OUTPUT_FILE"
+  else
+    echo "${LOG_PREFIX} Claude did not write the digest file; digest not created."
+    exit 1
+  fi
 fi
 
 if contains_rejected_output "$OUTPUT_FILE"; then
