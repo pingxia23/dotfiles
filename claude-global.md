@@ -74,6 +74,7 @@ When your changes create orphans:
 2. Absolute imports only, never relative.
 3. Mock with `patch.object()` on imported modules, not long path strings
 4. Prefer Parametrized tests.
+5. DO NOT CREATE A HELPER METHOD THAT HAS ONLY ONE CALLER.
 
 # Skill Routing Override
 - **ALWAYS** `code-implement-loop` skill to implement a plan, if the current working directory is within `~/dd` (or its resolved absolute path), and the latest assistant response proposed an implementation plan and the user replies with `implement this`, `implement it`, `implement the proposed plan`, `carry out the plan`, or equivalent.
