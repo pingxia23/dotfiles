@@ -48,7 +48,7 @@ Use this exact handling for both review loops after the loop-specific reviewer s
 - If `status="blocked"`, propagate that status without proceeding to commit.
 - If `status="revise"` and `findings` is empty, stop and report blocked status with the aggregate output because there is no actionable finding to fix.
 - If `status="revise"` has findings and `current_round < max_rounds`, fix those items only, prioritize by `priority` ascending (`0` -> `3`; unknown priority after known priorities), rerun targeted verification, and continue to the next review round.
-- If `status="revise"` has findings and `current_round >= max_rounds`, stop and emit blocked status with current findings and attempted fixes.
+- If `status="revise"` has findings and `current_round >= max_rounds`, record the current findings and attempted fixes, stop the current review loop, continue to the next workflow step without blocking, and include the recorded findings and attempts in the final status.
 - Only P0-P2 findings are actionable. Sub-P2 comments, nits, praise, and broad suggestions must be omitted from `findings` and must not force `status="revise"`.
 - Both review loops use the same structured runner and schema after prompt/context assembly. The prompts require an internal scout pass, applicable specialist review lenses, mandatory evidence per finding, and a self-challenge pass before output.
 
@@ -153,11 +153,11 @@ Apply **Shared Review Result Handling** with:
 - `current_round`: the current local-uncommitted review round number
 - `max_rounds=5`
 
-### 6) Commit After Local Approval
+### 6) Commit After Local Review
 
-After the local-uncommitted review loop returns approval:
+After the local-uncommitted review loop returns approval, or reaches 5 rounds with `status="revise"` and actionable findings:
 
-- If `in_dd_scope=false`, stop after reporting success and leave the approved changes uncommitted in the worktree.
+- If `in_dd_scope=false`, stop after reporting success and leave the reviewed changes uncommitted in the worktree.
 - Otherwise, immediately invoke `commit-smart` to commit and push changes.
 
 Rules:
@@ -243,7 +243,7 @@ Rules:
 
 ### 8) Commit Full PR Review Fixes
 
-After the full PR review loop returns approval:
+After the full PR review loop returns approval, or reaches 2 rounds with `status="revise"` and actionable findings:
 
 - If `git status --porcelain` is empty, skip this step and proceed to Step 9.
 - If there are uncommitted changes, immediately invoke `commit-smart` to commit and push the review fixes.
@@ -280,24 +280,14 @@ Rules:
 
 Success format:
 
-- In dd scope: `SUCCESS: Implementation complete, local review approved, full PR review approved | PR: {url}`
-- Outside dd scope: `SUCCESS: Implementation complete | PR: none`
+- In dd scope: `SUCCESS: Implementation complete, local review completed, full PR review completed | PR: {url}`
+- Outside dd scope: `SUCCESS: Implementation complete, local review completed | PR: none`
+- If the local-uncommitted review continued after 5 rounds without approval, append: `| Local findings: {summary} | Attempts: {summary}`
+- If the full PR review continued after 2 rounds without approval, append: `| Full PR findings: {summary} | Attempts: {summary}`
 
 Blocked format:
 
-`BLOCKED: local-uncommitted review not approved after 5 rounds | PR: {url} | Findings: {summary} | Attempts: {summary}`
-
-or
-
 `BLOCKED: commit-smart failed | PR: {url} | Error: {summary} | Attempts: {summary}`
-
-or
-
-`BLOCKED: Full PR review found issues | PR: {url} | Findings: {summary}`
-
-or
-
-`BLOCKED: Full PR review not approved after 2 rounds | PR: {url} | Findings: {summary} | Attempts: {summary}`
 
 or
 
