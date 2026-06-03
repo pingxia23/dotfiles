@@ -31,7 +31,7 @@ Use this exact handling for both review loops after the loop-specific reviewer s
 
 - `review_result`: the raw JSON string returned by the reviewer script
 - `current_round`: the current review round number, starting at 1
-- `max_rounds`: 5 for local-uncommitted review, 2 for full PR review
+- `max_rounds`: 3 for local-uncommitted review, 2 for full PR review
 
 ### Parse Reviewer Output
 
@@ -116,7 +116,7 @@ Repo constraints:
 
 DO NOT COMMIT inside this step.
 
-Run a bounded loop with at most **5** rounds. Each round executes Steps 5a-5d below.
+Run a bounded loop with at most **3** rounds. Each round executes Steps 5a-5d below.
 
 #### 5a) Normalize Review Context
 
@@ -151,11 +151,11 @@ Apply **Shared Review Result Handling** with:
 
 - `review_result="$review_result"`
 - `current_round`: the current local-uncommitted review round number
-- `max_rounds=5`
+- `max_rounds=3`
 
 ### 6) Commit After Local Review
 
-After the local-uncommitted review loop returns approval, or reaches 5 rounds with `status="revise"` and actionable findings:
+After the local-uncommitted review loop returns approval, or reaches 3 rounds with `status="revise"` and actionable findings:
 
 - If `in_dd_scope=false`, stop after reporting success and leave the reviewed changes uncommitted in the worktree.
 - Otherwise, immediately invoke `commit-smart` to commit and push changes.
@@ -282,7 +282,7 @@ Success format:
 
 - In dd scope: `SUCCESS: Implementation complete, local review completed, full PR review completed | PR: {url}`
 - Outside dd scope: `SUCCESS: Implementation complete, local review completed | PR: none`
-- If the local-uncommitted review continued after 5 rounds without approval, append: `| Local findings: {summary} | Attempts: {summary}`
+- If the local-uncommitted review continued after 3 rounds without approval, append: `| Local findings: {summary} | Attempts: {summary}`
 - If the full PR review continued after 2 rounds without approval, append: `| Full PR findings: {summary} | Attempts: {summary}`
 
 Blocked format:
