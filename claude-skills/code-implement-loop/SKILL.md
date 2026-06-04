@@ -1,13 +1,13 @@
 ---
 name: code-implement-loop
-description: "Trigger this skill when implementation should start: if Codex/Claude proposes a plan and the user says 'implement this', 'implement the proposed plan', 'implement it', or equivalent; or if the user explicitly invokes `code-implement-loop`. Accepted implementation input sources are: a Codex/Claude-proposed plan, a user-provided `.md` plan/design file, or user-provided inline implementation instructions. In dd scope it runs local-uncommitted review rounds, commits with `commit-smart`, runs up to 2 full PR review rounds, commits any review fixes, then runs a non-blocking dual PR review update."
+description: "Trigger this skill when implementation should start: if Codex/Claude proposes a plan and the user says 'implement this', 'implement the proposed plan', 'implement it', or equivalent; or if the user explicitly invokes `code-implement-loop`. Accepted implementation input sources are: a Codex/Claude-proposed plan, a user-provided `.md` plan/design file, or user-provided inline implementation instructions. In dd scope it runs uncommitted change review rounds, commits with `commit-smart`, runs up to 2 full branch review rounds, commits any review fixes, then runs a non-blocking PR comment update."
 ---
 
 # Code Implement Loop
 
 ## Overview
 
-Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> TODO breakdown -> implementation (uncommitted) -> local-uncommitted review/fix loop -> conditional `commit-smart` when `in_dd_scope=true` -> full PR review/fix loop in dd scope -> conditional second `commit-smart` for review fixes -> non-blocking PR review comments. The first review loop evaluates only the current uncommitted patch. The second review loop evaluates the full local diff, including existing branch commits and any current uncommitted review fixes, against the fetched PR base.
+Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> TODO breakdown -> implementation (uncommitted) -> uncommitted change review/fix loop -> conditional `commit-smart` when `in_dd_scope=true` -> full branch review/fix loop in dd scope -> conditional second `commit-smart` for review fixes -> non-blocking PR comment update. The first review loop evaluates only the current uncommitted patch. The second review loop evaluates the full local diff, including existing branch commits and any current uncommitted review fixes, against the fetched PR base.
 
 ## Hard Rules
 
@@ -31,7 +31,7 @@ Use this exact handling for both review loops after the loop-specific reviewer s
 
 - `review_result`: the raw JSON string returned by the reviewer script
 - `current_round`: the current review round number, starting at 1
-- `max_rounds`: 3 for local-uncommitted review, 2 for full PR review
+- `max_rounds`: 3 for uncommitted change review, 2 for full branch review
 
 ### Parse Reviewer Output
 
@@ -112,7 +112,7 @@ Repo constraints:
 - Never use `bzl test --test_filter`.
 - Never run multiple `bzl` commands in parallel.
 
-### 5) Run the local-uncommitted review/fix loop
+### 5) Run The Uncommitted Change Review/Fix Loop
 
 DO NOT COMMIT inside this step.
 
@@ -150,12 +150,12 @@ The reviewer script gathers and evaluates the local uncommitted patch set itself
 Apply **Shared Review Result Handling** with:
 
 - `review_result="$review_result"`
-- `current_round`: the current local-uncommitted review round number
+- `current_round`: the current uncommitted change review round number
 - `max_rounds=3`
 
-### 6) Commit After Local Review
+### 6) Commit After Uncommitted Change Review
 
-After the local-uncommitted review loop returns approval, or reaches 3 rounds with `status="revise"` and actionable findings:
+After the uncommitted change review loop returns approval, or reaches 3 rounds with `status="revise"` and actionable findings:
 
 - If `in_dd_scope=false`, stop after reporting success and leave the reviewed changes uncommitted in the worktree.
 - Otherwise, immediately invoke `commit-smart` to commit and push changes.
@@ -167,13 +167,13 @@ Rules:
 - If `commit-smart` fails in dd scope, report blocked status with the failure reason and attempted remediation.
 - Outside dd scope, do not invoke `commit-smart`, do not create or update a PR, and report success once the reviewed patch is complete.
 
-### 7) Run Full PR Review In DD Scope
+### 7) Run Full Branch Review In DD Scope
 
 - Run a bounded loop with at most **2** rounds.
 
 Each round executes Steps 7a-7c below.
 
-#### 7a) Full PR Review Preflight
+#### 7a) Full Branch Review Preflight
 
 1. Normalize checkout context through the shared helper:
    - `eval "$("$HOME/dotfiles/scripts/git-context.sh")"`
@@ -204,7 +204,7 @@ head_ref="$(jq -r '.headRefName' <<<"$pr_meta_json")"
 head_sha="$(jq -r '.headRefOid' <<<"$pr_meta_json")"
 ```
 
-If `pr_url` is empty or `null`, stop and return `BLOCKED: no associated PR for full PR review`.
+If `pr_url` is empty or `null`, stop and return `BLOCKED: no associated PR for full branch review`.
 
 5. Confirm the current checkout matches the inferred PR:
    - `branch` from the helper must equal `head_ref`
@@ -214,7 +214,7 @@ If `pr_url` is empty or `null`, stop and return `BLOCKED: no associated PR for f
 
 #### 7b) Run Reviewer Script
 
-1. Run the shared structured full PR reviewer:
+1. Run the shared structured full branch reviewer:
 
 ```bash
 full_review_result="$(
@@ -232,18 +232,18 @@ full_review_result="$(
 Apply **Shared Review Result Handling** with:
 
 - `review_result="$full_review_result"`
-- `current_round`: the current full PR review round number
+- `current_round`: the current full branch review round number
 - `max_rounds=2`
 
 Rules:
 
 - The helper fetches `origin/$base_ref`, validates the current branch equals the PR head branch, validates local `HEAD` equals the remote PR head, computes `git merge-base HEAD origin/$base_ref`, and asks both reviewers to inspect `git diff <review_base>` plus untracked non-ignored files.
 - The helper does not require a clean worktree, so later rounds include uncommitted review fixes.
-- After assembling PR context and prompt, the helper uses the same `scripts/review-output.schema.json` schema, runner, parsing, and aggregation logic as the local-uncommitted review loop. Reviewer output must not be freeform prose.
+- After assembling branch context and prompt, the helper uses the same `scripts/review-output.schema.json` schema, runner, parsing, and aggregation logic as the uncommitted change review loop. Reviewer output must not be freeform prose.
 
-### 8) Commit Full PR Review Fixes
+### 8) Commit Full Branch Review Fixes
 
-After the full PR review loop returns approval, or reaches 2 rounds with `status="revise"` and actionable findings:
+After the full branch review loop returns approval, or reaches 2 rounds with `status="revise"` and actionable findings:
 
 - If `git status --porcelain` is empty, skip this step and proceed to Step 9.
 - If there are uncommitted changes, immediately invoke `commit-smart` to commit and push the review fixes.
@@ -254,9 +254,9 @@ Rules:
 - Do not end the workflow as success until this second `commit-smart` has completed when review fixes exist.
 - If the second `commit-smart` fails, report blocked status with the failure reason and attempted remediation.
 
-### 9) Run PR Review And Update PR
+### 9) Update PR With New Comment
 
-After Step 8 completes or is skipped, run the bundled helper:
+After Step 8 completes or is skipped, run the bundled helper to update the PR with a new comment:
 
 ```bash
 review_result="$(
@@ -280,10 +280,10 @@ Rules:
 
 Success format:
 
-- In dd scope: `SUCCESS: Implementation complete, local review completed, full PR review completed | PR: {url}`
-- Outside dd scope: `SUCCESS: Implementation complete, local review completed | PR: none`
-- If the local-uncommitted review continued after 3 rounds without approval, append: `| Local findings: {summary} | Attempts: {summary}`
-- If the full PR review continued after 2 rounds without approval, append: `| Full PR findings: {summary} | Attempts: {summary}`
+- In dd scope: `SUCCESS: Implementation complete, uncommitted change review completed, full branch review completed | PR: {url}`
+- Outside dd scope: `SUCCESS: Implementation complete, uncommitted change review completed | PR: none`
+- If the uncommitted change review continued after 3 rounds without approval, append: `| Uncommitted change findings: {summary} | Attempts: {summary}`
+- If the full branch review continued after 2 rounds without approval, append: `| Full branch findings: {summary} | Attempts: {summary}`
 
 Blocked format:
 
@@ -291,7 +291,7 @@ Blocked format:
 
 or
 
-`BLOCKED: Full PR review failed | PR: {url} | Error: {summary}`
+`BLOCKED: Full branch review failed | PR: {url} | Error: {summary}`
 
 or
 
