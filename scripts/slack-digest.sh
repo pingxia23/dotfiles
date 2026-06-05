@@ -8,7 +8,7 @@ DIGEST_DIR="$HOME/Documents/obsidian/Digests"
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 LOG_FILE="${SCRIPT_DIR}/slack-digest.log"
 LOG_PREFIX="[slack-digest]"
-DIGEST_REVIEW_FOOTER="- [ ] Review AI slack digest ${TARGET_FRIDAY:-} 📅 ${TARGET_FRIDAY:-}"
+DIGEST_REVIEW_FOOTER="- [ ] Review AI slack digest ${TARGET_THURSDAY:-} 📅 ${TARGET_THURSDAY:-}"
 
 timestamp_output() {
   while IFS= read -r line; do
@@ -47,33 +47,33 @@ is_valid_digest_output() {
   [[ "$first_line" == '## '* && "$last_nonempty_line" == "$DIGEST_REVIEW_FOOTER" ]]
 }
 
-# --- Compute the most recent completed Friday-to-Friday range (Unix timestamps) ---
+# --- Compute the most recent completed Thursday-to-Thursday range (Unix timestamps) ---
 if date --version >/dev/null 2>&1; then
   TODAY_WEEKDAY=$(date +%u)
-  DAYS_SINCE_FRIDAY=$(((TODAY_WEEKDAY + 2) % 7))
-  if [[ "$DAYS_SINCE_FRIDAY" -eq 0 ]]; then
-    DAYS_SINCE_FRIDAY=7
+  DAYS_SINCE_THURSDAY=$(((TODAY_WEEKDAY + 3) % 7))
+  if [[ "$DAYS_SINCE_THURSDAY" -eq 0 ]]; then
+    DAYS_SINCE_THURSDAY=7
   fi
-  TARGET_FRIDAY=$(date -d "${DAYS_SINCE_FRIDAY} days ago" +%Y-%m-%d)
-  RANGE_START=$(date -d "${TARGET_FRIDAY} -7 days" +%Y-%m-%d)
+  TARGET_THURSDAY=$(date -d "${DAYS_SINCE_THURSDAY} days ago" +%Y-%m-%d)
+  RANGE_START=$(date -d "${TARGET_THURSDAY} -7 days" +%Y-%m-%d)
   OLDEST=$(date -d "${RANGE_START} 00:00:00" +%s)
-  LATEST=$(date -d "${TARGET_FRIDAY} 23:59:59" +%s)
+  LATEST=$(date -d "${TARGET_THURSDAY} 23:59:59" +%s)
 else
   TODAY_WEEKDAY=$(/bin/date +%u)
-  DAYS_SINCE_FRIDAY=$(((TODAY_WEEKDAY + 2) % 7))
-  if [[ "$DAYS_SINCE_FRIDAY" -eq 0 ]]; then
-    DAYS_SINCE_FRIDAY=7
+  DAYS_SINCE_THURSDAY=$(((TODAY_WEEKDAY + 3) % 7))
+  if [[ "$DAYS_SINCE_THURSDAY" -eq 0 ]]; then
+    DAYS_SINCE_THURSDAY=7
   fi
-  TARGET_FRIDAY=$(/bin/date -v-"${DAYS_SINCE_FRIDAY}"d +%Y-%m-%d)
-  RANGE_START=$(/bin/date -j -v-7d -f "%Y-%m-%d" "$TARGET_FRIDAY" +%Y-%m-%d)
+  TARGET_THURSDAY=$(/bin/date -v-"${DAYS_SINCE_THURSDAY}"d +%Y-%m-%d)
+  RANGE_START=$(/bin/date -j -v-7d -f "%Y-%m-%d" "$TARGET_THURSDAY" +%Y-%m-%d)
   OLDEST=$(/bin/date -j -f "%Y-%m-%d %H:%M:%S" "${RANGE_START} 00:00:00" +%s)
-  LATEST=$(/bin/date -j -f "%Y-%m-%d %H:%M:%S" "${TARGET_FRIDAY} 23:59:59" +%s)
+  LATEST=$(/bin/date -j -f "%Y-%m-%d %H:%M:%S" "${TARGET_THURSDAY} 23:59:59" +%s)
 fi
 
-DIGEST_FILE="${DIGEST_DIR}/${TARGET_FRIDAY}-ai-slack-digest.md"
-DIGEST_REVIEW_FOOTER="- [ ] Review AI slack digest ${TARGET_FRIDAY} 📅 ${TARGET_FRIDAY}"
+DIGEST_FILE="${DIGEST_DIR}/${TARGET_THURSDAY}-ai-slack-digest.md"
+DIGEST_REVIEW_FOOTER="- [ ] Review AI slack digest ${TARGET_THURSDAY} 📅 ${TARGET_THURSDAY}"
 
-echo "${LOG_PREFIX} Generating weekly digest for ${RANGE_START} through ${TARGET_FRIDAY}"
+echo "${LOG_PREFIX} Generating weekly digest for ${RANGE_START} through ${TARGET_THURSDAY}"
 echo "${LOG_PREFIX} Time range: ${OLDEST} - ${LATEST}"
 
 # --- Idempotency check ---
@@ -99,7 +99,7 @@ CLAUDE_STDOUT_FILE=$(mktemp /tmp/slack-digest-claude-stdout.XXXXXX)
 trap 'rm -f "$PROMPT_FILE" "$OUTPUT_FILE" "$CLAUDE_STDOUT_FILE"' EXIT
 
 cat > "$PROMPT_FILE" <<PROMPT_EOF
-Produce a weekly technical learning digest from Slack for the week ending Friday (${TARGET_FRIDAY}).
+Produce a weekly technical learning digest from Slack for the week ending Thursday (${TARGET_THURSDAY}).
 
 GOAL
 
@@ -112,7 +112,7 @@ Use plain English as much as possible. Avoid dense, abstract phrasing. Say what 
 DATE AND FILE RULES
 
 - Week start date: ${RANGE_START}
-- Week end date: ${TARGET_FRIDAY}
+- Week end date: ${TARGET_THURSDAY}
 - Write the digest to: ${OUTPUT_FILE}
 
 STEP 1 — IDEMPOTENCY CHECK
@@ -121,7 +121,7 @@ Already handled by the calling script. Proceed to Step 2.
 
 STEP 2 — READ SLACK
 
-- Read all messages in Slack channel ${CHANNEL_ID} from ${RANGE_START} 00:00:00 through ${TARGET_FRIDAY} 23:59:59.
+- Read all messages in Slack channel ${CHANNEL_ID} from ${RANGE_START} 00:00:00 through ${TARGET_THURSDAY} 23:59:59.
   Use mcp__plugin_slack_slack__slack_read_channel with:
   - channel_id: "${CHANNEL_ID}"
   - oldest: "${OLDEST}"
@@ -225,7 +225,7 @@ ENDING
 
 For successful digests only, at the very end add one blank line and then exactly:
 
-- [ ] Review AI slack digest ${TARGET_FRIDAY} 📅 ${TARGET_FRIDAY}
+- [ ] Review AI slack digest ${TARGET_THURSDAY} 📅 ${TARGET_THURSDAY}
 
 IMPORTANT: Write ONLY the final markdown content to ${OUTPUT_FILE}. No preamble, no code fences, no commentary.
 IMPORTANT: The file must be exactly one of these forms:
