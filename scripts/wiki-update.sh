@@ -140,6 +140,13 @@ trap 'rm -f "$PROMPT_FILE"' EXIT
     echo "Do not delete wiki/log.md history."
     echo
   fi
+  echo "Wiki source filename rules:"
+  echo "- If a wiki/sources page maps one-to-one from a raw file, keep the raw file basename exactly under wiki/sources/."
+  echo "  Example: raw/AI Dev - Lessons.md -> wiki/sources/AI Dev - Lessons.md"
+  echo "- If a wiki/sources page summarizes multiple raw files, use a concise combined-topic filename instead."
+  echo "  Example: raw/AI Dev - *.md -> wiki/sources/AI Dev - Summary.md"
+  echo "- Do not slugify, shorten, or retitle one-to-one source filenames."
+  echo
   echo "$SCOPE_LABEL"
   for scope_entry in "${REVIEW_SCOPE_ENTRIES[@]}"; do
     echo "- ${scope_entry}"
