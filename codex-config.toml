@@ -23,11 +23,6 @@ url = "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp?toolsets=core,llmob
 [mcp_servers.datadog_staging]
 url = "https://mcp.datad0g.com/api/unstable/mcp-server/mcp?toolsets=core,llmobs,ddsql,apm,kubernetes,synthetics"
 
-[mcp_servers.trajectory]
-command = "/Users/ping.xia/.trajectory/bin/trajectory"
-args = ["mcp"]
-
-
 [tui]
 theme = "catppuccin-macchiato"
 alternate_screen = "never"
@@ -74,15 +69,6 @@ source = "/Users/ping.xia/.codex/.tmp/bundled-marketplaces/openai-bundled"
 last_updated = "2026-05-27T18:47:52Z"
 source_type = "local"
 source = "/Users/ping.xia/.cache/codex-runtimes/codex-primary-runtime/plugins/openai-primary-runtime"
-
-[plugins."documents@openai-primary-runtime"]
-enabled = true
-
-[plugins."spreadsheets@openai-primary-runtime"]
-enabled = true
-
-[plugins."presentations@openai-primary-runtime"]
-enabled = true
 
 [plugins."computer-use@openai-bundled"]
 enabled = true
