@@ -21,6 +21,8 @@ Implement a task in a deterministic sequence: plan intake (`.md` file or direct 
 
 Read the `# Implementation Discipline` section from `$HOME/dotfiles/claude-global.md`.
 
+If the task writes or changes Python code, also read `$HOME/dotfiles/python-implementation-guide.md`.
+
 These rules apply to **both initial implementation and review-fix rounds**.
 
 

@@ -54,8 +54,8 @@ export NVM_DIR="$HOME/.nvm"
 # uv (Python package manager) - adds ~/.local/bin to PATH
 export PATH="$HOME/.local/bin:$PATH"
 
-alias claude_high="ddtool auth login --datacenter us1.ddbuild.io && claude --effort xhigh --allow-dangerously-skip-permissions"
-alias claude_max="ddtool auth login --datacenter us1.ddbuild.io && claude --effort max --allow-dangerously-skip-permissions"
+alias claude_high="ddtool auth login --datacenter us1.ddbuild.io && claude --model 'claude-opus-4-8[1m]' --effort xhigh --allow-dangerously-skip-permissions"
+alias claude_max="ddtool auth login --datacenter us1.ddbuild.io && claude --model 'claude-opus-4-8[1m]' --effort max --allow-dangerously-skip-permissions"
 
 alias codex_high="ddtool auth login --datacenter us1.ddbuild.io && codex -c 'model_reasoning_effort=\"high\"' --dangerously-bypass-approvals-and-sandbox"
 alias codex_max="ddtool auth login --datacenter us1.ddbuild.io && codex -c 'model_reasoning_effort=\"xhigh\"' --dangerously-bypass-approvals-and-sandbox"

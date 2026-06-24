@@ -66,7 +66,7 @@ source_type = "local"
 source = "/Users/ping.xia/.codex/.tmp/bundled-marketplaces/openai-bundled"
 
 [marketplaces.openai-primary-runtime]
-last_updated = "2026-05-27T18:47:52Z"
+last_updated = "2026-06-24T10:46:45Z"
 source_type = "local"
 source = "/Users/ping.xia/.cache/codex-runtimes/codex-primary-runtime/plugins/openai-primary-runtime"
 
@@ -81,6 +81,21 @@ enabled = true
 
 [plugins."browser@openai-bundled"]
 enabled = true
+
+[plugins."documents@openai-primary-runtime"]
+enabled = false
+
+[plugins."pdf@openai-primary-runtime"]
+enabled = false
+
+[plugins."spreadsheets@openai-primary-runtime"]
+enabled = false
+
+[plugins."presentations@openai-primary-runtime"]
+enabled = false
+
+[plugins."template-creator@openai-primary-runtime"]
+enabled = false
 
 [memories]
 generate_memories = true
@@ -106,3 +121,6 @@ trusted_hash = "sha256:a506e76ca69c4e69723a414d9251cf4b02db5b0432058c64ca3f6c868
 
 [hooks.state."dd@datadog-claude-plugins:hooks/hooks.json:user_prompt_submit:0:0"]
 trusted_hash = "sha256:6a58e770acd72ebdd9038420c45d024a9b1478a89cc7145d5e1751792216b884"
+
+[apps.connector_20205bf7d4e99a89d7154bb849718324]
+enabled = false

@@ -79,7 +79,7 @@ If `git commit` fails due to hooks:
    - Retry the commit after the recovery step completes.
    - For non-merge commits, do NOT use `--no-verify` unless the user explicitly asks you to use it.
    - Do NOT use `bzl clean` for this issue.
-5. If the failure is not a Bazel disk-pressure case, fix issues in code/config/message, re-stage, retry.
+5. If the failure is not a Bazel disk-pressure case, fix issues in code/config/message, re-stage, retry. If the fix changes Python code, first read `$HOME/dotfiles/python-implementation-guide.md`.
 6. Repeat until `git commit` succeeds.
 7. Stop only for external blockers (auth/network/tool outage) or when the same disk-pressure failure persists after the recovery step; report exact output in either case.
 

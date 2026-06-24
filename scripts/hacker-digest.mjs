@@ -316,7 +316,7 @@ async function main() {
         "-p",
         prompt,
         "--model",
-        "claude-opus-4-7[1m]",
+        "claude-opus-4-8[1m]",
         "--no-session-persistence",
         "--allowedTools",
         "Read,Write,Edit,Bash,Glob,Grep,WebFetch,WebSearch",

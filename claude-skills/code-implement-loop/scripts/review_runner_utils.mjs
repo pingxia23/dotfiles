@@ -12,7 +12,7 @@ export const REVIEW_OUTPUT_SCHEMA_PATH = path.join(
   "review-output.schema.json",
 );
 export const DEFAULT_REVIEW_TIMEOUT_MS = 15 * 60 * 1000;
-export const CLAUDE_REVIEW_MODEL = "claude-opus-4-7[1m]";
+export const CLAUDE_REVIEW_MODEL = "claude-opus-4-8[1m]";
 export const CLAUDE_REVIEW_EFFORT = "xhigh";
 export const CODEX_REVIEW_MODEL = "gpt-5.5";
 export const CODEX_REVIEW_EFFORT = "high";

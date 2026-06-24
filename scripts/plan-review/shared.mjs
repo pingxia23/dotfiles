@@ -4,7 +4,7 @@ import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 
 export const DEFAULT_REVIEW_TIMEOUT_MS = 10 * 60 * 1000;
-export const CLAUDE_REVIEW_MODEL = "claude-opus-4-7[1m]";
+export const CLAUDE_REVIEW_MODEL = "claude-opus-4-8[1m]";
 export const CLAUDE_REVIEW_EFFORT = "xhigh";
 export const CODEX_REVIEW_MODEL = "gpt-5.5";
 export const CODEX_REVIEW_EFFORT = "high";

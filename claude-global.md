@@ -8,21 +8,16 @@ These rules apply to all projects and working directories.
 - When you encounter a `no space left on device` failure, launch a fresh sub-agent and use the `disk-pressure-recovery` skill to reclaim disk space before continuing.
 
 ## GitHub / Git 
-- Always use `gh` for GitHub interactions
-- Never resolve Github PR comments
-- **ONLY** address unresolved Github comments
-- **Never change the current git branch name** unless I explicitly asked you to do so
-- NEVER force push unless I explicitly asked you to do so
-- Always create commits through the normal `git commit` path. Never create commits with low-level plumbing such as `git commit-tree`, `git hash-object`, `git update-ref`, or manual `.git` metadata edits. 
-  - `git commit --no-verify` is still on the normal `git commit` path, but it bypasses hooks; use it only when I explicitly ask for `--no-verify`.
+- Use `gh` for GitHub.
+- Only address unresolved PR comments; never resolve PR comments.
+- Do not rename the current branch or force-push unless explicitly asked.
+- Use normal `git commit`; never use low-level git plumbing. Use `--no-verify` only when explicitly asked.
+- Always create commits through the normal `git commit` path. Never create commits with low-level plumbing such as `git commit-tree`, `git hash-object`, `git update-ref`, or manual `.git` metadata edits.
 
-## Understanding / Investigation
-- Prefer codebase evidence first for understanding and investigation tasks.
-- If codebase evidence is missing, weak, or not enough to support a conclusion, also search Atlassian MCP for supporting context.
-- Ground conclusions in concrete code references, Atlassian references, or both. State which source supports each important claim.
-
-## Explanation Style
-- **ALWAYS** prefer pseudocode, example walkthroughs, and diagrams over prose.
+## Investigation And Explanation
+- Prefer codebase evidence first; use Atlassian MCP when code evidence is missing or weak.
+- Ground important claims in concrete code references, Atlassian references, or command output.
+- Prefer pseudocode, examples, walkthroughs, and diagrams over prose.
 
 ## Bazel / bzl Commands
 
@@ -70,59 +65,50 @@ When your changes create orphans:
 - Do not add backward-compatibility scaffolding for code, schema fields, proto tags, APIs, or behaviors introduced only in the current PR. Before reserving proto tags, preserving old names, adding compatibility shims, or avoiding renumbering, verify the thing existed in the base branch or has already shipped. If it only exists in the current PR, remove or rewrite it cleanly instead of carrying speculative compatibility baggage.
 
 ## Python Code Style
-1. **ALWAYS** prefer top-level import than inline import
-2. Absolute imports only, never relative.
-3. Mock with `patch.object()` on imported modules, not long path strings
-4. Prefer Parametrized tests.
-5. DO NOT CREATE A HELPER METHOD THAT HAS ONLY ONE CALLER.
+- When writing or changing Python code, read `$HOME/dotfiles/python-implementation-guide.md`.
 
 # Skill Routing Override
 - **ALWAYS** `code-implement-loop` skill to implement a plan, if the current working directory is within `~/dd` (or its resolved absolute path), and the latest assistant response proposed an implementation plan and the user replies with `implement this`, `implement it`, `implement the proposed plan`, `carry out the plan`, or equivalent.
 
 # Plan Mode Output Template
 
-When writing a final proposed plan, follow this structure by default. Only omit a section when it would add no useful information for a trivial change. The goal is to make the proposed plan **easy to review and understand**.
+When writing a final proposed plan, use this structure unless the change is trivial. The goal is to make the proposed plan **easy to review and understand**.
 
 ```markdown
 
 ## Problem
-Describe what is wrong or missing today.
-
-Describe the user-visible outcome the plan should achieve.
+- What is wrong or missing today.
+- User-visible outcome the plan should achieve.
 
 ## Approach
-Explain why the proposed approach fits the current codebase.
+- Why this approach fits the current codebase.
+- Meaningful alternatives considered and why they are not used.
 
-If there is a meaningful alternative that is not being used, explain why.
+For factual claims about existing behavior, caching, performance, safety, or why a change can be avoided, cite concrete repo evidence or Atlassian context. Do not use words like "likely", "probably", or "should be fine" as justification unless explicitly marked as assumptions or risks.
 
-For any factual claim about existing behavior, caching, performance, safety, or why a change can be avoided, include hard evidence from the repo when available. Cite concrete files, symbols, tests, or observed command output. Do not use words like "likely", "probably", or "should be fine" as justification unless they are explicitly marked as assumptions or risks.
-
-When evidence exists, state both:
-- Evidence: <specific code path, file, symbol, test, or command output>
-- Conclusion: <what that evidence proves, and any remaining inference>
+Use this evidence shape when useful:
+- Evidence: `<specific code path, symbol, test, command output, or Atlassian reference>`
+- Conclusion: `<what the evidence proves, plus any remaining inference>`
 
 ## Implementation
-Describe the implementation changes before validation.
+Group changes by subsystem or behavior, not file list.
 
-For each major change, use this format:
-- Change: <what will change>
-  Why: <why this is needed>
-  How: <high-level implementation approach, using pseudocode or an ASCII diagram whenever possible>
+Use this shape:
+- Change: `<what changes>`
+  Why: `<why needed>`
+  How: `<high-level approach, with pseudocode or ASCII diagram for non-trivial logic>`
 
 Rules:
-- Group changes by subsystem or behavior, not by file list.
-- **Strongly** prefer pseudocode or ASCII diagrams for non-trivial logic, data flow, sequencing, or state transitions.
-- Mention file paths only when they help locate the work or remove ambiguity.
+- Prefer pseudocode or ASCII diagrams for non-trivial logic, data flow, sequencing, or state transitions.
+- Mention file paths only when useful.
 - Do not describe the plan as a line-by-line diff.
-- Do not write no-op `Change:` entries such as `Change: no change needed` or `Change: leave X unchanged`; omit them or state the scope boundary in Approach or Assumptions.
+- Omit no-op `Change:` entries.
 
 ## Validation
-List the specific tests, commands, or manual checks that should prove the change works.
+- Specific tests, commands, or manual checks.
 
 ## Assumptions / Agreements
-- List explicit user preferences, scope boundaries, accepted risks, non-goals, and compatibility decisions before proposing mechanics.
-- Separate confirmed agreements from open assumptions. Use this shape when useful:
-  - `Agreement`: `<explicit user preference or constraint>`.
-  - `Assumption`: `<inference that still needs confirmation or evidence>`.
-  - `Non-goal`: `<thing the ADR must not design or implement>`.
+- Agreement: `<explicit user preference or constraint>`.
+- Assumption: `<inference that still needs confirmation or evidence>`.
+- Non-goal: `<accepted scope boundary>`.
 ```
