@@ -1,11 +1,11 @@
 Run the following commands
 
-## 1. Authentication & git signing
+<!-- ## 1. Authentication & git signing
 ```bash
 ddtool auth github login --org DataDog
 dd-gitsign install --remote --email "ping.xia@datadoghq.com" --name "Ping Xia" --github "pingxia23"
 gh auth login
-```
+``` -->
 
 ## 2. Workspace-local git commit signing
 

@@ -321,56 +321,6 @@ setup_dd_source() {
   echo "dd-source local configurations installed"
 }
 
-# Setup root Python virtual environment for dd-source
-setup_dd_source_root_venv() {
-  DD_SOURCE_DIR="$HOME/dd/dd-source"
-
-  # Check if dd-source exists
-  if [ ! -d "$DD_SOURCE_DIR" ]; then
-    echo "dd-source not found, skipping root venv setup..."
-    return 0
-  fi
-
-  # Check if uv is installed
-  if ! command_exists uv; then
-    echo "uv not installed, skipping root venv setup..."
-    return 0
-  fi
-
-  # Check if .venv already exists
-  if [ -d "$DD_SOURCE_DIR/.venv" ]; then
-    echo "dd-source root .venv already exists, skipping..."
-    return 0
-  fi
-
-  # Check if requirements.txt exists
-  if [ ! -f "$DD_SOURCE_DIR/requirements.txt" ]; then
-    echo "requirements.txt not found, skipping root venv setup..."
-    return 0
-  fi
-
-  echo "Setting up root Python virtual environment for dd-source..."
-
-  # Create venv with Python 3.10
-  (cd "$DD_SOURCE_DIR" && uv venv --python 3.10 .venv)
-
-  if [ $? -ne 0 ]; then
-    echo "Warning: Failed to create root .venv"
-    return 1
-  fi
-
-  # Install dependencies
-  echo "Installing dependencies from requirements.txt (this may take a while)..."
-  (cd "$DD_SOURCE_DIR" && uv pip install -r requirements.txt)
-
-  if [ $? -eq 0 ]; then
-    echo "dd-source root venv setup complete"
-  else
-    echo "Warning: Failed to install dependencies. You can run manually:"
-    echo "  cd ~/dd/dd-source && uv pip install -r requirements.txt"
-  fi
-}
-
 # Install VSCode extensions (only installs if not already installed)
 install_vscode_extensions() {
   local CODE_CMD="cursor"
@@ -531,10 +481,6 @@ setup_gitconfig_if_not_exist
 
 # Setup dd-source local configurations
 setup_dd_source
-
-# Setup root Python venv for dd-source
-# NOTE: Disabled - run manually when needed due to potential issues with requirements.txt
-# setup_dd_source_root_venv
 
 # Install VSCode extensions
 install_vscode_extensions
