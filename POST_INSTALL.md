@@ -7,6 +7,15 @@ dd-gitsign install --remote --email "ping.xia@datadoghq.com" --name "Ping Xia" -
 gh auth login
 ``` -->
 
+## Zsh plugins
+
+To keep Oh My Zsh plugins in dotfiles, replace the generated `plugins=(...)` line in
+`~/.zshrc` with the following before `source $ZSH/oh-my-zsh.sh`:
+
+```zsh
+source "$HOME/dotfiles/zshrc.plugins"
+```
+
 ## dd-auth setup
 ```bash
 dd-auth --domain dd.datad0g.com --workspace workspace-pingxia-workspace-test
