@@ -20,3 +20,9 @@ source "$HOME/dotfiles/zshrc.plugins"
 ```bash
 dd-auth --domain dd.datad0g.com --workspace workspace-pingxia-workspace-test
 ```
+
+## dd-source git config
+
+For an existing `~/dd/dd-source` checkout, do not replace or symlink `.git/config`.
+Update it according to `~/dotfiles/dd-source/.git-config-template`, while keeping the
+checkout-specific remote URL.

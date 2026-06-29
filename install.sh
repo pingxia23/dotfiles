@@ -294,23 +294,12 @@ setup_dd_source() {
 
   # Symlinked files (auto-sync with dotfiles repo)
   create_symlink "$DOTFILES_DIR/dd-source/.envrc" "$DD_SOURCE_DIR/.envrc"
-  create_symlink "$DOTFILES_DIR/dd-source/.cursorignore" "$DD_SOURCE_DIR/.cursorignore"
   create_symlink "$DOTFILES_DIR/dd-source/.vscode/settings.json" "$DD_SOURCE_DIR/.vscode/settings.json"
 
   # Symlink pre-commit hook
   if [ -d "$DD_SOURCE_DIR/.git" ] && [ -f "$DOTFILES_DIR/dd-source/.git-hooks/pre-commit" ]; then
     create_symlink "$DOTFILES_DIR/dd-source/.git-hooks/pre-commit" "$DD_SOURCE_DIR/.git/hooks/pre-commit"
     chmod +x "$DD_SOURCE_DIR/.git/hooks/pre-commit"
-  fi
-
-  # Copy git config template (only if config doesn't exist)
-  if [ -d "$DD_SOURCE_DIR/.git" ] && [ -f "$DOTFILES_DIR/dd-source/.git-config-template" ]; then
-    if [ ! -f "$DD_SOURCE_DIR/.git/config" ]; then
-      cp "$DOTFILES_DIR/dd-source/.git-config-template" "$DD_SOURCE_DIR/.git/config"
-      echo "  Copied git config template"
-    else
-      echo "  .git/config already exists, skipping template copy"
-    fi
   fi
 
   # direnv allow (idempotent)
