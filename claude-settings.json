@@ -64,5 +64,6 @@
   "alwaysThinkingEnabled": true,
   "effortLevel": "xhigh",
   "autoMemoryEnabled": true,
-  "skipDangerousModePermissionPrompt": true
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "dark"
 }

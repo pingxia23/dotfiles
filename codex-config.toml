@@ -63,6 +63,9 @@ trust_level = "trusted"
 [projects."/Users/ping.xia/go/src/github.com/DataDog/code-gen-backend"]
 trust_level = "trusted"
 
+[projects."/home/bits"]
+trust_level = "trusted"
+
 [marketplaces.openai-bundled]
 last_updated = "2026-06-24T15:30:58Z"
 source_type = "local"

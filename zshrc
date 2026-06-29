@@ -84,12 +84,6 @@ trigger-tribunal() {
   echo "  https://app.datadoghq.com/logs?query=kube_namespace%3A${namespace}%20kube_cronjob%3A${cronjob}"
 }
 
-# Ensure workspace SSH key is loaded for git commit signing
-if [[ "$(uname -s)" == "Linux" ]]; then
-  export SSH_AUTH_SOCK="$HOME/.ssh/ssh_auth_sock"
-  "$HOME/.local/bin/ensure-local-signing-agent.sh" >/dev/null
-fi
-
 eval "$(codex completion zsh)"
 
 
