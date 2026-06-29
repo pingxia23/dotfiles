@@ -1,0 +1,29 @@
+[push]
+	autoSetupRemote = true
+	default = current
+
+[pager]
+	branch = false
+
+[url "git@github.com:"]
+	insteadOf = https://github.com/
+	insteadOf = git://github.com/
+
+[diff]
+	tool = vimdiff
+
+[difftool "vimdiff"]
+	cmd = vimdiff $LOCAL $REMOTE
+
+[merge]
+	tool = vimdiff
+
+[mergetool "vimdiff"]
+	cmd = vimdiff $MERGED
+	trustExitCode = true
+
+[fetch]
+	parallel = 8
+
+[pull]
+	ff = only

@@ -21,6 +21,10 @@ source "$HOME/dotfiles/zshrc.plugins"
 dd-auth --domain dd.datad0g.com --workspace workspace-pingxia-workspace-test
 ```
 
+## Global git config
+
+Update the global Git config according to `~/dotfiles/git_config_template`.
+
 ## dd-source git config
 
 For an existing `~/dd/dd-source` checkout, do not replace or symlink `.git/config`.
