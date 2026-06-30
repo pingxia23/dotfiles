@@ -6,6 +6,7 @@
     "ask": [],
     "defaultMode": "bypassPermissions"
   },
+  "model": "claude-opus-4-8[1m]",
   "hooks": {
     "Notification": [
       {
@@ -34,7 +35,9 @@
   "enabledPlugins": {
     "slack@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
-    "claude-md-management@claude-plugins-official": true
+    "claude-md-management@claude-plugins-official": true,
+    "codex@openai-codex": true,
+    "trajectory@trajectory": true
   },
   "extraKnownMarketplaces": {
     "trajectory-cc-plugin": {
@@ -42,12 +45,23 @@
         "source": "github",
         "repo": "DataDog/trajectory-cc-plugin"
       }
+    },
+    "openai-codex": {
+      "source": {
+        "source": "github",
+        "repo": "openai/codex-plugin-cc"
+      }
+    },
+    "trajectory": {
+      "source": {
+        "source": "directory",
+        "path": "/Users/ping.xia/.trajectory/claude-marketplace"
+      }
     }
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "xhigh",
   "autoMemoryEnabled": true,
   "skipDangerousModePermissionPrompt": true,
-  "theme": "dark",
-  "model": "claude-opus-4-8[1m]"
+  "theme": "dark"
 }
