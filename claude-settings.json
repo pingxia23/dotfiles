@@ -34,16 +34,9 @@
   "enabledPlugins": {
     "slack@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
-    "claude-md-management@claude-plugins-official": true,
-    "codex@openai-codex": true
+    "claude-md-management@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
-    "openai-codex": {
-      "source": {
-        "source": "github",
-        "repo": "openai/codex-plugin-cc"
-      }
-    },
     "trajectory-cc-plugin": {
       "source": {
         "source": "github",
