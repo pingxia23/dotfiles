@@ -6,6 +6,7 @@ sandbox_mode = "danger-full-access"
 personality = "pragmatic"
 service_tier = "fast"
 plan_mode_reasoning_effort = "high"
+mcp_oauth_credentials_store = "file"
 
 notify = ["/Users/ping.xia/.codex/computer-use/Codex Computer Use.app/Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient", "turn-ended"]
 
@@ -13,6 +14,7 @@ notify = ["/Users/ping.xia/.codex/computer-use/Codex Computer Use.app/Contents/S
 hooks = true
 multi_agent = true
 goals = true
+js_repl = false
 
 [mcp_servers.atlassian]
 url = "https://mcp.atlassian.com/v1/mcp"
@@ -22,6 +24,26 @@ url = "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp?toolsets=core,llmob
 
 [mcp_servers.datadog_staging]
 url = "https://mcp.datad0g.com/api/unstable/mcp-server/mcp?toolsets=core,llmobs,ddsql,apm,kubernetes,synthetics"
+
+[mcp_servers.node_repl]
+args = []
+command = "/Users/ping.xia/Applications/Codex.app/Contents/Resources/cua_node/bin/node_repl"
+startup_timeout_sec = 120
+enabled = false
+
+[mcp_servers.node_repl.env]
+NODE_REPL_NATIVE_PIPE_CONNECT_TIMEOUT_MS = "1000"
+NODE_REPL_NODE_MODULE_DIRS = "/Users/ping.xia/Applications/Codex.app/Contents/Resources/cua_node/lib/node_modules"
+NODE_REPL_NODE_PATH = "/Users/ping.xia/Applications/Codex.app/Contents/Resources/cua_node/bin/node"
+NODE_REPL_TRUSTED_CODE_PATHS = "/Users/ping.xia/.codex"
+CODEX_HOME = "/Users/ping.xia/.codex"
+NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S = "59e7bb81812ddd5f102e1d580335166e552c91686b5726218a985b59b4f89ca1"
+BROWSER_USE_AVAILABLE_BACKENDS = "chrome,iab"
+NODE_REPL_INSTRUCTIONS_USE_CASE_BROWSER = "Control the in-app browser in conjunction with the Browser Plugin."
+NODE_REPL_INSTRUCTIONS_USE_CASE_CHROME = "Control the Chrome browser in conjunction with the Chrome Plugin. Prefer this method of controlling Chrome over alternatives (such as Computer Use) unless the user explicitly mentions an alternative."
+BROWSER_USE_CODEX_APP_BUILD_FLAVOR = "prod"
+BROWSER_USE_CODEX_APP_VERSION = "26.623.42026"
+CODEX_CLI_PATH = "/Users/ping.xia/Applications/Codex.app/Contents/Resources/codex"
 
 [tui]
 theme = "catppuccin-macchiato"
@@ -66,8 +88,11 @@ trust_level = "trusted"
 [projects."/home/bits"]
 trust_level = "trusted"
 
+[projects."/Users/ping.xia/Documents/py_playground"]
+trust_level = "trusted"
+
 [marketplaces.openai-bundled]
-last_updated = "2026-06-24T15:30:58Z"
+last_updated = "2026-06-29T02:07:42Z"
 source_type = "local"
 source = "/Users/ping.xia/.codex/.tmp/bundled-marketplaces/openai-bundled"
 
@@ -134,5 +159,11 @@ trusted_hash = "sha256:a506e76ca69c4e69723a414d9251cf4b02db5b0432058c64ca3f6c868
 [hooks.state."dd@datadog-claude-plugins:hooks/hooks.json:user_prompt_submit:0:0"]
 trusted_hash = "sha256:6a58e770acd72ebdd9038420c45d024a9b1478a89cc7145d5e1751792216b884"
 
+[hooks.state."/Users/ping.xia/go/src/github.com/DataDog/dd-source/.codex/hooks.json:pre_tool_use:0:0"]
+trusted_hash = "sha256:69b85641fecbc2665f02fa2f65a6494a5b64e1ded4f2249e551ad26f7073604c"
+
 [apps.connector_20205bf7d4e99a89d7154bb849718324]
 enabled = false
+
+[desktop]
+followUpQueueMode = "queue"
