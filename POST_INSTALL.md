@@ -125,3 +125,58 @@ Branch: ping.xia/workspace-git-key-test-20260701160030
 Verified commit: 54a757ffe7678a750e71f4dbb75adfa9fc7b66af
 GitHub verification: verified: true, reason valid
 ```
+
+## Personal dotfiles push authentication
+
+`ping-xia_ddog` is an Enterprise Managed User and cannot be added as a
+collaborator to the personal `pingxia23/dotfiles` repository. Keep commit
+signing on `~/.ssh/workspace_git`, but use a separate personal GitHub
+authentication key only for the `~/dotfiles` checkout.
+
+This assumes the matching public key has already been added to the `pingxia23`
+GitHub account as an authentication key named `workspace-dotfiles-auth`.
+
+The dotfiles repository SSH key is stored in 1Password. Find it by searching
+1Password for `dotfiles repo ssh key`, `workspace-dotfiles-auth`, or
+`pingxia23-dotfiles`. Do not commit the key material to this repository.
+
+The matching private key must exist in the workspace at:
+
+```text
+~/.ssh/pingxia23_dotfiles
+```
+
+Configure only the dotfiles repository to use that key for SSH transport:
+
+```bash
+cd ~/dotfiles
+git config core.sshCommand "ssh -i ~/.ssh/pingxia23_dotfiles -o IdentitiesOnly=yes"
+git remote set-url origin git@github.com:pingxia23/dotfiles.git
+```
+
+Validate that GitHub sees the key as the personal `pingxia23` account:
+
+```bash
+ssh -T -i ~/.ssh/pingxia23_dotfiles -o IdentitiesOnly=yes git@github.com
+```
+
+Expected result:
+
+```text
+Hi pingxia23! You've successfully authenticated, but GitHub does not provide shell access.
+```
+
+Then push normally from `~/dotfiles`:
+
+```bash
+git push
+```
+
+If the push is rejected with `fetch first`, integrate the remote commit before
+pushing:
+
+```bash
+git fetch origin master
+git rebase origin/master
+git push
+```
