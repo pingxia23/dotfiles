@@ -30,3 +30,98 @@ Update the global Git config according to `~/dotfiles/git_config_template`.
 For an existing `~/dd/dd-source` checkout, do not replace or symlink `.git/config`.
 Update it according to `~/dotfiles/dd-source/.git-config-template`, while keeping the
 checkout-specific remote URL.
+
+## Workspace Git signing and push authentication
+
+Commit signing and push authentication are separate:
+
+```text
+git commit -> needs a signing key
+git push   -> needs GitHub repository authentication
+```
+
+For workspaces without an SSH session or forwarded SSH agent, use one local private
+key for both operations:
+
+```text
+commit signing -> ~/.ssh/workspace_git
+push auth      -> ~/.ssh/workspace_git via core.sshCommand
+GitHub account -> upload ~/.ssh/workspace_git.pub twice:
+                  authentication key + signing key
+```
+
+Important: `user.signingkey = key::<public-key>` depends on an SSH agent.
+`user.signingkey = ~/.ssh/workspace_git` works without `SSH_AUTH_SOCK`.
+
+### Setup
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/workspace_git -C "workspace-git" -N ""
+chmod 600 ~/.ssh/workspace_git
+chmod 644 ~/.ssh/workspace_git.pub
+
+gh auth refresh -h github.com -s admin:public_key -s admin:ssh_signing_key
+
+gh ssh-key add ~/.ssh/workspace_git.pub --type authentication --title "workspace-git-auth"
+gh ssh-key add ~/.ssh/workspace_git.pub --type signing --title "workspace-git-signing"
+
+git config --global gpg.format ssh
+git config --global user.signingkey ~/.ssh/workspace_git
+git config --global commit.gpgsign true
+git config --global core.sshCommand "ssh -i ~/.ssh/workspace_git -o IdentitiesOnly=yes"
+```
+
+For DataDog, SSO authorization is required for the authentication key:
+
+1. Open GitHub in a browser and complete DataDog SSO at least once.
+2. Go to GitHub -> Settings -> SSH and GPG keys.
+3. Find the `workspace-git-auth` key under authentication keys.
+4. Use `Configure SSO` for that key and authorize it for the DataDog
+   organization.
+
+Only the authentication key needs SSO authorization for Git over SSH. The
+`workspace-git-signing` key is what GitHub uses to verify commit signatures.
+
+Disable `SSH_AUTH_SOCK` forwarding for the workspace SSH client connection so
+Git signing does not accidentally depend on a laptop agent. On the machine that
+opens the SSH connection to the workspace, add or update the workspace host
+entry:
+
+```sshconfig
+Host workspace-pingxia-workspace-test
+  ForwardAgent no
+  IdentityAgent none
+```
+
+After reconnecting to the workspace, `SSH_AUTH_SOCK` should be unset:
+
+```bash
+env | grep SSH_AUTH_SOCK || echo "SSH_AUTH_SOCK unset"
+```
+
+### Validation
+
+```bash
+env | grep SSH_AUTH_SOCK || echo "SSH_AUTH_SOCK unset"
+
+tmpdir=$(mktemp -d)
+cd "$tmpdir"
+git init
+git config user.name "Probe User"
+git config user.email "$(git config --global user.email)"
+echo test > f
+git add f
+git commit -m "probe local key signing"
+cd -
+rm -rf "$tmpdir"
+
+git ls-remote origin HEAD
+```
+
+Known-good branch test:
+
+```text
+Branch: ping.xia/workspace-git-key-test-20260701160030
+Verified commit: 54a757ffe7678a750e71f4dbb75adfa9fc7b66af
+GitHub verification: verified: true, reason valid
+```
