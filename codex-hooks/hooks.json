@@ -1,5 +1,17 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/dotfiles/codex-hooks/mcp-startup-check.mjs\"",
+            "timeout": 120
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
@@ -14,7 +26,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$HOME/.codex/hooks/stop-notify.sh\"",
+            "command": "bash \"$HOME/dotfiles/codex-hooks/stop-notify.sh\"",
             "timeout": 10
           }
         ]
