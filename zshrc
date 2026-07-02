@@ -54,10 +54,23 @@ export NVM_DIR="$HOME/.nvm"
 # uv (Python package manager) - adds ~/.local/bin to PATH
 export PATH="$HOME/.local/bin:$PATH"
 
+workspace_gh_auth_valid() {
+  local github_user="$1"
+  [[ "$(gh auth status --hostname github.com --json hosts --jq ".hosts[\"github.com\"][] | select(.login == \"$github_user\" and .state == \"success\") | .login" 2>/dev/null)" == "$github_user" ]]
+}
+
 workspace_agent_auth() {
   ddtool auth login --datacenter us1.ddbuild.io
-  ddtool auth github token --org DataDog | gh auth login --with-token
-  ddtool auth github token --org ddoghq | gh auth login --with-token
+
+  if ! workspace_gh_auth_valid pingxia23; then
+    echo "GitHub auth missing for DataDog; choose account: pingxia23" >&2
+    ddtool auth github token --org DataDog | gh auth login --with-token || return
+  fi
+
+  if ! workspace_gh_auth_valid ping-xia_ddog; then
+    echo "GitHub auth missing for ddoghq; choose account: ping-xia_ddog" >&2
+    ddtool auth github token --org ddoghq | gh auth login --with-token
+  fi
 }
 
 alias claude_high="workspace_agent_auth && claude --model 'claude-opus-4-8[1m]' --effort xhigh --allow-dangerously-skip-permissions"
