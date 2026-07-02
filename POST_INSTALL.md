@@ -33,6 +33,8 @@ checkout-specific remote URL.
 
 ## Workspace Git signing and push authentication
 
+### Reasoning
+
 Commit signing and push authentication are separate:
 
 ```text
@@ -40,20 +42,23 @@ git commit -> needs a signing key
 git push   -> needs GitHub repository authentication
 ```
 
-For workspaces without an SSH session or forwarded SSH agent, use one local private
-key for both operations:
+Use explicit local private keys in the workspace so commits and pushes use
+deterministic identities. `ddoghq` and `DataDog` are separate GitHub
+enterprises/accounts, so they need separate SSH authentication keys:
 
 ```text
 commit signing -> ~/.ssh/workspace_git
-push auth      -> ~/.ssh/workspace_git via core.sshCommand
-GitHub account -> upload ~/.ssh/workspace_git.pub twice:
-                  authentication key + signing key
+ddoghq auth    -> ~/.ssh/workspace_git
+DataDog auth   -> ~/.ssh/workspace_git_datadog
 ```
 
-Important: `user.signingkey = key::<public-key>` depends on an SSH agent.
-`user.signingkey = ~/.ssh/workspace_git` works without `SSH_AUTH_SOCK`.
+Use `user.signingkey = ~/.ssh/workspace_git` so Git signing uses the local
+workspace key directly.
 
-### Setup
+Do not edit `/home/bits/.config/datadog/git/ssh_config` by hand. It is managed
+by `git-config-tool` and included from `~/.ssh/config`.
+
+### Set up ddoghq
 
 ```bash
 ssh-keygen -t ed25519 -f ~/.ssh/workspace_git -C "workspace-git" -N ""
@@ -68,62 +73,94 @@ gh ssh-key add ~/.ssh/workspace_git.pub --type signing --title "workspace-git-si
 git config --global gpg.format ssh
 git config --global user.signingkey ~/.ssh/workspace_git
 git config --global commit.gpgsign true
-git config --global core.sshCommand "ssh -i ~/.ssh/workspace_git -o IdentitiesOnly=yes"
 ```
 
-For DataDog, SSO authorization is required for the authentication key:
+`~/.ssh/workspace_git.pub` must exist on the `ddoghq` GitHub account twice:
+
+```text
+authentication key -> Git push/fetch for ddoghq
+signing key        -> GitHub commit signature verification
+```
+
+### Set up DataDog
+
+Create a separate key for the GitHub account that belongs to the `DataDog`
+enterprise:
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/workspace_git_datadog -C "workspace-git-datadog" -N ""
+chmod 600 ~/.ssh/workspace_git_datadog
+chmod 644 ~/.ssh/workspace_git_datadog.pub
+cat ~/.ssh/workspace_git_datadog.pub
+```
+
+Upload `~/.ssh/workspace_git_datadog.pub` to the GitHub account that belongs to
+the `DataDog` enterprise as an authentication key.
+
+For DataDog, SSO authorization is required for the DataDog authentication key:
 
 1. Open GitHub in a browser and complete DataDog SSO at least once.
 2. Go to GitHub -> Settings -> SSH and GPG keys.
-3. Find the `workspace-git-auth` key under authentication keys.
+3. Find the `workspace-git-datadog` authentication key.
 4. Use `Configure SSO` for that key and authorize it for the DataDog
    organization.
 
-Only the authentication key needs SSO authorization for Git over SSH. The
-`workspace-git-signing` key is what GitHub uses to verify commit signatures.
+Only authentication keys need SSO authorization for Git over SSH. The
+`workspace-git-signing` key is only for GitHub commit signature verification.
 
-Disable `SSH_AUTH_SOCK` forwarding for the workspace SSH client connection so
-Git signing does not accidentally depend on a laptop agent. On the machine that
-opens the SSH connection to the workspace, add or update the workspace host
-entry:
+### Final SSH and Git setup
 
-```sshconfig
-Host workspace-pingxia-workspace-test
-  ForwardAgent no
-  IdentityAgent none
-```
-
-After reconnecting to the workspace, `SSH_AUTH_SOCK` should be unset:
+Add the DataDog host alias to `~/.ssh/config`:
 
 ```bash
-env | grep SSH_AUTH_SOCK || echo "SSH_AUTH_SOCK unset"
+if ! grep -q '^Host datadog\.github\.com$' ~/.ssh/config 2>/dev/null; then
+  cat >> ~/.ssh/config <<'EOF'
+Host datadog.github.com
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/workspace_git_datadog
+  IdentitiesOnly yes
+EOF
+fi
+
+chmod 600 ~/.ssh/config
 ```
 
-### Validation
+Use a small SSH wrapper so normal `ddoghq` Git operations keep using
+`~/.ssh/workspace_git`, while `DataDog` remotes use
+`~/.ssh/workspace_git_datadog`:
 
 ```bash
-env | grep SSH_AUTH_SOCK || echo "SSH_AUTH_SOCK unset"
+cat > ~/.ssh/git-ssh-workspace <<'EOF'
+#!/bin/sh
 
-tmpdir=$(mktemp -d)
-cd "$tmpdir"
-git init
-git config user.name "Probe User"
-git config user.email "$(git config --global user.email)"
-echo test > f
-git add f
-git commit -m "probe local key signing"
-cd -
-rm -rf "$tmpdir"
+key="$HOME/.ssh/workspace_git"
 
-git ls-remote origin HEAD
+for arg in "$@"; do
+  case "$arg" in
+    *datadog.github.com*|*DataDog/datacenter-config.git*)
+      key="$HOME/.ssh/workspace_git_datadog"
+      ;;
+  esac
+done
+
+exec ssh -i "$key" -o IdentitiesOnly=yes "$@"
+EOF
+
+chmod 700 ~/.ssh/git-ssh-workspace
+git config --global core.sshCommand "$HOME/.ssh/git-ssh-workspace"
 ```
 
-Known-good branch test:
+Route `DataDog` repositories through the DataDog host alias. Clear existing
+values first so rerunning this block does not duplicate entries:
 
-```text
-Branch: ping.xia/workspace-git-key-test-20260701160030
-Verified commit: 54a757ffe7678a750e71f4dbb75adfa9fc7b66af
-GitHub verification: verified: true, reason valid
+```bash
+git config --global --unset-all url.git@datadog.github.com:DataDog/.insteadOf || true
+git config --global --unset-all url.ssh://git@datadog.github.com/DataDog/.insteadOf || true
+
+git config --global --add url."git@datadog.github.com:DataDog/".insteadOf "https://github.com/DataDog/"
+git config --global --add url."git@datadog.github.com:DataDog/".insteadOf "git@github.com:DataDog/"
+git config --global --add url."ssh://git@datadog.github.com/DataDog/".insteadOf "ssh://git@github.com/DataDog/"
 ```
 
 ## Personal dotfiles push authentication
