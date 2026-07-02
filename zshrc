@@ -54,11 +54,17 @@ export NVM_DIR="$HOME/.nvm"
 # uv (Python package manager) - adds ~/.local/bin to PATH
 export PATH="$HOME/.local/bin:$PATH"
 
-alias claude_high="ddtool auth login --datacenter us1.ddbuild.io && claude --model 'claude-opus-4-8[1m]' --effort xhigh --allow-dangerously-skip-permissions"
-alias claude_max="ddtool auth login --datacenter us1.ddbuild.io && claude --model 'claude-opus-4-8[1m]' --effort max --allow-dangerously-skip-permissions"
+workspace_agent_auth() {
+  ddtool auth login --datacenter us1.ddbuild.io
+  ddtool auth github token --org DataDog | gh auth login --with-token
+  ddtool auth github token --org ddoghq | gh auth login --with-token
+}
 
-alias codex_high="ddtool auth login --datacenter us1.ddbuild.io && codex -c 'model_reasoning_effort=\"high\"' --dangerously-bypass-approvals-and-sandbox"
-alias codex_max="ddtool auth login --datacenter us1.ddbuild.io && codex -c 'model_reasoning_effort=\"xhigh\"' --dangerously-bypass-approvals-and-sandbox"
+alias claude_high="workspace_agent_auth && claude --model 'claude-opus-4-8[1m]' --effort xhigh --allow-dangerously-skip-permissions"
+alias claude_max="workspace_agent_auth && claude --model 'claude-opus-4-8[1m]' --effort max --allow-dangerously-skip-permissions"
+
+alias codex_high="workspace_agent_auth && codex -c 'model_reasoning_effort=\"high\"' --dangerously-bypass-approvals-and-sandbox"
+alias codex_max="workspace_agent_auth && codex -c 'model_reasoning_effort=\"xhigh\"' --dangerously-bypass-approvals-and-sandbox"
 
 export MCP_OAUTH_CALLBACK_PORT=41111
 
