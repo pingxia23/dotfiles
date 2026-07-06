@@ -176,7 +176,6 @@ The JSON must match this schema exactly:
       "title": "<≤ 80 chars, imperative>",
       "body": "<valid Markdown explaining *why* this is a problem; cite files/lines/functions>",
       "evidence": "<specific code/config/test/source evidence supporting the finding>",
-      "confidence_score": <float 0.0-1.0>,
       "priority": <int 0-2>,
       "code_location": {
         "absolute_file_path": "<file path>",
@@ -185,8 +184,7 @@ The JSON must match this schema exactly:
     }
   ],
   "overall_correctness": "correct" | "incorrect",
-  "overall_explanation": "<1-3 sentence explanation justifying the overall_correctness verdict>",
-  "overall_confidence_score": <float 0.0-1.0>
+  "overall_explanation": "<1-3 sentence explanation justifying the overall_correctness verdict>"
 }
 
 Additional output rules:
@@ -447,7 +445,9 @@ function filterBranchReviewAggregate(aggregate) {
   );
   const unavailable = aggregate.unavailable || [];
 
-  if (unavailable.length > 0) {
+  // Unavailable reviewers are ignored upstream; the aggregate is only "blocked"
+  // when no reviewer was usable at all. Propagate that blocked state as-is.
+  if (aggregate.status === "blocked") {
     return {
       ...aggregate,
       findings: [],
@@ -462,6 +462,15 @@ function filterBranchReviewAggregate(aggregate) {
   const incorrectReviewers = Object.entries(reviews)
     .filter(([, review]) => review?.overall_correctness === "incorrect")
     .map(([reviewer]) => reviewer);
+  const availableReviewers = Object.entries(reviews)
+    .filter(([, review]) => review)
+    .map(([reviewer]) => reviewer);
+  const ignoredNote =
+    unavailable.length > 0
+      ? ` Ignored unavailable reviewer(s): ${unavailable
+          .map(({ reviewer }) => reviewer)
+          .join(", ")}.`
+      : "";
 
   if (findings.length > 0 || incorrectReviewers.length > 0) {
     return {
@@ -471,9 +480,10 @@ function filterBranchReviewAggregate(aggregate) {
       reviews,
       unavailable,
       overall_explanation:
-        findings.length > 0
+        (findings.length > 0
           ? `${findings.length} P0-P1 reviewer finding(s) require fixes.`
-          : `${incorrectReviewers.join(", ")} returned an incorrect review verdict.`,
+          : `${incorrectReviewers.join(", ")} returned an incorrect review verdict.`) +
+        ignoredNote,
     };
   }
 
@@ -483,7 +493,9 @@ function filterBranchReviewAggregate(aggregate) {
     findings: [],
     reviews,
     unavailable,
-    overall_explanation: "Both reviewers approved the change.",
+    overall_explanation: `${availableReviewers.join(
+      ", ",
+    )} approved the change.${ignoredNote}`,
   };
 }
 

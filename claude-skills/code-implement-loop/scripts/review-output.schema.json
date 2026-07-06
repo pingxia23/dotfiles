@@ -19,11 +19,6 @@
             "type": "string",
             "minLength": 1
           },
-          "confidence_score": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1
-          },
           "priority": {
             "type": "integer",
             "minimum": 0,
@@ -60,7 +55,6 @@
           "title",
           "body",
           "evidence",
-          "confidence_score",
           "priority",
           "code_location"
         ],
@@ -74,18 +68,12 @@
     "overall_explanation": {
       "type": "string",
       "minLength": 1
-    },
-    "overall_confidence_score": {
-      "type": "number",
-      "minimum": 0,
-      "maximum": 1
     }
   },
   "required": [
     "findings",
     "overall_correctness",
-    "overall_explanation",
-    "overall_confidence_score"
+    "overall_explanation"
   ],
   "additionalProperties": false
 }

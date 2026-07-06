@@ -11,7 +11,7 @@ export const REVIEW_OUTPUT_SCHEMA_PATH = path.join(
   SCRIPT_DIR,
   "review-output.schema.json",
 );
-export const DEFAULT_REVIEW_TIMEOUT_MS = 15 * 60 * 1000;
+export const DEFAULT_REVIEW_TIMEOUT_MS = 8 * 60 * 1000;
 export const CLAUDE_REVIEW_MODEL = "claude-opus-4-8[1m]";
 export const CLAUDE_REVIEW_EFFORT = "xhigh";
 export const CODEX_REVIEW_MODEL = "gpt-5.5";
@@ -195,7 +195,6 @@ export function validateReviewOutput(value) {
       "findings",
       "overall_correctness",
       "overall_explanation",
-      "overall_confidence_score",
     ])
   ) {
     errors.push("review contains additional properties");
@@ -215,7 +214,6 @@ export function validateReviewOutput(value) {
           "title",
           "body",
           "evidence",
-          "confidence_score",
           "priority",
           "code_location",
         ])
@@ -235,13 +233,6 @@ export function validateReviewOutput(value) {
         finding.evidence.length === 0
       ) {
         errors.push(`${prefix}.evidence must be a non-empty string`);
-      }
-      if (
-        typeof finding.confidence_score !== "number" ||
-        finding.confidence_score < 0 ||
-        finding.confidence_score > 1
-      ) {
-        errors.push(`${prefix}.confidence_score must be a number from 0 to 1`);
       }
       if (!("priority" in finding)) {
         errors.push(`${prefix}.priority is required`);
@@ -305,13 +296,6 @@ export function validateReviewOutput(value) {
   ) {
     errors.push("overall_explanation must be a non-empty string");
   }
-  if (
-    typeof value.overall_confidence_score !== "number" ||
-    value.overall_confidence_score < 0 ||
-    value.overall_confidence_score > 1
-  ) {
-    errors.push("overall_confidence_score must be a number from 0 to 1");
-  }
 
   return { valid: errors.length === 0, errors };
 }
@@ -320,6 +304,22 @@ function parseReviewObject(value) {
   const validation = validateReviewOutput(value);
   if (!validation.valid) {
     return { review: null, errors: validation.errors };
+  }
+
+  // Nonsensical output: the reviewer claims the change is incorrect but lists
+  // no actionable finding. Treat it as invalid so the caller retries once and
+  // then ignores this reviewer rather than trusting a contentless verdict.
+  const actionableFindings = value.findings.filter((finding) =>
+    isActionablePriority(finding.priority),
+  );
+  if (
+    actionableFindings.length === 0 &&
+    value.overall_correctness === "incorrect"
+  ) {
+    return {
+      review: null,
+      errors: ["incorrect verdict with no actionable findings"],
+    };
   }
 
   return { review: normalizeReview(value), errors: [] };
@@ -562,30 +562,6 @@ export async function runReviewerWithRetries({
     );
   }
 
-  if (
-    result.review &&
-    result.review.findings.length === 0 &&
-    result.review.overall_correctness === "incorrect"
-  ) {
-    reviewLog(`${reviewer} review consistency retry launched`);
-    const rerun = normalizeReviewResult(
-      await runReview(`${prompt}${SCHEMA_REMINDER}`),
-    );
-    if (
-      !rerun.review ||
-      (rerun.review.findings.length === 0 &&
-        rerun.review.overall_correctness === "incorrect")
-    ) {
-      return {
-        reviewer,
-        review: null,
-        reason:
-          "inconsistent review: empty findings with incorrect review verdict",
-      };
-    }
-    result = rerun;
-  }
-
   if (result.review) {
     reviewLog(
       `${reviewer} verdict: ${result.review.overall_correctness} (${result.review.findings.length} findings)`,
@@ -600,6 +576,7 @@ export async function runReviewerWithRetries({
 export function aggregateReviews(results) {
   const reviews = {};
   const unavailable = [];
+  const availableReviewers = [];
 
   for (const reviewer of REVIEWERS) {
     const result = results.find((candidate) => candidate.reviewer === reviewer);
@@ -611,10 +588,13 @@ export function aggregateReviews(results) {
       reviews[reviewer] = null;
     } else {
       reviews[reviewer] = normalizeReview(result.review);
+      availableReviewers.push(reviewer);
     }
   }
 
-  if (unavailable.length > 0) {
+  // Ignore unavailable reviewers and proceed on whoever produced a usable
+  // review. Only block when no reviewer is usable at all.
+  if (availableReviewers.length === 0) {
     return {
       status: "blocked",
       findings: [],
@@ -627,7 +607,7 @@ export function aggregateReviews(results) {
   }
 
   const findings = [];
-  for (const reviewer of REVIEWERS) {
+  for (const reviewer of availableReviewers) {
     const review = reviews[reviewer];
     review.findings.forEach((finding, sourceIndex) => {
       findings.push({
@@ -638,20 +618,27 @@ export function aggregateReviews(results) {
     });
   }
 
-  const incorrectReviewers = REVIEWERS.filter(
+  const incorrectReviewers = availableReviewers.filter(
     (reviewer) => reviews[reviewer].overall_correctness === "incorrect",
   );
+  const ignoredNote =
+    unavailable.length > 0
+      ? ` Ignored unavailable reviewer(s): ${unavailable
+          .map(({ reviewer }) => reviewer)
+          .join(", ")}.`
+      : "";
 
   if (findings.length > 0 || incorrectReviewers.length > 0) {
     return {
       status: "revise",
       findings,
       reviews,
-      unavailable: [],
+      unavailable,
       overall_explanation:
-        findings.length > 0
+        (findings.length > 0
           ? `${findings.length} reviewer finding(s) require fixes.`
-          : `${incorrectReviewers.join(", ")} returned an incorrect review verdict.`,
+          : `${incorrectReviewers.join(", ")} returned an incorrect review verdict.`) +
+        ignoredNote,
     };
   }
 
@@ -659,8 +646,10 @@ export function aggregateReviews(results) {
     status: "approved",
     findings: [],
     reviews,
-    unavailable: [],
-    overall_explanation: "Both reviewers approved the change.",
+    unavailable,
+    overall_explanation: `${availableReviewers.join(
+      ", ",
+    )} approved the change.${ignoredNote}`,
   };
 }
 

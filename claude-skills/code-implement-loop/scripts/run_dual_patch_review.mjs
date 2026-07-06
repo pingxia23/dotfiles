@@ -181,7 +181,6 @@ The JSON must match this schema exactly:
       "title": "<≤ 80 chars, imperative>",
       "body": "<valid Markdown explaining *why* this is a problem; cite files/lines/functions>",
       "evidence": "<specific code/config/test/source evidence supporting the finding>",
-      "confidence_score": <float 0.0-1.0>,
       "priority": <int 0-2>,
       "code_location": {
         "absolute_file_path": "<file path>",
@@ -190,8 +189,7 @@ The JSON must match this schema exactly:
     }
   ],
   "overall_correctness": "correct" | "incorrect",
-  "overall_explanation": "<1-3 sentence explanation justifying the overall_correctness verdict>",
-  "overall_confidence_score": <float 0.0-1.0>
+  "overall_explanation": "<1-3 sentence explanation justifying the overall_correctness verdict>"
 }
 
 Additional output rules:
