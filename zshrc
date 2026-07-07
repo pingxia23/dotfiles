@@ -73,8 +73,8 @@ workspace_agent_auth() {
   fi
 }
 
-alias claude_high="workspace_agent_auth && claude --model 'claude-opus-4-8[1m]' --effort xhigh --allow-dangerously-skip-permissions"
-alias claude_max="workspace_agent_auth && claude --model 'claude-opus-4-8[1m]' --effort max --allow-dangerously-skip-permissions"
+alias claude_high="workspace_agent_auth && claude --model 'sonnet[1m]' --effort xhigh --allow-dangerously-skip-permissions"
+alias claude_max="workspace_agent_auth && claude --model 'sonnet[1m]' --effort max --allow-dangerously-skip-permissions"
 
 alias codex_high="workspace_agent_auth && codex -c 'model_reasoning_effort=\"high\"' --dangerously-bypass-approvals-and-sandbox"
 alias codex_max="workspace_agent_auth && codex -c 'model_reasoning_effort=\"xhigh\"' --dangerously-bypass-approvals-and-sandbox"

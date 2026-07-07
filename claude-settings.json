@@ -6,7 +6,7 @@
     "ask": [],
     "defaultMode": "bypassPermissions"
   },
-  "model": "claude-opus-4-8[1m]",
+  "model": "sonnet[1m]",
   "hooks": {
     "Notification": [
       {
