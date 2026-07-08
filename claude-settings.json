@@ -19,13 +19,12 @@
         ]
       }
     ],
-    "PreToolUse": [
+    "Stop": [
       {
-        "matcher": "ExitPlanMode",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$HOME/dotfiles/scripts/plan-review/claude-exitplan-stop-gate.mjs\"",
+            "command": "node \"$HOME/dotfiles/scripts/plan-review/claude-stop-plan-gate.mjs\"",
             "timeout": 900
           }
         ]
