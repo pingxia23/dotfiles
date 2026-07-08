@@ -178,6 +178,7 @@ function buildPrompt({
   latestUserRequest,
   recentUserInputs,
   planContent,
+  latestTurnContext,
   reviewSchema,
 }) {
   const recentUserInputsText =
@@ -206,8 +207,11 @@ ${planContent}
 </plan>
 
 <latest_turn_context>
-The full transcript is available at the path ${transcriptPath}. To locate the latest turn context from the transcript, search for ${turnId} and review the lines between its first and last occurrence.
+${latestTurnContext}
 </latest_turn_context>
+
+The full transcript is also available at ${transcriptPath}. To inspect deeper context, search for ${turnId}
+and review nearby transcript lines.
 
 ${buildReviewInstructions(reviewSchema)}`;
 }
@@ -280,6 +284,7 @@ const prompt = buildPrompt({
   latestUserRequest,
   recentUserInputs,
   planContent,
+  latestTurnContext,
   reviewSchema,
 });
 const cwd =

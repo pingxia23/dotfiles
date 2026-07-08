@@ -19,12 +19,7 @@ Use this skill only to recover disk space in dd-scope.
      - `BLOCKED: outside dd-scope | Reason: disk-pressure recovery is only supported under ~/dd`
    - `cd "$worktree_root"` before running `bzl` commands so they execute from a stable workspace root.
 
-2. Always run the stale Bazel cleanup helper before anything else.
-   - Run:
-     - `"$HOME/dotfiles/scripts/cleanup-stale-bazel-output-bases.sh"`
-   - If the cleanup helper fails, record the failure summary and continue to Step 3 anyway.
-
-3. Run `bzl run //:dd-doctor`, inspect its output, and identify the specific stale output bases or stale artifacts it says are safe and worthwhile to remove.
+2. Run `bzl run //:dd-doctor`, inspect its output, and identify the specific stale output bases or stale artifacts it says are safe and worthwhile to remove.
    - Prune only the specific targets justified by `dd-doctor`. Do not do broader cleanup.
    - If anything in this step fails, return:
      - `BLOCKED: dd-doctor failed | Reason: {summary}; Cleanup helper: {summary_or_none}`
