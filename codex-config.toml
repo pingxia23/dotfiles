@@ -14,7 +14,6 @@ notify = ["/Users/ping.xia/.codex/computer-use/Codex Computer Use.app/Contents/S
 hooks = true
 multi_agent = true
 goals = true
-js_repl = false
 
 [mcp_servers.atlassian]
 url = "https://mcp.atlassian.com/v1/mcp"
@@ -26,24 +25,8 @@ url = "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp?toolsets=core,llmob
 url = "https://mcp.datad0g.com/api/unstable/mcp-server/mcp?toolsets=core,llmobs,ddsql,apm,kubernetes,synthetics"
 
 [mcp_servers.node_repl]
-args = []
 command = "/Users/ping.xia/Applications/Codex.app/Contents/Resources/cua_node/bin/node_repl"
-startup_timeout_sec = 120
 enabled = false
-
-[mcp_servers.node_repl.env]
-NODE_REPL_NATIVE_PIPE_CONNECT_TIMEOUT_MS = "1000"
-NODE_REPL_NODE_MODULE_DIRS = "/Users/ping.xia/Applications/Codex.app/Contents/Resources/cua_node/lib/node_modules"
-NODE_REPL_NODE_PATH = "/Users/ping.xia/Applications/Codex.app/Contents/Resources/cua_node/bin/node"
-NODE_REPL_TRUSTED_CODE_PATHS = "/Users/ping.xia/.codex"
-CODEX_HOME = "/Users/ping.xia/.codex"
-NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S = "97669f77b3ca7114a2df05d55646416ea34b28100c07213ef9f643803449ef2f"
-BROWSER_USE_AVAILABLE_BACKENDS = "chrome,iab"
-NODE_REPL_INSTRUCTIONS_USE_CASE_BROWSER = "Control the in-app browser in conjunction with the Browser Plugin."
-NODE_REPL_INSTRUCTIONS_USE_CASE_CHROME = "Control the Chrome browser in conjunction with the Chrome Plugin. Prefer this method of controlling Chrome over alternatives (such as Computer Use) unless the user explicitly mentions an alternative."
-BROWSER_USE_CODEX_APP_BUILD_FLAVOR = "prod"
-BROWSER_USE_CODEX_APP_VERSION = "26.623.141536"
-CODEX_CLI_PATH = "/Users/ping.xia/Applications/Codex.app/Contents/Resources/codex"
 
 [tui]
 theme = "catppuccin-macchiato"
@@ -51,9 +34,6 @@ alternate_screen = "never"
 status_line = ["model-with-reasoning", "current-dir", "context-remaining"]
 status_line_use_colors = true
 terminal_title = ["activity", "project-name", "git-branch"]
-
-[tui.model_availability_nux]
-"gpt-5.5" = 4
 
 [projects."/Users/ping.xia/dotfiles"]
 trust_level = "trusted"
@@ -111,65 +91,11 @@ enabled = true
 enabled = true
 
 [plugins."browser@openai-bundled"]
-enabled = true
-
-[plugins."documents@openai-primary-runtime"]
-enabled = false
-
-[plugins."pdf@openai-primary-runtime"]
-enabled = false
-
-[plugins."spreadsheets@openai-primary-runtime"]
-enabled = false
-
-[plugins."presentations@openai-primary-runtime"]
-enabled = false
-
-[plugins."template-creator@openai-primary-runtime"]
-enabled = false
-
-[plugins."sites@openai-bundled"]
-enabled = false
-
-[plugins."trajectory@trajectory"]
 enabled = false
 
 [memories]
 generate_memories = true
 use_memories = true
-
-[hooks.state]
-
-[hooks.state."/Users/ping.xia/.codex/hooks.json:stop:0:0"]
-trusted_hash = "sha256:1d374ea956912e71bf3682f86a44c794c6aac8bde169b17222c4dfc71ca27b00"
-
-[hooks.state."/Users/ping.xia/.codex/hooks.json:stop:1:0"]
-enabled = true
-trusted_hash = "sha256:5fcff6cbca89be762be16f81b898baeff0ad79746f20190bbbc6408b17b44352"
-
-[hooks.state."/home/bits/.codex/hooks.json:stop:0:0"]
-trusted_hash = "sha256:1d374ea956912e71bf3682f86a44c794c6aac8bde169b17222c4dfc71ca27b00"
-
-[hooks.state."/home/bits/.codex/hooks.json:stop:1:0"]
-trusted_hash = "sha256:5fcff6cbca89be762be16f81b898baeff0ad79746f20190bbbc6408b17b44352"
-
-[hooks.state."dd@datadog-claude-plugins:hooks/hooks.json:session_start:0:0"]
-trusted_hash = "sha256:a506e76ca69c4e69723a414d9251cf4b02db5b0432058c64ca3f6c8684786c73"
-
-[hooks.state."dd@datadog-claude-plugins:hooks/hooks.json:user_prompt_submit:0:0"]
-trusted_hash = "sha256:6a58e770acd72ebdd9038420c45d024a9b1478a89cc7145d5e1751792216b884"
-
-[hooks.state."/Users/ping.xia/go/src/github.com/DataDog/dd-source/.codex/hooks.json:pre_tool_use:0:0"]
-trusted_hash = "sha256:69b85641fecbc2665f02fa2f65a6494a5b64e1ded4f2249e551ad26f7073604c"
-
-[hooks.state."/Users/ping.xia/.codex/hooks.json:session_start:0:0"]
-trusted_hash = "sha256:ac47a21a96720cb9d1473caa1dea1b58a7426c41e0568fcd18634b9307a232f1"
-
-[hooks.state."/home/bits/.codex/hooks.json:session_start:0:0"]
-trusted_hash = "sha256:ac47a21a96720cb9d1473caa1dea1b58a7426c41e0568fcd18634b9307a232f1"
-
-[apps.connector_20205bf7d4e99a89d7154bb849718324]
-enabled = false
 
 [desktop]
 followUpQueueMode = "queue"
