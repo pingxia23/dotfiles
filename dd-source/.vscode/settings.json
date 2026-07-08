@@ -203,6 +203,23 @@
 	"editor.occurrencesHighlight": "off",
 	"editor.selectionHighlight": false,
 	"editor.colorDecorators": false,
+	"gitlens.remotes": [
+		{
+			"type": "Custom",
+			"regex": "^(?:git@|ssh://git@)(ddoghq\\.github\\.com)[:/](ddoghq/dd-source)(?:\\.git)?$",
+			"urls": {
+				"repository": "https://github.com/${repo}",
+				"branches": "https://github.com/${repo}/branches",
+				"branch": "https://github.com/${repo}/tree/${branch}",
+				"commit": "https://github.com/${repo}/commit/${id}",
+				"file": "https://github.com/${repo}/blob/HEAD/${file}${line}",
+				"fileInBranch": "https://github.com/${repo}/blob/${branch}/${file}${line}",
+				"fileInCommit": "https://github.com/${repo}/blob/${id}/${file}${line}",
+				"fileLine": "#L${line}",
+				"fileRange": "#L${start}-L${end}"
+			}
+		}
+	],
 	"git.decorations.enabled": false,
 	"scm.diffDecorations": "none",
 	"workbench.tree.renderIndentGuides": "none",
