@@ -11,7 +11,7 @@ export const REVIEW_OUTPUT_SCHEMA_PATH = path.join(
   SCRIPT_DIR,
   "review-output.schema.json",
 );
-export const DEFAULT_REVIEW_TIMEOUT_MS = 8 * 60 * 1000;
+export const DEFAULT_REVIEW_TIMEOUT_MS = 15 * 60 * 1000;
 export const CLAUDE_REVIEW_MODEL = "sonnet[1m]";
 export const CLAUDE_REVIEW_EFFORT = "high";
 export const CODEX_REVIEW_MODEL = "gpt-5.5";
@@ -19,8 +19,6 @@ export const CODEX_REVIEW_EFFORT = "high";
 export const CODEX_SERVICE_TIER = "fast";
 
 const REVIEWERS = ["Codex", "Claude"];
-const SCHEMA_REMINDER =
-  "\n\nSchema reminder: return exactly one JSON object matching the supplied review-output schema. Do not include markdown fences or prose outside the JSON object.";
 const reviewLog = createLogger({ tag: TAG, logFile: LOG_FILE });
 
 export function getText(value) {
@@ -543,24 +541,12 @@ export async function runCodexReview({
   return { review: parsed.review, reason: null };
 }
 
-export async function runReviewerWithRetries({
+export async function runReviewerOnce({
   reviewer,
   runReview,
   prompt,
 }) {
-  let result = normalizeReviewResult(await runReview(prompt));
-
-  if (!result.review) {
-    reviewLog(
-      `${reviewer} review attempt 1 unavailable: ${
-        result.reason || "invalid review output"
-      }`,
-    );
-    reviewLog(`${reviewer} review attempt 2 launched with schema reminder`);
-    result = normalizeReviewResult(
-      await runReview(`${prompt}${SCHEMA_REMINDER}`),
-    );
-  }
+  const result = normalizeReviewResult(await runReview(prompt));
 
   if (result.review) {
     reviewLog(
@@ -661,7 +647,7 @@ export async function runDualReviewPrompt({
   timeout = DEFAULT_REVIEW_TIMEOUT_MS,
 }) {
   reviewLog("reviewers launched: Codex, Claude");
-  const claudeReview = runReviewerWithRetries({
+  const claudeReview = runReviewerOnce({
     reviewer: "Claude",
     prompt,
     runReview: (reviewPrompt) =>
@@ -672,7 +658,7 @@ export async function runDualReviewPrompt({
         timeout,
       }),
   });
-  const codexReview = runReviewerWithRetries({
+  const codexReview = runReviewerOnce({
     reviewer: "Codex",
     prompt,
     runReview: (reviewPrompt) =>

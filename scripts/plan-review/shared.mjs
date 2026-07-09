@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 
-export const DEFAULT_REVIEW_TIMEOUT_MS = 5 * 60 * 1000;
+export const DEFAULT_REVIEW_TIMEOUT_MS = 10 * 60 * 1000;
 export const CLAUDE_REVIEW_MODEL = "sonnet[1m]";
 export const CLAUDE_REVIEW_EFFORT = "xhigh";
 export const CODEX_REVIEW_MODEL = "gpt-5.5";
