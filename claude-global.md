@@ -14,10 +14,23 @@ These rules apply to all projects and working directories.
 - Use normal `git commit`; never use low-level git plumbing. Use `--no-verify` only when explicitly asked.
 - Always create commits through the normal `git commit` path. Never create commits with low-level plumbing such as `git commit-tree`, `git hash-object`, `git update-ref`, or manual `.git` metadata edits.
 
-## Investigation And Explanation
-- Prefer codebase evidence first; use Atlassian MCP when code evidence is missing or weak.
-- Ground important claims in concrete code references, Atlassian references, or command output.
-- Prefer pseudocode, examples, walkthroughs, and diagrams over prose.
+## Investigation
+- Prefer codebase evidence first; use Atlassian Confluence doc and Datadog Telemetry when code evidence is missing or weak.
+- Ground important claims in concrete code references, Atlassian references, Datadog Telemetry or command output.
+
+## Explanation
+- Make explanations easy to execute mentally. Lead with a visual before any file-by-file bullet list:
+  - ASCII diagram showing call chain, data flow, or ownership.
+  - Pseudocode showing the intended control flow.
+  - A truth table or branch sketch for condition-heavy logic.
+  - A concrete worked example with input, intermediate state, and output.
+- A list of "file/function: change" bullets is never sufficient by itself for a multi-file or multi-layer change, even if each bullet is accurate. The visual comes first and carries the explanation; bullets may follow it only for mechanical specifics (exact signatures, flag names) the visual doesn't capture. If you catch yourself about to write nested bullets describing changes across more than one file, stop and draft the diagram or pseudocode first.
+- When moving behavior between components, show the handoff explicitly:
+  ```text
+  before: caller -> old_owner -> result
+  after:  caller -> new_owner -> result
+  ```
+- For condition-heavy changes, a truth table or branch sketch is required, not optional.
 
 ## Bazel / bzl Commands
 

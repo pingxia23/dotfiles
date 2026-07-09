@@ -20,15 +20,17 @@ Use this evidence shape when useful:
 - Conclusion: `<what the evidence proves, plus any remaining inference>`
 
 ## Implementation
+If the plan touches more than one file, layer, or call boundary, open this section with a single ASCII diagram or pseudocode block showing the overall before/after flow across those boundaries. Write the per-change bullets after it, referencing the diagram instead of re-narrating the call chain in prose.
+
 Group changes by subsystem or behavior, not file list.
 
 Use this shape:
 - Change: `<what changes>`
   Why: `<why needed>`
-  How: `<high-level approach, with pseudocode or ASCII diagram for non-trivial logic>`
+  How: `<one or two lines; point back to the diagram for control flow, add pseudocode only for logic the diagram doesn't cover>`
 
 Rules:
-- Prefer pseudocode or ASCII diagrams for non-trivial logic, data flow, sequencing, or state transitions.
+- A multi-file or multi-layer plan without a leading diagram or pseudocode block is incomplete. Nested bullets describing changes across files are not a substitute, even if each bullet is accurate.
 - Mention file paths only when useful.
 - Do not describe the plan as a line-by-line diff.
 - Omit no-op `Change:` entries.
