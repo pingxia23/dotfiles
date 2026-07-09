@@ -25,6 +25,36 @@ dd-auth --domain dd.datad0g.com --workspace workspace-pingxia-workspace-test
 
 Update the global Git config according to `~/dotfiles/git_config_template`.
 
+Do not copy the macOS Datadog hook path into Linux workspaces:
+
+```ini
+[core]
+  hooksPath = /usr/local/dd/global_hooks
+```
+
+Linux workspaces already get the Datadog global hook wrapper from
+`/etc/gitconfig`:
+
+```text
+core.hooksPath = /usr/local/lib/dd-git-hooks
+```
+
+Do not set `core.hooksPath` to `~/.global_hooks` unless that directory has been
+created intentionally. A missing `core.hooksPath` directory prevents Git from
+falling back to repo-local hooks.
+
+Validate the effective hook path:
+
+```bash
+git config --show-origin --get-all core.hooksPath
+```
+
+Expected Linux result:
+
+```text
+file:/etc/gitconfig  /usr/local/lib/dd-git-hooks
+```
+
 ## dd-source git config
 
 For an existing `~/dd/dd-source` checkout, do not replace or symlink `.git/config`.
