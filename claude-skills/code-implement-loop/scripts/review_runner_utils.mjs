@@ -13,7 +13,7 @@ export const REVIEW_OUTPUT_SCHEMA_PATH = path.join(
 );
 export const DEFAULT_REVIEW_TIMEOUT_MS = 8 * 60 * 1000;
 export const CLAUDE_REVIEW_MODEL = "sonnet[1m]";
-export const CLAUDE_REVIEW_EFFORT = "xhigh";
+export const CLAUDE_REVIEW_EFFORT = "high";
 export const CODEX_REVIEW_MODEL = "gpt-5.5";
 export const CODEX_REVIEW_EFFORT = "high";
 export const CODEX_SERVICE_TIER = "fast";
