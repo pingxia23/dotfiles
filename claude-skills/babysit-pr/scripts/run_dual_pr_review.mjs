@@ -11,8 +11,8 @@ const REVIEW_DIR = path.join(SCRIPT_DIR, "reviews");
 export const DEFAULT_REVIEW_TIMEOUT_MS = 15 * 60 * 1000;
 export const CLAUDE_REVIEW_MODEL = "sonnet[1m]";
 export const CLAUDE_REVIEW_EFFORT = "xhigh";
-export const CODEX_REVIEW_MODEL = "gpt-5.5";
-export const CODEX_REVIEW_EFFORT = "high";
+export const CODEX_REVIEW_MODEL = "gpt-5.6-sol";
+export const CODEX_REVIEW_EFFORT = "xhigh";
 export const CODEX_SERVICE_TIER = "fast";
 
 function getText(value) {
