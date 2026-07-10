@@ -14,6 +14,7 @@ notify = ["/Users/ping.xia/.codex/computer-use/Codex Computer Use.app/Contents/S
 hooks = true
 multi_agent = true
 goals = true
+js_repl = false
 
 [mcp_servers.atlassian]
 url = "https://mcp.atlassian.com/v1/mcp"
@@ -23,6 +24,17 @@ url = "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp?toolsets=core,llmob
 
 [mcp_servers.datadog_staging]
 url = "https://mcp.datad0g.com/api/unstable/mcp-server/mcp?toolsets=core,llmobs,ddsql,apm,kubernetes,synthetics"
+
+[mcp_servers.node_repl]
+args = []
+command = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl"
+enabled = false
+
+[mcp_servers.computer-use]
+command = "./Codex Computer Use.app/Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient"
+args = ["mcp"]
+cwd = "."
+enabled = false
 
 [tui]
 theme = "catppuccin-macchiato"
@@ -75,7 +87,7 @@ trust_level = "trusted"
 trust_level = "trusted"
 
 [marketplaces.openai-bundled]
-last_updated = "2026-07-10T14:38:34Z"
+last_updated = "2026-07-10T15:29:16Z"
 source_type = "local"
 source = "/Users/ping.xia/.codex/.tmp/bundled-marketplaces/openai-bundled"
 
@@ -97,25 +109,25 @@ enabled = true
 enabled = false
 
 [plugins."sites@openai-bundled"]
-enabled = true
+enabled = false
 
 [plugins."visualize@openai-bundled"]
 enabled = true
 
 [plugins."documents@openai-primary-runtime"]
-enabled = true
+enabled = false
 
 [plugins."pdf@openai-primary-runtime"]
-enabled = true
+enabled = false
 
 [plugins."spreadsheets@openai-primary-runtime"]
-enabled = true
+enabled = false
 
 [plugins."presentations@openai-primary-runtime"]
 enabled = true
 
 [plugins."template-creator@openai-primary-runtime"]
-enabled = true
+enabled = false
 
 [memories]
 generate_memories = true
@@ -150,3 +162,6 @@ trusted_hash = "sha256:1d374ea956912e71bf3682f86a44c794c6aac8bde169b17222c4dfc71
 
 [hooks.state."/home/bits/.codex/hooks.json:stop:1:0"]
 trusted_hash = "sha256:5fcff6cbca89be762be16f81b898baeff0ad79746f20190bbbc6408b17b44352"
+
+[apps.connector_20205bf7d4e99a89d7154bb849718324]
+enabled = false
