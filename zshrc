@@ -76,7 +76,8 @@ workspace_agent_auth() {
 alias claude_high="workspace_agent_auth && claude --model 'sonnet[1m]' --effort xhigh --allow-dangerously-skip-permissions"
 alias claude_max="workspace_agent_auth && claude --model 'sonnet[1m]' --effort max --allow-dangerously-skip-permissions"
 
-alias codex_high="workspace_agent_auth && codex --model gpt-5.6-sol -c 'model_reasoning_effort=\"xhigh\"' --dangerously-bypass-approvals-and-sandbox"
+alias codex_high="workspace_agent_auth && codex --model gpt-5.6-sol -c 'model_reasoning_effort=\"high\"' --dangerously-bypass-approvals-and-sandbox"
+alias codex_xhigh="workspace_agent_auth && codex --model gpt-5.6-sol -c 'model_reasoning_effort=\"xhigh\"' --dangerously-bypass-approvals-and-sandbox"
 alias codex_max="workspace_agent_auth && codex --model gpt-5.6-sol -c 'model_reasoning_effort=\"max\"' --dangerously-bypass-approvals-and-sandbox"
 
 export MCP_OAUTH_CALLBACK_PORT=41111
