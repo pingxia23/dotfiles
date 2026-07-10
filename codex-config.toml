@@ -24,10 +24,6 @@ url = "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp?toolsets=core,llmob
 [mcp_servers.datadog_staging]
 url = "https://mcp.datad0g.com/api/unstable/mcp-server/mcp?toolsets=core,llmobs,ddsql,apm,kubernetes,synthetics"
 
-[mcp_servers.node_repl]
-command = "/Users/ping.xia/Applications/Codex.app/Contents/Resources/cua_node/bin/node_repl"
-enabled = false
-
 [tui]
 theme = "catppuccin-macchiato"
 alternate_screen = "never"
@@ -37,7 +33,7 @@ terminal_title = ["activity", "project-name", "git-branch"]
 
 [tui.model_availability_nux]
 "gpt-5.5" = 4
-"gpt-5.6-sol" = 1
+"gpt-5.6-sol" = 4
 
 [projects."/Users/ping.xia/dotfiles"]
 trust_level = "trusted"
@@ -79,12 +75,12 @@ trust_level = "trusted"
 trust_level = "trusted"
 
 [marketplaces.openai-bundled]
-last_updated = "2026-07-07T20:08:05Z"
+last_updated = "2026-07-10T14:38:34Z"
 source_type = "local"
 source = "/Users/ping.xia/.codex/.tmp/bundled-marketplaces/openai-bundled"
 
 [marketplaces.openai-primary-runtime]
-last_updated = "2026-07-01T14:49:15Z"
+last_updated = "2026-07-10T14:48:37Z"
 source_type = "local"
 source = "/Users/ping.xia/.cache/codex-runtimes/codex-primary-runtime/plugins/openai-primary-runtime"
 
@@ -100,12 +96,34 @@ enabled = true
 [plugins."browser@openai-bundled"]
 enabled = false
 
+[plugins."sites@openai-bundled"]
+enabled = true
+
+[plugins."visualize@openai-bundled"]
+enabled = true
+
+[plugins."documents@openai-primary-runtime"]
+enabled = true
+
+[plugins."pdf@openai-primary-runtime"]
+enabled = true
+
+[plugins."spreadsheets@openai-primary-runtime"]
+enabled = true
+
+[plugins."presentations@openai-primary-runtime"]
+enabled = true
+
+[plugins."template-creator@openai-primary-runtime"]
+enabled = true
+
 [memories]
 generate_memories = true
 use_memories = true
 
 [desktop]
 followUpQueueMode = "queue"
+dock-icon-preference = "codex-system"
 
 [hooks.state]
 
