@@ -11,12 +11,11 @@ export const REVIEW_OUTPUT_SCHEMA_PATH = path.join(
   SCRIPT_DIR,
   "review-output.schema.json",
 );
-export const DEFAULT_REVIEW_TIMEOUT_MS = 15 * 60 * 1000;
+export const DEFAULT_REVIEW_TIMEOUT_MS = 10 * 60 * 1000;
 export const CLAUDE_REVIEW_MODEL = "sonnet[1m]";
-export const CLAUDE_REVIEW_EFFORT = "high";
-export const CODEX_REVIEW_MODEL = "gpt-5.6-sol";
+export const CLAUDE_REVIEW_EFFORT = "xhigh";
+export const CODEX_REVIEW_MODEL = "gpt-5.5";
 export const CODEX_REVIEW_EFFORT = "high";
-export const CODEX_SERVICE_TIER = "fast";
 
 const REVIEWERS = ["Codex", "Claude"];
 const reviewLog = createLogger({ tag: TAG, logFile: LOG_FILE });
@@ -463,7 +462,7 @@ export async function runCodexReview({
     `code-implement-loop-codex-review-${Date.now()}-${process.pid}.json`,
   );
   reviewLog(
-    `running codex in cwd=${cwd} model=${CODEX_REVIEW_MODEL} effort=${CODEX_REVIEW_EFFORT} service_tier=${CODEX_SERVICE_TIER} output=${tmpFile}`,
+    `running codex in cwd=${cwd} model=${CODEX_REVIEW_MODEL} effort=${CODEX_REVIEW_EFFORT} service_tier=fast output=${tmpFile}`,
   );
   const result = await spawnWithTimeout(
     "codex",
@@ -474,7 +473,7 @@ export async function runCodexReview({
       "-c",
       `model_reasoning_effort="${CODEX_REVIEW_EFFORT}"`,
       "-c",
-      `service_tier="${CODEX_SERVICE_TIER}"`,
+      'service_tier="fast"',
       "--sandbox",
       "read-only",
       "--ephemeral",

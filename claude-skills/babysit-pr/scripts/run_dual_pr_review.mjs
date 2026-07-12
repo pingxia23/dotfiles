@@ -11,9 +11,8 @@ const REVIEW_DIR = path.join(SCRIPT_DIR, "reviews");
 export const DEFAULT_REVIEW_TIMEOUT_MS = 15 * 60 * 1000;
 export const CLAUDE_REVIEW_MODEL = "sonnet[1m]";
 export const CLAUDE_REVIEW_EFFORT = "xhigh";
-export const CODEX_REVIEW_MODEL = "gpt-5.6-sol";
+export const CODEX_REVIEW_MODEL = "gpt-5.5";
 export const CODEX_REVIEW_EFFORT = "high";
-export const CODEX_SERVICE_TIER = "fast";
 
 function getText(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -237,7 +236,7 @@ async function runCodexReview({ worktreeRoot, reviewBase }) {
   );
 
   log(
-    `running codex review base=${reviewBase} model=${CODEX_REVIEW_MODEL} effort=${CODEX_REVIEW_EFFORT} service_tier=${CODEX_SERVICE_TIER} output=${codexReviewFile}`,
+    `running codex review base=${reviewBase} model=${CODEX_REVIEW_MODEL} effort=${CODEX_REVIEW_EFFORT} service_tier=fast output=${codexReviewFile}`,
   );
   const result = await spawnWithTimeout(
     "codex",
@@ -249,7 +248,7 @@ async function runCodexReview({ worktreeRoot, reviewBase }) {
       "-c",
       `model_reasoning_effort="${CODEX_REVIEW_EFFORT}"`,
       "-c",
-      `service_tier="${CODEX_SERVICE_TIER}"`,
+      'service_tier="fast"',
       "--base",
       reviewBase,
       "-o",
