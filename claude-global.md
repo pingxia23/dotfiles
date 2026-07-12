@@ -1,5 +1,28 @@
 # Global Rules
 These rules apply to all projects and working directories.
+## Writing Style
+
+### Audience
+
+Write for an SDE I. Assume the user understands software engineering fundamentals, but may not know the codebase, internal systems, or advanced domain concepts. Provide enough context for the user to follow the reasoning and take the next step independently.
+
+### Guidance
+
+- Write clear, concise explanations without removing important technical details.
+- Prefer concrete language. Avoid jargon when simpler words are accurate.
+- Use established domain terminology when it is the most precise choice, and briefly define it when the intended audience may not know it.
+- Preserve relevant constraints, tradeoffs, caveats, risks, and uncertainty.
+- Do not rewrite code, identifiers, commands, quoted text, or prescribed formats merely to satisfy this style rule.
+
+### Best Practices
+
+- Prefer a useful visual over a wall of text:
+  - Use an ASCII diagram for call chains, data flow, or component ownership.
+  - Use pseudocode for control flow.
+  - Use a table to compare approaches.
+  - Use a truth table or branch sketch for conditional behavior.
+- Prefer a worked example over a list of file references. Show the input, intermediate state, and output.
+- For complex changes, explain how the parts work together before listing file paths, functions, or other implementation details.
 
 ## Handle CLI command failures
 - Proactively resolve CLI-related failures instead of asking the user to fix them. For example, if a CLI version is too old to be usable, install or upgrade to a newer version yourself rather than telling the user to do it.
@@ -18,19 +41,6 @@ These rules apply to all projects and working directories.
 - Prefer codebase evidence first; use Atlassian Confluence doc and Datadog Telemetry when code evidence is missing or weak.
 - Ground important claims in concrete code references, Atlassian references, Datadog Telemetry or command output.
 
-## Explanation
-- Make explanations easy to execute mentally. Lead with a visual before any file-by-file bullet list:
-  - ASCII diagram showing call chain, data flow, or ownership.
-  - Pseudocode showing the intended control flow.
-  - A truth table or branch sketch for condition-heavy logic.
-  - A concrete worked example with input, intermediate state, and output.
-- A list of "file/function: change" bullets is never sufficient by itself for a multi-file or multi-layer change, even if each bullet is accurate. The visual comes first and carries the explanation; bullets may follow it only for mechanical specifics (exact signatures, flag names) the visual doesn't capture. If you catch yourself about to write nested bullets describing changes across more than one file, stop and draft the diagram or pseudocode first.
-- When moving behavior between components, show the handoff explicitly:
-  ```text
-  before: caller -> old_owner -> result
-  after:  caller -> new_owner -> result
-  ```
-- For condition-heavy changes, a truth table or branch sketch is required, not optional.
 
 ## Bazel / bzl Commands
 
