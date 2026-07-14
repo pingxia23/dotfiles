@@ -12,6 +12,7 @@ Process unresolved PR review threads for the pull request that is already checke
 - First, review the `# Global Rules` from your memory file and apply them before the skill-specific rules below.
 - Always infer the PR from the current branch with `gh`, then validate that local state matches the inferred PR.
 - Always stop after the classification step and present the comment address plan to the user. The user may request plan revisions multiple times. Never proceed to reply or delegation until the user explicitly approves the current plan.
+- Treat the user-approved comment address plan as the source of truth. Before delegating actionable work, derive an implementation plan containing only the approved `implementation_needed` item sections; never pass `reply_only` sections or discussion URLs to `code-implement-loop`.
 - Do not add scope beyond the unresolved actionable review feedback.
 - Do not post follow-up replies after `code-implement-loop` finishes.
 - Every GitHub reply or PR comment posted by this skill must start with exactly:
@@ -185,17 +186,30 @@ For each `reply_only` item:
 
 If one or more items are `implementation_needed`:
 
-1. For `unresolved_thread` items, collect only the actionable URLs from `comment_url`.
-2. For `provided_comment` items, include the raw provided comment text and approved plan text in the handoff, scoped to the inferred `pr_url`.
-3. Invoke `code-implement-loop` once with only the actionable unresolved-thread URLs and/or provided-comment handoff text as the implementation scope.
-4. Do not restate the requests or add broader work items if the links or provided comments already identify the actionable feedback.
-5. If an item is actionable only because it requests future work, include the approved plan text for that item in the `code-implement-loop` handoff so the implementation scope is limited to adding the TODO comment, not implementing the future work.
+1. Preserve the exact plan version approved by the user as `approved_comment_address_plan`.
+2. Before invoking `code-implement-loop`, derive `implementation_plan` by copying only the complete item sections whose approved decision is `implementation_needed` from `approved_comment_address_plan`, in their original order.
+3. Preserve each copied section verbatim, including its heading, raw comment, decision, reasoning, and plan. Do not reclassify, reinterpret, summarize, or expand it.
+4. Verify that `implementation_plan` is non-empty and contains no `reply_only` item section. If this check fails, stop and return `BLOCKED: failed to build actionable implementation plan | PR: {url}`.
+5. Invoke `code-implement-loop` once, using the filtered `implementation_plan` as its direct inline implementation input.
+6. Do not pass discussion URLs or fetch additional PR comments during delegation. Only the approved `implementation_needed` sections are authoritative implementation context.
 
 Example input to `code-implement-loop`:
 
 ```text
-https://github.com/owner/repo/pull/123#discussion_r111
-https://github.com/owner/repo/pull/123#discussion_r222
+# Approved PR comment address plan
+
+## thread-1 - Preserve legacy behavior
+
+Raw comment:
+Please preserve the existing caller behavior here.
+
+Decision: implementation_needed
+
+Reasoning:
+The existing caller still depends on this behavior.
+
+Plan:
+Update the condition and add a regression test for the existing caller.
 ```
 
 ### 7) Return final status
