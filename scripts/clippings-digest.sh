@@ -3,6 +3,7 @@ set -euo pipefail
 
 CLIPPINGS_DIR="$HOME/Documents/obsidian/Digests/clippings"
 DIGEST_DIR="$HOME/Documents/obsidian/Digests/clippings_digest"
+SAVED_DIR="$HOME/Documents/obsidian/Digests/saved"
 LOG_PREFIX="[clippings-digest]"
 
 log() {
@@ -38,6 +39,24 @@ needs_processing() {
   fi
 
   return 1
+}
+
+archive_completed_digests() {
+  local digest_file
+  local basename
+  local archived_count=0
+
+  mkdir -p "$SAVED_DIR"
+  while IFS= read -r -d '' digest_file; do
+    if ! grep -Eq '^[[:space:]]*-[[:space:]]+\[[[:space:]]\][[:space:]]+Review digest([[:space:]]|$)' "$digest_file"; then
+      basename=$(basename "$digest_file")
+      mv -f "$digest_file" "${SAVED_DIR}/${basename}"
+      log "Archived: ${basename}"
+      archived_count=$((archived_count + 1))
+    fi
+  done < <(find "$DIGEST_DIR" -maxdepth 1 -type f -name '*.md' -print0)
+
+  log "Archived ${archived_count} completed digests."
 }
 
 # --- Argument parsing ---
@@ -93,7 +112,12 @@ FILES_TO_PROCESS=()
 while IFS= read -r source_file; do
   basename=$(basename "$source_file")
   digest_file="${DIGEST_DIR}/${basename}"
-  if needs_processing "$source_file" "$digest_file"; then
+  comparison_file="$digest_file"
+  saved_file="${SAVED_DIR}/${basename}"
+  if [[ "$RUN_MODE" == "incremental" && ! -f "$digest_file" && -f "$saved_file" ]]; then
+    comparison_file="$saved_file"
+  fi
+  if needs_processing "$source_file" "$comparison_file"; then
     FILES_TO_PROCESS+=("$source_file")
   fi
 done < <(python3 -c "
@@ -104,6 +128,7 @@ for p in sorted(pathlib.Path('$CLIPPINGS_DIR').glob('*.md')):
 
 if [[ "${#FILES_TO_PROCESS[@]}" -eq 0 ]]; then
   log "No clippings need processing."
+  archive_completed_digests
   exit 0
 fi
 
@@ -208,6 +233,8 @@ for source_file in "${FILES_TO_PROCESS[@]}"; do
   fi
 done
 
+# --- Archive reviewed digests ---
+archive_completed_digests
 log "Complete. ${SUCCESS_COUNT} succeeded, ${FAIL_COUNT} failed."
 if [[ "$FAIL_COUNT" -gt 0 ]]; then
   exit 1
