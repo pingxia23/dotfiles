@@ -59,6 +59,23 @@ workspace_gh_auth_valid() {
   [[ "$(gh auth status --hostname github.com --json hosts --jq ".hosts[\"github.com\"][] | select(.login == \"$github_user\" and .state == \"success\") | .login" 2>/dev/null)" == "$github_user" ]]
 }
 
+gh-with-account() {
+  local github_user="$1"
+  local token
+  shift
+
+  token="$(gh auth token --hostname github.com --user "$github_user")" || return
+  GH_TOKEN="$token" gh "$@"
+}
+
+gh-ddog() {
+  gh-with-account ping-xia_ddog "$@"
+}
+
+gh-personal() {
+  gh-with-account pingxia23 "$@"
+}
+
 workspace_agent_auth() {
   ddtool auth login --datacenter us1.ddbuild.io
 

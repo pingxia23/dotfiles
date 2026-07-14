@@ -32,6 +32,8 @@ Write for an SDE I. Assume the user understands software engineering fundamental
 
 ## GitHub / Git 
 - Use `gh` for GitHub.
+- Before running GitHub commands, identify the repository's exact owner. `DataDog` and `ddoghq` are distinct owners; Use `gh-ddog` for `ddoghq/*` repositories. Use `gh-personal` for `DataDog/*` and personal repositories. 
+- Never use `gh auth switch`; it changes global state and can affect other terminals or agents.
 - Only address unresolved PR comments; never resolve PR comments.
 - Do not rename the current branch or force-push unless explicitly asked.
 - Use normal `git commit`; never use low-level git plumbing. Use `--no-verify` only when explicitly asked.
