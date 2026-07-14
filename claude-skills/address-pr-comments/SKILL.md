@@ -141,6 +141,8 @@ Use this rubric:
   - the reviewer calls out future work, a follow-up PR, an optional/non-blocking improvement, or a longer-term TODO; address this by adding a concise TODO comment in the relevant code path instead of implementing the future work in the current PR
   - the request is ambiguous; default here conservatively
 
+Before drafting the comment address plan or any `reply_body`, re-read the `## Writing Style` section from your memory file and apply it to the generated prose.
+
 Before taking any action, create a comment address plan that covers every `comments_to_address` item. Use this format for each item:
 
 ```markdown

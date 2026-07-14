@@ -108,6 +108,7 @@ Before delivery, apply this quality gate:
 - Keep proposals specific to current architecture.
 
 8. Write the deliverable.
+- Before drafting the report, read the `## Writing Style` section from your memory file and apply it throughout the document.
 - Create exactly one report file named `rearch-<name>.md` in the current working directory unless the user requests a different location.
 - Ensure every key feature has a dedicated section with `Takeaway`, `Design`, `Runtime Flow`, `Components`, and `Diagram` subsections.
 - Use ASCII diagrams only. Never use Mermaid.

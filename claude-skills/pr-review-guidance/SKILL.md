@@ -66,6 +66,8 @@ Build an actual model of behavior, data flow, risk, and review hotspots. Do not 
 
 ### 3) Write the guidance comment
 
+Before drafting the comment, re-read the `## Writing Style` section from your memory file and apply it to the generated prose.
+
 The comment body must begin with the hidden marker:
 
 ```html

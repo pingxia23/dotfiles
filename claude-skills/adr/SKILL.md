@@ -67,6 +67,7 @@ Omit sections that add no value for a small ADR, but keep `Context`, `Key Assump
 - If a future-proofing or compatibility change would contradict an explicit agreement, do not include it. Surface it as a risk or question instead.
 
 4. Write the high-level approach before decisions.
+- Before drafting the ADR, read the `## Writing Style` section from your memory file and apply it throughout the document.
 - Start with the problem and the end-to-end design walkthrough.
 - Use an ASCII flow diagram for the whole system when the ADR covers multiple components.
 - Put component mechanics and pseudocode before the `Decisions` section.

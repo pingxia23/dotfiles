@@ -120,6 +120,8 @@ Review the full local diff through every lens that applies to the changed files:
 
 ## Comment Rules
 
+Before drafting any finding title, body, evidence, or suggestion, read the \`## Writing Style\` section from \`$HOME/dotfiles/claude-global.md\` and apply it without changing the prescribed JSON structure.
+
 For each finding:
 
 1. Make the title start with a priority tag, for example \`[P1] Wrong cache key for tenant lookup\`.

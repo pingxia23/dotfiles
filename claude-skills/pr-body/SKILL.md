@@ -51,6 +51,7 @@ Update the managed body by splicing new generated content into the existing body
 2. Otherwise, keep the original body as the base text. Do not regenerate the whole body from scratch.
 3. Locate level-2 section headings with lines that start with `## `.
 4. Generate new content only for the managed `## Problem` and `## Approach` sections, using the PR title, managed body, commit list, changed files, and full PR diff.
+   - Before drafting these sections, read the `## Writing Style` section from your memory file and apply it to the generated prose.
    - Write for a reviewer who is deciding what to inspect first.
    - Prefer concrete review areas over broad architecture phrasing.
    - Do not compress multiple subsystems into one long sentence.
