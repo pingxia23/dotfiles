@@ -1,13 +1,13 @@
 ---
 name: code-implement-loop
-description: "Trigger this skill when implementation should start: if Codex/Claude proposes a plan and the user says 'implement this', 'implement the proposed plan', 'implement it', or equivalent; or if the user explicitly invokes `code-implement-loop`. Accepted implementation input sources are: a Codex/Claude-proposed plan, a user-provided `.md` plan/design file, or user-provided inline implementation instructions. In dd scope it runs uncommitted change review rounds, commits with `commit-smart`, runs up to 2 full branch review rounds, commits any review fixes, then runs a non-blocking PR comment update."
+description: "Trigger this skill when implementation should start: if Codex/Claude proposes a plan and the user says 'implement this', 'implement the proposed plan', 'implement it', or equivalent; or if the user explicitly invokes `code-implement-loop`. Accepted implementation input sources are: a Codex/Claude-proposed plan, a user-provided `.md` plan/design file, or user-provided inline implementation instructions. In dd scope it runs uncommitted change review rounds, commits with `commit-smart`, runs up to 2 full branch review rounds, commits review fixes, publishes any remaining full-branch findings in a PR comment, then requests Codex review."
 ---
 
 # Code Implement Loop
 
 ## Overview
 
-Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> TODO breakdown -> implementation (uncommitted) -> uncommitted change review/fix loop -> conditional `commit-smart` when `in_dd_scope=true` -> full branch review/fix loop in dd scope -> conditional second `commit-smart` for review fixes -> non-blocking PR comment update. The first review loop evaluates only the current uncommitted patch. The second review loop evaluates the full local diff, including existing branch commits and any current uncommitted review fixes, against the fetched PR base.
+Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> TODO breakdown -> implementation (uncommitted) -> uncommitted change review/fix loop -> conditional `commit-smart` when `in_dd_scope=true` -> full branch review/fix loop in dd scope -> conditional second `commit-smart` for review fixes -> conditional PR comment for unaddressed full-branch findings -> Codex review request. The first review loop evaluates only the current uncommitted patch. The second review loop evaluates the full local diff, including existing branch commits and any current uncommitted review fixes, against the fetched PR base.
 
 ## Hard Rules
 
@@ -256,29 +256,78 @@ Rules:
 - Do not end the workflow as success until this second `commit-smart` has completed when review fixes exist.
 - If the second `commit-smart` fails, report blocked status with the failure reason and attempted remediation.
 
-### 9) Update PR With New Comment
+### 9) Publish Unaddressed Full Branch Review As A PR Comment
 
-After Step 8 completes or is skipped, run the bundled helper to update the PR with a new comment:
+After Step 8 completes or is skipped, inspect the last `full_review_result` from Step 7. If its final status is `revise` and findings remain, render those findings and upsert a marked PR comment:
 
 ```bash
-review_result="$(
-  node "$HOME/dotfiles/claude-skills/babysit-pr/scripts/run_dual_pr_review.mjs" \
-    --worktree-root "$worktree_root" \
-    --repo "$repo" \
-    --pr-number "$pr_number" \
-    --pr-url "$pr_url" \
-    --base-ref "$base_ref"
-)"
+review_comment_result=""
+full_review_status="$(jq -r '.status' <<<"$full_review_result")"
+review_marker='<!-- ping-xia-full-branch-review:v1 -->'
+review_owner_login="$(gh api user --jq '.login')"
+if [[ "$full_review_status" == "revise" ]] && \
+   [[ "$(jq '.findings | length' <<<"$full_review_result")" -gt 0 ]]; then
+  review_comment_body="$(
+    jq -r \
+      --arg marker "$review_marker" \
+      --arg worktree_root "$worktree_root" \
+      '
+        [
+          $marker,
+          "",
+          "## Unaddressed Full Branch Review",
+          "",
+          "The final full-branch review still has findings after the bounded fix loop.",
+          "",
+          .overall_explanation,
+          "",
+          ([
+            .findings[] |
+            "### \(.reviewer) — \(.title)\n\n\(.body)\n\n**Evidence:** \(.evidence)\n\n**Location:** `\(.code_location.absolute_file_path | ltrimstr($worktree_root + "/")):\(.code_location.line_range.start)-\(.code_location.line_range.end)`"
+          ] | join("\n\n"))
+        ] | join("\n")
+      ' <<<"$full_review_result"
+  )"
+  review_comment_result="$(
+    node "$HOME/dotfiles/scripts/upsert_pr_comment.mjs" \
+      --pr-url "$pr_url" \
+      --marker "$review_marker" \
+      --body "$review_comment_body" \
+      --owner-login "$review_owner_login"
+  )"
+elif [[ "$full_review_status" == "approved" ]]; then
+  review_comment_result="$(
+    node "$HOME/dotfiles/scripts/upsert_pr_comment.mjs" \
+      --pr-url "$pr_url" \
+      --marker "$review_marker" \
+      --owner-login "$review_owner_login" \
+      --delete-existing
+  )"
+fi
 ```
 
 Rules:
 
-- Wait for the helper command to finish.
-- Do not block on any result from this step, including helper failures, `status=="error"`, or invalid JSON.
+- Treat findings as unaddressed only when the last full branch review round returned `status=="revise"` with findings after the bounded fix loop ended. Do not publish an intermediate round.
+- Do not run another reviewer in this step. Publish the existing structured `full_review_result` without hand-editing it.
+- When unaddressed findings remain, use `scripts/upsert_pr_comment.mjs` to create or update the comment owned by `<!-- ping-xia-full-branch-review:v1 -->`.
+- When the last full branch review returned `status=="approved"`, delete an existing marked comment and do not create a new one.
+- Wait for the helper command to finish when it runs.
+- Do not block on any result from this step, including helper failures or invalid JSON.
 - Do not apply **Shared Review Result Handling** to this step.
 - Do not use this helper output for workflow control.
 
-### 10) Return final status
+### 10) Request Codex review
+
+Post `@codex review` as a top-level PR comment:
+
+```bash
+gh pr comment --repo "$repo" "$pr_url" --body "@codex review"
+```
+
+If the comment fails to post, carry the failure into the final status but continue to Step 11.
+
+### 11) Return final status
 
 Success format:
 
@@ -286,6 +335,7 @@ Success format:
 - Outside dd scope: `SUCCESS: Implementation complete, uncommitted change review completed | PR: none`
 - If the uncommitted change review continued after 3 rounds without approval, append: `| Uncommitted change findings: {summary} | Attempts: {summary}`
 - If the full branch review continued after 2 rounds without approval, append: `| Full branch findings: {summary} | Attempts: {summary}`
+- If the Codex review comment failed to post in Step 10, append: `| Warning: failed to request Codex review: {exact error summary}`
 
 Blocked format:
 

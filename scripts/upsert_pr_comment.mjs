@@ -11,7 +11,7 @@ function fail(message) {
 }
 
 function usage() {
-  fail(`Usage: ${path.basename(process.argv[1] ?? "upsert_pr_comment.mjs")} --pr-url <url> --marker <marker> --body <body> [--owner-login <login>]`);
+  fail(`Usage: ${path.basename(process.argv[1] ?? "upsert_pr_comment.mjs")} --pr-url <url> --marker <marker> (--body <body> | --delete-existing) [--owner-login <login>]`);
 }
 
 function parseArgs(argv) {
@@ -20,6 +20,7 @@ function parseArgs(argv) {
     marker: "",
     body: null,
     ownerLogin: DEFAULT_OWNER_LOGIN,
+    deleteExisting: false,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -38,6 +39,8 @@ function parseArgs(argv) {
     } else if (arg === "--owner-login") {
       args.ownerLogin = value ?? "";
       index += 1;
+    } else if (arg === "--delete-existing") {
+      args.deleteExisting = true;
     } else if (arg === "--help" || arg === "-h") {
       usage();
     } else {
@@ -45,7 +48,12 @@ function parseArgs(argv) {
     }
   }
 
-  if (!args.prUrl || !args.marker || !args.ownerLogin || args.body === null) {
+  if (
+    !args.prUrl ||
+    !args.marker ||
+    !args.ownerLogin ||
+    (args.deleteExisting ? args.body !== null : args.body === null)
+  ) {
     usage();
   }
 
@@ -117,11 +125,13 @@ function main() {
   const { repo, prNumber, canonicalPrUrl } = parsePrUrl(args.prUrl);
   const body = args.body;
 
-  if (!body.trim()) {
-    fail("Comment body must not be empty");
-  }
-  if (!body.includes(args.marker)) {
-    fail("Comment body must include hidden marker");
+  if (!args.deleteExisting) {
+    if (!body.trim()) {
+      fail("Comment body must not be empty");
+    }
+    if (!body.includes(args.marker)) {
+      fail("Comment body must include hidden marker");
+    }
   }
 
   const existingComment = findExistingComment({
@@ -130,6 +140,31 @@ function main() {
     ownerLogin: args.ownerLogin,
     marker: args.marker,
   });
+
+  if (args.deleteExisting) {
+    if (existingComment) {
+      runGh(
+        [
+          "api",
+          "--method",
+          "DELETE",
+          `repos/${repo}/issues/comments/${existingComment.id}`,
+        ],
+        `Unable to delete PR comment for ${canonicalPrUrl}`,
+      );
+    }
+    console.log(
+      JSON.stringify(
+        {
+          action: existingComment ? "deleted" : "skipped",
+          comment_url: existingComment?.html_url ?? "",
+        },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
 
   const responseText = existingComment
     ? runGh(

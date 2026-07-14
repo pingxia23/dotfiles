@@ -1,6 +1,6 @@
 ---
 name: babysit-pr
-description: "Babysit the GitHub PR associated with the current branch: check whether merging the latest base branch would conflict, resolve and commit merge conflicts with `commit-smart` when needed, then loop on `dd-gitlab/*` CI checks until they pass; when concrete dd-gitlab jobs fail, classify the fetched Mosaic traces, merge the latest base when failures look external, use `code-implement-loop` only for failures that are likely caused by the PR, update the PR body at the end, and run PR reviews."
+description: "Babysit the GitHub PR associated with the current branch: check whether merging the latest base branch would conflict, resolve and commit merge conflicts with `commit-smart` when needed, then loop on `dd-gitlab/*` CI checks until they pass; when concrete dd-gitlab jobs fail, classify the fetched Mosaic traces, merge the latest base when failures look external, use `code-implement-loop` only for failures that are likely caused by the PR, and update the PR body at the end."
 ---
 
 # Babysit PR
@@ -13,7 +13,6 @@ description: "Babysit the GitHub PR associated with the current branch: check wh
   - merge-conflict remediation against the latest PR base branch
   - fixing failing `dd-gitlab/*` CI jobs
   - updating the PR body at the end
-  - parallel Codex and Claude PR reviews after checks are green
 - Treat `dd-gitlab/default-pipeline` as a rollup check, not a concrete job trace source.
 
 ## Workflow
@@ -194,48 +193,12 @@ After all `dd-gitlab/*` checks pass, invoke the `pr-body` skill at `$HOME/dotfil
 
 Treat `UPDATED` and `SKIPPED` results from `pr-body` as successful completion of this step. Treat `BLOCKED` as a blocked status and stop.
 
-### 5) Request Codex review
-
-Post `@codex review` as a top-level PR comment:
-
-```bash
-gh pr comment --repo "$repo" "$pr_url" --body "@codex review"
-```
-
-If the comment fails to post, carry the failure into the final status but continue to Step 6.
-
-### 6) Run dual PR review and update PR
-
-Run the bundled helper:
-
-```bash
-review_result="$(
-  node "$HOME/dotfiles/claude-skills/babysit-pr/scripts/run_dual_pr_review.mjs" \
-    --worktree-root "$worktree_root" \
-    --repo "$repo" \
-    --pr-number "$pr_number" \
-    --pr-url "$pr_url" \
-    --base-ref "$base_ref"
-)"
-```
-
-Parse `review_result` as JSON:
-
-- `status`: `approved`, `revise`, or `error`
-- `reviewers`: reviewer status map
-- `review_file`: local review artifact path, when available
-- `review_comment`: PR comment upsert result, when available
-- `error`: summary of review or comment publication errors, when present
-
-Do not block on any Step 5 result, including `status=="error"` or invalid JSON. Carry the parsed result or raw helper output into the final status only.
-
-### 6) Return final status
+### 5) Return final status
 
 Use one of:
 
-- `SUCCESS: dd-gitlab checks green, PR body updated, and review summary comment upserted | PR: <url>`
-- `SUCCESS: dd-gitlab checks green, PR body left unchanged because existing body is unmarked, and review summary comment upserted | PR: <url>`
-- `SUCCESS: dd-gitlab checks green and PR body step completed, but review summary comment was not upserted | PR: <url> | Warning: <exact review or upsert error summary>`
+- `SUCCESS: dd-gitlab checks green and PR body updated | PR: <url>`
+- `SUCCESS: dd-gitlab checks green and PR body left unchanged because existing body is unmarked | PR: <url>`
 - `BLOCKED: merge conflict check failed | PR: <url> | Error: <summary>`
 - `BLOCKED: rollup-only dd-gitlab failure without fetchable jobs | PR: <url>`
 - `BLOCKED: external-looking dd-gitlab failure but branch already includes latest base | PR: <url>`
