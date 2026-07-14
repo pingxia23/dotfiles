@@ -3,6 +3,8 @@
 Use this guide when writing a final proposed plan unless the change is trivial.
 The goal is to make the proposed plan easy to review and understand.
 
+Before drafting this plan, read the `## Writing Style` section from your memory file and apply it to the generated prose.
+
 ```markdown
 
 ## Problem
