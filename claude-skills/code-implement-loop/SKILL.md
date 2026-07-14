@@ -31,7 +31,8 @@ These rules apply to **both initial implementation and review-fix rounds**.
 
 Use this exact handling for both review loops after the loop-specific reviewer script returns. The only loop-specific inputs are:
 
-- `review_result`: the raw JSON string returned by the reviewer script
+- `review_result`: the JSON string returned by the reviewer script
+- `implementation_plan`: the implementation plan resolved in Step 2
 - `current_round`: the current review round number, starting at 1
 - `max_rounds`: 3 for uncommitted change review, 2 for full branch review
 
@@ -44,6 +45,17 @@ Use this exact handling for both review loops after the loop-specific reviewer s
    - `overall_explanation`: short status explanation
 3. If `review_result` is not valid JSON or does not include these fields, stop and report blocked status with the raw output summary.
 
+### Filter Reviewer Findings
+
+Before applying loop control, filter the parsed findings against `implementation_plan`:
+
+1. Discard every finding below P2. These findings are never actionable.
+2. For each P2 finding, retain it only when its evidence shows that it is directly related to the implementation plan. A finding is directly related when it identifies a defect introduced or modified by the planned implementation, missing behavior or verification explicitly required by the plan, or a regression directly caused by the planned change.
+3. Treat pre-existing issues in unchanged behavior, adjacent cleanup, broader recommendations, and follow-up work outside the implementation plan as unrelated. Ignore these P2-or-lower comments: do not fix, record, publish, or use them to determine review status.
+4. Do not discard a P0 or P1 finding.
+5. If `status="revise"` becomes empty only because this filter removed findings, normalize the result to `status="approved"` before applying loop control. A reviewer result that originally returned `status="revise"` with no findings remains blocked as described below.
+6. Replace the loop's review result with strict JSON containing the filtered `findings`, normalized `status`, and an `overall_explanation` that describes only the remaining findings and status. In Step 5 this replaces `review_result`; in Step 7 it replaces `full_review_result`. Use only this filtered result afterward.
+
 ### Review/Fix Loop Control
 
 - If `status="approved"`, stop the current review loop and continue with the next workflow step.
@@ -51,7 +63,7 @@ Use this exact handling for both review loops after the loop-specific reviewer s
 - If `status="revise"` and `findings` is empty, stop and report blocked status with the aggregate output because there is no actionable finding to fix.
 - If `status="revise"` has findings and `current_round < max_rounds`, fix those items only, prioritize by `priority` ascending (`0` -> `3`; unknown priority after known priorities), rerun targeted verification, and continue to the next review round.
 - If `status="revise"` has findings and `current_round >= max_rounds`, record the current findings and attempted fixes, stop the current review loop, continue to the next workflow step without blocking, and include the recorded findings and attempts in the final status.
-- Only P0-P2 findings are actionable. Sub-P2 comments, nits, praise, and broad suggestions must be omitted from `findings` and must not force `status="revise"`.
+- Only retained P0-P2 findings are actionable. Sub-P2 comments, unrelated P2 comments, nits, praise, and broad suggestions must be omitted from `findings` and must not force `status="revise"`.
 - Both review loops use the same structured runner and schema after prompt/context assembly. The prompts require an internal scout pass, applicable specialist review lenses, mandatory evidence per finding, and a self-challenge pass before output.
 
 ## Workflow
@@ -152,6 +164,7 @@ The reviewer script gathers and evaluates the local uncommitted patch set itself
 Apply **Shared Review Result Handling** with:
 
 - `review_result="$review_result"`
+- `implementation_plan="$implementation_plan"`
 - `current_round`: the current uncommitted change review round number
 - `max_rounds=3`
 
@@ -234,6 +247,7 @@ full_review_result="$(
 Apply **Shared Review Result Handling** with:
 
 - `review_result="$full_review_result"`
+- `implementation_plan="$implementation_plan"`
 - `current_round`: the current full branch review round number
 - `max_rounds=2`
 
@@ -258,7 +272,7 @@ Rules:
 
 ### 9) Publish Unaddressed Full Branch Review As A PR Comment
 
-After Step 8 completes or is skipped, inspect the last `full_review_result` from Step 7. If its final status is `revise` and findings remain, render those findings and upsert a marked PR comment:
+After Step 8 completes or is skipped, inspect the last filtered `full_review_result` from Step 7. If its final status is `revise` and findings remain, render those findings and upsert a marked PR comment:
 
 ```bash
 review_comment_result=""
@@ -309,7 +323,7 @@ fi
 Rules:
 
 - Treat findings as unaddressed only when the last full branch review round returned `status=="revise"` with findings after the bounded fix loop ended. Do not publish an intermediate round.
-- Do not run another reviewer in this step. Publish the existing structured `full_review_result` without hand-editing it.
+- Do not run another reviewer in this step. Publish the existing filtered `full_review_result` without hand-editing it.
 - When unaddressed findings remain, use `scripts/upsert_pr_comment.mjs` to create or update the comment owned by `<!-- ping-xia-full-branch-review:v1 -->`.
 - When the last full branch review returned `status=="approved"`, delete an existing marked comment and do not create a new one.
 - Wait for the helper command to finish when it runs.
