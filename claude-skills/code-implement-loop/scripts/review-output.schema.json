@@ -61,19 +61,11 @@
         "additionalProperties": false
       }
     },
-    "overall_correctness": {
-      "type": "string",
-      "enum": ["correct", "incorrect"]
-    },
     "overall_explanation": {
       "type": "string",
       "minLength": 1
     }
   },
-  "required": [
-    "findings",
-    "overall_correctness",
-    "overall_explanation"
-  ],
+  "required": ["findings", "overall_explanation"],
   "additionalProperties": false
 }

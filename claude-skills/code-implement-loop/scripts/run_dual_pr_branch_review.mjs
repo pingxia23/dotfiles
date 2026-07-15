@@ -8,6 +8,7 @@ import {
   assertZero,
   createLogger,
   getText,
+  renderPythonQualityReviewPrompt,
   runDualReviewPrompt,
   runSync,
 } from "./review_runner_utils.mjs";
@@ -157,15 +158,6 @@ Before returning JSON, challenge every candidate finding:
 - Demote severity when the scenario is narrower than first assumed.
 - Confirm the changed-line anchor is the best available location for the bug.
 
-## Overall Verdict
-
-At the end, decide whether the full local diff is correct.
-
-- \`"correct"\` means the full local diff has no P0, P1, or P2 findings.
-- \`"incorrect"\` means at least one P0, P1, or P2 finding remains.
-
-Ignore sub-P2 concerns when choosing the overall verdict. If the PR branch has only sub-P2 concerns, return \`findings: []\` and \`overall_correctness: "correct"\`.
-
 ## Output Format
 
 Return strict JSON only. Do not include markdown fences or extra prose.
@@ -185,8 +177,7 @@ The JSON must match this schema exactly:
       }
     }
   ],
-  "overall_correctness": "correct" | "incorrect",
-  "overall_explanation": "<1-3 sentence explanation justifying the overall_correctness verdict>"
+  "overall_explanation": "<1-3 sentence explanation of the findings or why none remain>"
 }
 
 Additional output rules:
@@ -272,6 +263,34 @@ function renderPrReviewerPrompt(args) {
   return PR_REVIEWER_PROMPT_TEMPLATE.replace(pattern, (match) =>
     String(replacements[match]),
   );
+}
+
+function renderPythonQualityPrompt(args) {
+  return renderPythonQualityReviewPrompt({
+    reviewScope:
+      `the full local branch change at ${args.headSha} plus current uncommitted changes against ${args.reviewBase}`,
+    reviewContext: `- Worktree root: ${args.worktreeRoot}
+- Repository: ${args.repo}
+- PR: ${args.prUrl}
+- PR number: ${args.prNumber}
+- PR title: ${args.prTitle}
+- Target base ref: ${args.baseRef}
+- Review base commit: ${args.reviewBase}
+- Local head commit: ${args.headSha}
+- Local branch: ${args.headRef}
+
+PR body:
+${args.prBody}
+
+Changed files:
+${args.changedFiles}`,
+    gatherInstructions: `1. \`cd "${args.worktreeRoot}"\`.
+2. Treat the local checkout as the source of truth.
+3. Review \`git diff --binary ${args.reviewBase}\` plus synthetic patches for sorted untracked non-ignored files.
+4. If the changed-files list contains no \`.py\` files, return no findings immediately.
+5. Inspect the current contents and surrounding package patterns for every changed Python file.
+6. Use the PR title and body to understand intent, but report only Python quality issues introduced by the full local diff.`,
+  });
 }
 
 function parseJson(value, label) {
@@ -405,102 +424,6 @@ function buildReviewMetadata({
   };
 }
 
-function isBranchBlockingPriority(priority) {
-  return Number.isInteger(priority) && priority >= 0 && priority <= 1;
-}
-
-function filterBranchReview(review) {
-  if (!review) {
-    return review;
-  }
-
-  const findings = review.findings.filter((finding) =>
-    isBranchBlockingPriority(finding.priority),
-  );
-  const overallCorrectness = findings.length > 0 ? "incorrect" : "correct";
-  let overallExplanation = review.overall_explanation;
-
-  if (
-    findings.length !== review.findings.length ||
-    overallCorrectness !== review.overall_correctness
-  ) {
-    overallExplanation =
-      findings.length > 0
-        ? "P0-P1 findings were returned."
-        : "No P0-P1 findings were returned.";
-  }
-
-  return {
-    ...review,
-    findings,
-    overall_correctness: overallCorrectness,
-    overall_explanation: overallExplanation,
-  };
-}
-
-function filterBranchReviewAggregate(aggregate) {
-  const reviews = Object.fromEntries(
-    Object.entries(aggregate.reviews || {}).map(([reviewer, review]) => [
-      reviewer,
-      filterBranchReview(review),
-    ]),
-  );
-  const unavailable = aggregate.unavailable || [];
-
-  // Unavailable reviewers are ignored upstream; the aggregate is only "blocked"
-  // when no reviewer was usable at all. Propagate that blocked state as-is.
-  if (aggregate.status === "blocked") {
-    return {
-      ...aggregate,
-      findings: [],
-      reviews,
-      unavailable,
-    };
-  }
-
-  const findings = (aggregate.findings || []).filter((finding) =>
-    isBranchBlockingPriority(finding.priority),
-  );
-  const incorrectReviewers = Object.entries(reviews)
-    .filter(([, review]) => review?.overall_correctness === "incorrect")
-    .map(([reviewer]) => reviewer);
-  const availableReviewers = Object.entries(reviews)
-    .filter(([, review]) => review)
-    .map(([reviewer]) => reviewer);
-  const ignoredNote =
-    unavailable.length > 0
-      ? ` Ignored unavailable reviewer(s): ${unavailable
-          .map(({ reviewer }) => reviewer)
-          .join(", ")}.`
-      : "";
-
-  if (findings.length > 0 || incorrectReviewers.length > 0) {
-    return {
-      ...aggregate,
-      status: "revise",
-      findings,
-      reviews,
-      unavailable,
-      overall_explanation:
-        (findings.length > 0
-          ? `${findings.length} P0-P1 reviewer finding(s) require fixes.`
-          : `${incorrectReviewers.join(", ")} returned an incorrect review verdict.`) +
-        ignoredNote,
-    };
-  }
-
-  return {
-    ...aggregate,
-    status: "approved",
-    findings: [],
-    reviews,
-    unavailable,
-    overall_explanation: `${availableReviewers.join(
-      ", ",
-    )} approved the change.${ignoredNote}`,
-  };
-}
-
 export async function runDualPrBranchReview({
   worktreeRoot,
   repo,
@@ -537,18 +460,31 @@ export async function runDualPrBranchReview({
     reviewBase: metadata.review_base,
     changedFiles: metadata.changed_files,
   });
+  const pythonQualityPrompt = renderPythonQualityPrompt({
+    worktreeRoot,
+    repo: metadata.repo,
+    prNumber: metadata.pr_number,
+    prUrl: metadata.pr_url,
+    prTitle: metadata.pr_title,
+    prBody: metadata.pr_body,
+    baseRef: metadata.base_ref,
+    headRef: metadata.head_ref,
+    headSha: metadata.head_sha,
+    reviewBase: metadata.review_base,
+    changedFiles: metadata.changed_files,
+  });
 
   const aggregate = await runDualReviewPrompt({
     worktreeRoot,
     prompt,
+    pythonQualityPrompt,
     reviewSchemaPath,
     reviewSchema,
     timeout,
   });
 
-  const filteredAggregate = filterBranchReviewAggregate(aggregate);
-  log(`aggregate status=${filteredAggregate.status}`);
-  return filteredAggregate;
+  log(`aggregate status=${aggregate.status}`);
+  return aggregate;
 }
 
 async function main() {
@@ -563,7 +499,11 @@ async function main() {
         {
           status: "blocked",
           findings: [],
-          reviews: { Codex: null, Claude: null },
+          reviews: {
+            Correctness_codex: null,
+            correctness_claude: null,
+            pythonQuality_codex: null,
+          },
           unavailable: [{ reviewer: "runner", reason: error.message }],
           overall_explanation: error.message,
         },

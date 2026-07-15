@@ -1,7 +1,8 @@
+import { randomUUID } from "node:crypto";
+import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -17,8 +18,128 @@ export const CLAUDE_REVIEW_EFFORT = "xhigh";
 export const CODEX_REVIEW_MODEL = "gpt-5.5";
 export const CODEX_REVIEW_EFFORT = "high";
 
-const REVIEWERS = ["Codex", "Claude"];
+const REVIEWERS = [
+  "Correctness_codex",
+  "correctness_claude",
+  "pythonQuality_codex",
+];
 const reviewLog = createLogger({ tag: TAG, logFile: LOG_FILE });
+
+export function renderPythonQualityReviewPrompt({
+  reviewScope,
+  reviewContext,
+  gatherInstructions,
+}) {
+  return `# Python Quality Reviewer Prompt
+
+You are the Python quality specialist reviewing ${reviewScope}.
+
+Review only Python files changed by this change. If no Python files changed, return no findings. The correctness reviewers cover general bugs; focus on concrete Python implementation-quality problems that the original author would likely fix once identified.
+
+If more specific instructions appear elsewhere, follow those over this file.
+
+## Review Context
+
+${reviewContext}
+
+## How To Gather Review Inputs
+
+${gatherInstructions}
+
+## Required Guidance
+
+Read these files before reviewing and apply them to the changed Python code:
+
+- \`$HOME/dotfiles/python-implementation-guide.md\`
+- the \`# Implementation Discipline\` section of \`$HOME/dotfiles/claude-global.md\`
+- repository-local reviewer or contributor guidance that applies to the changed files
+
+## What Counts As A Finding
+
+Report an issue only when all of these are true:
+
+1. It was introduced by the reviewed change.
+2. It is discrete and actionable.
+3. It creates a concrete Python maintainability, readability, test-design, typing, import, dependency, error-handling, or module-structure problem.
+4. The original author would likely fix it if notified.
+5. It is supported by the changed code and surrounding repository patterns, not by an unstated preference.
+6. Fixing it does not require a higher quality bar than the rest of the codebase.
+
+Do not report formatting, minor wording, documentation-only concerns, speculative future extensibility, or personal style preferences. If no issue clearly meets the bar, return no findings.
+
+## Required Review Lenses
+
+Review every applicable changed Python file for:
+
+- imports, dependency use, and unnecessary dependencies
+- type annotations and data shapes at changed boundaries
+- function and module cohesion, ownership, and placement
+- avoidable abstractions, hidden mutation, and unnecessarily indirect data flow
+- error handling and logging at boundaries that can actually fail
+- misleading names that obscure a changed contract or behavior
+- duplicated implementation, fixtures, mocks, or tests that create a concrete maintenance risk
+- test behavior, parametrization, fixture scope, mock boundaries, and edge-case coverage
+- consistency with established patterns in the surrounding Python package
+
+## Finding Rules
+
+- Findings must target a changed Python file and a line changed by the reviewed diff.
+- Use one finding per distinct issue.
+- Keep line ranges as short as possible and normally under 5-10 lines.
+- Do not stop at the first valid finding.
+- Put concrete support in \`evidence\`, including the inspected code, test, guide, or established repository pattern.
+- Do not let \`evidence\` merely repeat the finding.
+
+## Finding Importance And Priority
+
+Return only Python quality issues that you judge important or meaningful enough for the author to address. Omit minor preferences, optional cleanups, and low-value suggestions.
+
+Mark every returned finding as \`P2\` with \`priority: 2\`. Do not emit P0 or P1 findings.
+
+## Comment Rules
+
+Before drafting a finding, read the \`## Writing Style\` section from \`$HOME/dotfiles/claude-global.md\`.
+
+For each finding:
+
+1. Start the title with its priority tag, such as \`[P2] Consolidate duplicated fixtures\`.
+2. Keep the body brief, factual, and specific about the concrete maintenance cost.
+3. Keep the body to one paragraph.
+4. Do not include praise, filler, or a generated fix.
+
+## Self-Challenge Before Output
+
+Before returning JSON:
+
+- Drop speculative, pre-existing, intentional, preference-only, minor, or low-value concerns.
+- Confirm the issue is specific to Python quality and is not merely a duplicate of a general correctness concern.
+- Merge findings that describe the same root cause.
+- Confirm each location is the best changed-line anchor.
+- Confirm every retained finding uses \`priority: 2\` and a \`[P2]\` title.
+
+## Output Format
+
+Return strict JSON only. Do not include markdown fences or extra prose.
+
+The JSON must match this schema exactly:
+
+{
+  "findings": [
+    {
+      "title": "<≤ 80 chars, starts with [P2]>",
+      "body": "<one-paragraph Markdown explanation>",
+      "evidence": "<specific inspected evidence>",
+      "priority": 2,
+      "code_location": {
+        "absolute_file_path": "<absolute Python file path>",
+        "line_range": {"start": <int>, "end": <int>}
+      }
+    }
+  ],
+  "overall_explanation": "<1-3 sentence explanation>"
+}
+`;
+}
 
 export function getText(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -156,10 +277,9 @@ export function normalizeReview(review) {
   const findings = review.findings.filter((finding) =>
     isActionablePriority(finding.priority),
   );
-  const overallCorrectness = findings.length > 0 ? "incorrect" : "correct";
   let overallExplanation = review.overall_explanation;
 
-  if (overallCorrectness !== review.overall_correctness) {
+  if (findings.length !== review.findings.length) {
     overallExplanation =
       findings.length > 0
         ? "P0-P2 findings were returned."
@@ -169,7 +289,6 @@ export function normalizeReview(review) {
   return {
     ...review,
     findings,
-    overall_correctness: overallCorrectness,
     overall_explanation: overallExplanation,
   };
 }
@@ -187,13 +306,7 @@ export function validateReviewOutput(value) {
     return { valid: false, errors: ["review must be an object"] };
   }
 
-  if (
-    !hasOnlyKeys(value, [
-      "findings",
-      "overall_correctness",
-      "overall_explanation",
-    ])
-  ) {
+  if (!hasOnlyKeys(value, ["findings", "overall_explanation"])) {
     errors.push("review contains additional properties");
   }
 
@@ -234,12 +347,11 @@ export function validateReviewOutput(value) {
       if (!("priority" in finding)) {
         errors.push(`${prefix}.priority is required`);
       } else if (
-        finding.priority !== null &&
-        (!Number.isInteger(finding.priority) ||
-          finding.priority < 0 ||
-          finding.priority > 3)
+        !Number.isInteger(finding.priority) ||
+        finding.priority < 0 ||
+        finding.priority > 2
       ) {
-        errors.push(`${prefix}.priority must be an integer from 0 to 3 or null`);
+        errors.push(`${prefix}.priority must be an integer from 0 to 2`);
       }
 
       const location = finding.code_location;
@@ -284,9 +396,6 @@ export function validateReviewOutput(value) {
     });
   }
 
-  if (!["correct", "incorrect"].includes(value.overall_correctness)) {
-    errors.push("overall_correctness must be a valid review verdict");
-  }
   if (
     typeof value.overall_explanation !== "string" ||
     value.overall_explanation.length === 0
@@ -301,22 +410,6 @@ function parseReviewObject(value) {
   const validation = validateReviewOutput(value);
   if (!validation.valid) {
     return { review: null, errors: validation.errors };
-  }
-
-  // Nonsensical output: the reviewer claims the change is incorrect but lists
-  // no actionable finding. Treat it as invalid so the caller retries once and
-  // then ignores this reviewer rather than trusting a contentless verdict.
-  const actionableFindings = value.findings.filter((finding) =>
-    isActionablePriority(finding.priority),
-  );
-  if (
-    actionableFindings.length === 0 &&
-    value.overall_correctness === "incorrect"
-  ) {
-    return {
-      review: null,
-      errors: ["incorrect verdict with no actionable findings"],
-    };
   }
 
   return { review: normalizeReview(value), errors: [] };
@@ -433,6 +526,7 @@ export async function runCodexReview({
   prompt,
   cwd,
   reviewSchemaPath,
+  outputLabel = "Codex",
   timeout = DEFAULT_REVIEW_TIMEOUT_MS,
 }) {
   reviewLog(`checking codex auth in cwd=${cwd}`);
@@ -459,7 +553,7 @@ export async function runCodexReview({
 
   const tmpFile = path.join(
     os.tmpdir(),
-    `code-implement-loop-codex-review-${Date.now()}-${process.pid}.json`,
+    `code-implement-loop-${sanitizeFilePart(outputLabel)}-${randomUUID()}.json`,
   );
   reviewLog(
     `running codex in cwd=${cwd} model=${CODEX_REVIEW_MODEL} effort=${CODEX_REVIEW_EFFORT} service_tier=fast output=${tmpFile}`,
@@ -549,7 +643,7 @@ export async function runReviewerOnce({
 
   if (result.review) {
     reviewLog(
-      `${reviewer} verdict: ${result.review.overall_correctness} (${result.review.findings.length} findings)`,
+      `${reviewer} returned ${result.review.findings.length} finding(s)`,
     );
   } else {
     reviewLog(`${reviewer} review unavailable: ${result.reason || "invalid review output"}`);
@@ -577,8 +671,6 @@ export function aggregateReviews(results) {
     }
   }
 
-  // Ignore unavailable reviewers and proceed on whoever produced a usable
-  // review. Only block when no reviewer is usable at all.
   if (availableReviewers.length === 0) {
     return {
       status: "blocked",
@@ -603,9 +695,6 @@ export function aggregateReviews(results) {
     });
   }
 
-  const incorrectReviewers = availableReviewers.filter(
-    (reviewer) => reviews[reviewer].overall_correctness === "incorrect",
-  );
   const ignoredNote =
     unavailable.length > 0
       ? ` Ignored unavailable reviewer(s): ${unavailable
@@ -613,17 +702,14 @@ export function aggregateReviews(results) {
           .join(", ")}.`
       : "";
 
-  if (findings.length > 0 || incorrectReviewers.length > 0) {
+  if (findings.length > 0) {
     return {
       status: "revise",
       findings,
       reviews,
       unavailable,
       overall_explanation:
-        (findings.length > 0
-          ? `${findings.length} reviewer finding(s) require fixes.`
-          : `${incorrectReviewers.join(", ")} returned an incorrect review verdict.`) +
-        ignoredNote,
+        `${findings.length} reviewer finding(s) require fixes.` + ignoredNote,
     };
   }
 
@@ -641,16 +727,21 @@ export function aggregateReviews(results) {
 export async function runDualReviewPrompt({
   worktreeRoot,
   prompt,
+  pythonQualityPrompt,
   reviewSchemaPath = REVIEW_OUTPUT_SCHEMA_PATH,
   reviewSchema = fs.readFileSync(reviewSchemaPath, "utf8").trim(),
   timeout = DEFAULT_REVIEW_TIMEOUT_MS,
+  codexReviewRunner = runCodexReview,
+  claudeReviewRunner = runClaudeReview,
 }) {
-  reviewLog("reviewers launched: Codex, Claude");
+  reviewLog(
+    "reviewers launched: Correctness_codex, correctness_claude, pythonQuality_codex",
+  );
   const claudeReview = runReviewerOnce({
-    reviewer: "Claude",
+    reviewer: "correctness_claude",
     prompt,
     runReview: (reviewPrompt) =>
-      runClaudeReview({
+      claudeReviewRunner({
         prompt: reviewPrompt,
         cwd: worktreeRoot,
         reviewSchema,
@@ -658,18 +749,35 @@ export async function runDualReviewPrompt({
       }),
   });
   const codexReview = runReviewerOnce({
-    reviewer: "Codex",
+    reviewer: "Correctness_codex",
     prompt,
     runReview: (reviewPrompt) =>
-      runCodexReview({
+      codexReviewRunner({
         prompt: reviewPrompt,
         cwd: worktreeRoot,
         reviewSchemaPath,
+        outputLabel: "Correctness_codex",
+        timeout,
+      }),
+  });
+  const pythonQualityReview = runReviewerOnce({
+    reviewer: "pythonQuality_codex",
+    prompt: pythonQualityPrompt,
+    runReview: (reviewPrompt) =>
+      codexReviewRunner({
+        prompt: reviewPrompt,
+        cwd: worktreeRoot,
+        reviewSchemaPath,
+        outputLabel: "pythonQuality_codex",
         timeout,
       }),
   });
 
-  const results = await Promise.all([codexReview, claudeReview]);
+  const results = await Promise.all([
+    codexReview,
+    claudeReview,
+    pythonQualityReview,
+  ]);
   const aggregate = aggregateReviews(results);
   reviewLog(`aggregate status=${aggregate.status}`);
   return aggregate;

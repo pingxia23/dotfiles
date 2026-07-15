@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import {
   DEFAULT_REVIEW_TIMEOUT_MS,
   REVIEW_OUTPUT_SCHEMA_PATH,
+  renderPythonQualityReviewPrompt,
   runDualReviewPrompt,
 } from "./review_runner_utils.mjs";
 
@@ -148,8 +149,7 @@ Do not report examples like these:
   is not a finding unless the implementation plan or existing surrounding
   patterns require it.
 
-These concerns must not appear in \`findings\` and must not affect
-\`overall_correctness\`.
+These concerns must not appear in \`findings\`.
 
 ## Self-Challenge Before Output
 
@@ -160,16 +160,6 @@ Before returning JSON, challenge every candidate finding:
 - Merge duplicates that describe the same root cause.
 - Demote severity when the scenario is narrower than first assumed.
 - Confirm the changed-line anchor is the best available location for the bug.
-
-## Overall Verdict
-
-At the end, decide whether the patch is correct.
-
-- \`"correct"\` means the patch has no P0, P1, or P2 findings.
-- \`"incorrect"\` means at least one P0, P1, or P2 finding remains.
-
-Ignore sub-P2 concerns when choosing the overall verdict. If the patch has only
-sub-P2 concerns, return \`findings: []\` and \`overall_correctness: "correct"\`.
 
 ## Output Format
 
@@ -190,8 +180,7 @@ The JSON must match this schema exactly:
       }
     }
   ],
-  "overall_correctness": "correct" | "incorrect",
-  "overall_explanation": "<1-3 sentence explanation justifying the overall_correctness verdict>"
+  "overall_explanation": "<1-3 sentence explanation of the findings or why none remain>"
 }
 
 Additional output rules:
@@ -251,6 +240,23 @@ function renderReviewerPrompt(args) {
   );
 }
 
+function renderPythonQualityPrompt(args) {
+  return renderPythonQualityReviewPrompt({
+    reviewScope: "the full current local uncommitted patch set",
+    reviewContext: `- Worktree root: ${args.worktreeRoot}
+- Resolved implementation plan for this run: ${args.implementationPlan}`,
+    gatherInstructions: `1. \`cd "${args.worktreeRoot}"\`.
+2. Build the patch set relative to \`HEAD\`:
+   - tracked changes: \`git diff --binary HEAD\`
+   - untracked non-ignored files: \`git ls-files --others --exclude-standard | LC_ALL=C sort\`
+   - for each untracked file, append a synthetic patch with \`git diff --no-index --binary -- /dev/null "$path" || true\`
+3. Build the changed-files list from \`git diff --name-status HEAD\` plus the sorted untracked files.
+4. If the changed-files list contains no \`.py\` files, return no findings immediately.
+5. Inspect the current contents and surrounding package patterns for every changed Python file.
+6. Compare the Python changes with the implementation plan, but report only quality issues introduced by the patch.`,
+  });
+}
+
 export async function runDualPatchReview({
   worktreeRoot,
   implementationPlan,
@@ -262,10 +268,15 @@ export async function runDualPatchReview({
     worktreeRoot,
     implementationPlan,
   });
+  const pythonQualityPrompt = renderPythonQualityPrompt({
+    worktreeRoot,
+    implementationPlan,
+  });
 
   return runDualReviewPrompt({
     worktreeRoot,
     prompt,
+    pythonQualityPrompt,
     reviewSchemaPath,
     reviewSchema,
     timeout,
@@ -286,7 +297,11 @@ async function main() {
         {
           status: "blocked",
           findings: [],
-          reviews: { Codex: null, Claude: null },
+          reviews: {
+            Correctness_codex: null,
+            correctness_claude: null,
+            pythonQuality_codex: null,
+          },
           unavailable: [{ reviewer: "runner", reason: error.message }],
           overall_explanation: error.message,
         },

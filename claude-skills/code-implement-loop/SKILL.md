@@ -50,7 +50,7 @@ Use this exact handling for both review loops after the loop-specific reviewer s
 Before applying loop control, filter the parsed findings against `implementation_plan`:
 
 1. Discard every finding below P2. These findings are never actionable.
-2. For each P2 finding, retain it only when its evidence shows that it is directly related to the implementation plan. A finding is directly related when it identifies a defect introduced or modified by the planned implementation, missing behavior or verification explicitly required by the plan, or a regression directly caused by the planned change.
+2. For each P2 finding, regardless of reviewer, retain it only when its evidence shows that it is directly related to the implementation plan. A P2 finding is directly related when it identifies a defect introduced or modified by the planned implementation, missing behavior or verification explicitly required by the plan, a regression directly caused by the planned change, or a concrete and meaningful quality problem introduced or modified by the planned implementation. Quality problems may include naming, typing, imports, dependencies, module structure, data flow, error handling, test structure, fixtures, or mocks; they do not need to be runtime defects.
 3. Treat pre-existing issues in unchanged behavior, adjacent cleanup, broader recommendations, and follow-up work outside the implementation plan as unrelated. Ignore these P2-or-lower comments: do not fix, record, publish, or use them to determine review status.
 4. Do not discard a P0 or P1 finding.
 5. If `status="revise"` becomes empty only because this filter removed findings, normalize the result to `status="approved"` before applying loop control. A reviewer result that originally returned `status="revise"` with no findings remains blocked as described below.
@@ -64,7 +64,8 @@ Before applying loop control, filter the parsed findings against `implementation
 - If `status="revise"` has findings and `current_round < max_rounds`, fix those items only, prioritize by `priority` ascending (`0` -> `3`; unknown priority after known priorities), rerun targeted verification, and continue to the next review round.
 - If `status="revise"` has findings and `current_round >= max_rounds`, record the current findings and attempted fixes, stop the current review loop, continue to the next workflow step without blocking, and include the recorded findings and attempts in the final status.
 - Only retained P0-P2 findings are actionable. Sub-P2 comments, unrelated P2 comments, nits, praise, and broad suggestions must be omitted from `findings` and must not force `status="revise"`.
-- Both review loops use the same structured runner and schema after prompt/context assembly. The prompts require an internal scout pass, applicable specialist review lenses, mandatory evidence per finding, and a self-challenge pass before output.
+- Both review loops use the same structured runner and schema after prompt/context assembly. Each run multiple reviewers. Each reviewer returns only `findings` and `overall_explanation`; the runner derives status from the retained findings. The prompts require applicable specialist review lenses, mandatory evidence per finding, and a self-challenge pass before output.
+- Reviewer scripts return their aggregate findings without priority-based filtering. Apply the shared filtering rules above after either reviewer script returns.
 
 ## Workflow
 
@@ -253,7 +254,7 @@ Apply **Shared Review Result Handling** with:
 
 Rules:
 
-- The helper fetches `origin/$base_ref`, validates the current branch equals the PR head branch, validates local `HEAD` equals the remote PR head, computes `git merge-base HEAD origin/$base_ref`, and asks both reviewers to inspect `git diff <review_base>` plus untracked non-ignored files.
+- The helper fetches `origin/$base_ref`, validates the current branch equals the PR head branch, validates local `HEAD` equals the remote PR head, computes `git merge-base HEAD origin/$base_ref`, and asks all reviewer passes to inspect `git diff <review_base>` plus untracked non-ignored files.
 - The helper does not require a clean worktree, so later rounds include uncommitted review fixes.
 - After assembling branch context and prompt, the helper uses the same `scripts/review-output.schema.json` schema, runner, parsing, and aggregation logic as the uncommitted change review loop. Reviewer output must not be freeform prose.
 
