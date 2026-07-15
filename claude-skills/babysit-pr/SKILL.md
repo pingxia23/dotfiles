@@ -1,6 +1,6 @@
 ---
 name: babysit-pr
-description: "Babysit the GitHub PR associated with the current branch: check whether merging the latest base branch would conflict, resolve and commit merge conflicts with `commit-smart` when needed, then loop on `dd-gitlab/*` CI checks until they pass; when concrete dd-gitlab jobs fail, classify the fetched Mosaic traces, merge the latest base when failures look external, use `code-implement-loop` only for failures that are likely caused by the PR, and update the PR body at the end."
+description: "Babysit the GitHub PR associated with the current branch: check and resolve merge conflicts, loop on `dd-gitlab/*` CI checks until they pass, then automatically plan and implement unresolved actionable review comments after at most two plan-review rounds; rerun CI after comment-driven changes, classify concrete CI failures, merge the latest base when failures look external, use `code-implement-loop` for PR-caused failures, and update the PR body at the end."
 ---
 
 # Babysit PR
@@ -11,13 +11,15 @@ description: "Babysit the GitHub PR associated with the current branch: check wh
 - Infer the PR from the current branch with `gh`, then validate that local state matches the inferred PR.
 - Do not broaden scope beyond:
   - merge-conflict remediation against the latest PR base branch
+  - implementing unresolved actionable PR review comments
   - fixing failing `dd-gitlab/*` CI jobs
   - updating the PR body at the end
 - Treat `dd-gitlab/default-pipeline` as a rollup check, not a concrete job trace source.
+- Never reply to or resolve a review thread. Ignore comments classified as `reply_only` after plan review.
 
 ## Workflow
 
-### 0) Preflight
+### Phase 0: Preflight
 
 1. Resolve repo scope and enforce the strict coding preflight:
    - `eval "$("$HOME/dotfiles/scripts/coding-preflight.mjs")"`
@@ -55,7 +57,7 @@ If `pr_url` is empty or `null`, stop and return `FAILED: current branch has no a
    - `git rev-parse HEAD` must equal `head_sha`
    - if any check fails, stop and report the mismatch
 
-### 1) Check whether merging the latest base branch would conflict
+### Phase 1: Check mergeability
 
 1. Query GitHub for the PR mergeability state:
 
@@ -71,9 +73,9 @@ merge_state_status="$(jq -r '.mergeStateStatus' <<<"$merge_state_json")"
    - `mergeable=="CONFLICTING"`: the PR branch conflicts with the latest base branch
    - any other value, or a persistent `UNKNOWN`: stop and report `mergeable` and `mergeStateStatus` as blocked
 
-### 2) If conflicts exist, merge latest base, resolve them, and commit
+### Phase 2: Resolve merge conflicts when needed
 
-Only run this step when Step 1 found real merge conflicts.
+Run this phase only when Phase 1 reports `mergeable=="CONFLICTING"`.
 
 1. Refresh and merge the latest base branch into the PR branch:
 
@@ -87,11 +89,11 @@ git merge --no-ff "origin/$base_ref"
 4. Invoke `commit-smart` immediately to create the merge commit and push it.
 5. After `commit-smart` completes, continue into the CI loop below.
 
-### 3) Loop on `dd-gitlab/*` checks until they all pass
+### Phase 3: Run `dd-gitlab/*` CI until green
 
-Run the following loop until every `dd-gitlab/*` check has passed.
+Use this phase for both the initial CI run and the CI rerun after comment-driven changes. Run the following loop until every `dd-gitlab/*` check has passed.
 
-Each iteration includes these steps:
+Each iteration includes these actions:
 
 1. Refresh the checks:
 
@@ -111,8 +113,8 @@ dd_gitlab_checks_json="$(
 3. If there are zero `dd-gitlab/*` checks, treat that as "jobs not started yet" rather than success. Sleep for a fixed interval such as `60` seconds, then start the next loop iteration.
 4. If any `dd-gitlab/*` checks are still pending, do not handle failures yet. Sleep for a fixed interval such as `60` seconds, then start the next loop iteration.
 5. Once there are one or more `dd-gitlab/*` checks and zero pending `dd-gitlab/*` checks:
-   - if all `dd-gitlab/*` checks passed, skip the remaining steps in this iteration and exit the loop
-   - otherwise continue with the failure-handling steps below
+   - if all `dd-gitlab/*` checks passed, skip the remaining actions in this iteration and exit the loop
+   - otherwise continue with the failure-handling actions below
 6. Split the failed `dd-gitlab/*` checks into:
    - `fetchable_failed_jobs`: failed checks whose `link` contains `taskId=gitlab` and `taskExecutionId=`
    - `rollup_only_failures`: failed checks such as `dd-gitlab/default-pipeline` whose link does not include a concrete `taskExecutionId=`
@@ -128,7 +130,7 @@ dd_gitlab_checks_json="$(
      - `web_url`: the GitLab job URL
      - `trace_file`: the local path to the fetched trace file
    - read `trace_file` and extract:
-     - the failing Bazel target or job step
+     - the failing Bazel target or job stage
      - the failing test name or command when present
      - the concrete error text or exception
      - a concise failure summary
@@ -170,9 +172,9 @@ dd_gitlab_checks_json="$(
 - the local trace file path from `trace_file`
 - the failure summary extracted from the trace
 
-12. Invoke `code-implement-loop` with that raw failure context as the entire implementation scope.
-13. If `code-implement-loop` returns blocked status, propagate it and stop.
-14. If `code-implement-loop` succeeds, continue the loop and return to Step 3.1 to repoll the `dd-gitlab/*` checks.
+11. Invoke `code-implement-loop` with that raw failure context as the entire implementation scope.
+12. If `code-implement-loop` returns blocked status, propagate it and stop.
+13. If `code-implement-loop` succeeds, start the next iteration of this CI loop and repoll the `dd-gitlab/*` checks.
 
 Example handoff to `code-implement-loop`:
 
@@ -187,20 +189,125 @@ Fix the failing dd-gitlab CI jobs for PR https://github.com/DataDog/dd-source/pu
 
 ```
 
-### 4) Update PR body
+### Phase 4: Process unresolved review comments once
+
+Run this phase once, after the initial Phase 3 CI run is green.
+
+#### 4a) Load unresolved review threads
+
+1. Run:
+
+```bash
+comments_json="$(
+  "$HOME/dotfiles/claude-skills/address-pr-comments/scripts/list_unresolved_review_threads.sh" \
+    "$pr_url"
+)"
+```
+
+2. Treat the script output as the source of truth for unresolved, non-outdated review threads.
+3. Build one `comments_to_address` collection. For each thread, preserve:
+   - `thread_id`
+   - `path`, `line`, and `original_line`
+   - `diff_hunk`
+   - `comment_url`
+   - `last_comment_id` and `last_comment_body`
+   - `comments[]`
+4. If `comments_to_address` is empty, record zero processed comments and continue to Phase 5.
+
+#### 4b) Create a comment address plan
+
+Classify every `comments_to_address` item as one of:
+
+- `reply_only`: the reviewer asks for clarification, rationale, or acknowledgment, and no code, test, docs, or config change is needed.
+- `implementation_needed`: the reviewer requests or implies a code, test, docs, or config change. Treat ambiguous requests conservatively as `implementation_needed`. For future work, follow-up PRs, or optional improvements, plan only a concise TODO comment in the relevant code path.
+
+Create one plan section for every item:
+
+```markdown
+## <thread_id> - <short title>
+
+Raw comment:
+<last_comment_body>
+
+Decision: reply_only | implementation_needed
+
+Reasoning:
+<why this classification is correct from the current code and PR state>
+
+Plan:
+<for reply_only, describe the reply that would answer the reviewer; it will not be posted>
+
+<for implementation_needed, describe the concrete code, test, docs, or config changes>
+
+<for future work, identify where the TODO comment should be added and what it should say>
+```
+
+Before drafting the plan, inspect the current code and PR state needed to ground each classification and proposed change. Do not add work beyond the unresolved feedback.
+
+#### 4c) Review and revise the plan at most twice
+
+Set `comment_address_plan` to the complete plan from subsection 4b. Run at most two review rounds.
+
+For each round, invoke:
+
+```bash
+plan_review_result="$(
+  node "$HOME/dotfiles/claude-skills/babysit-pr/scripts/run_auto_comment_plan_review.mjs" \
+    --worktree-root "$worktree_root" \
+    --pr-url "$pr_url" \
+    <<<"$comment_address_plan"
+)"
+```
+
+Parse `plan_review_result` as strict JSON with:
+
+- `status`: `approved`, `revise`, or `blocked`
+- `comments`: concrete plan-review feedback
+- `overall_explanation`: review summary
+- `reviewers`: reviewer status map
+
+Apply this control flow:
+
+1. If the output is invalid or `status=="blocked"`, stop and return blocked status. Do not implement an unreviewed plan.
+2. If `status=="approved"`, stop the review loop and use the current `comment_address_plan`.
+3. If `status=="revise"`, revise only the plan to address every review comment while preserving a section for every original `comments_to_address` item.
+4. After round 1, review the revised plan once more.
+5. After round 2, apply its review comments to the plan once, then stop. Do not request a third review.
+
+The resulting plan is `reviewed_comment_address_plan`.
+
+#### 4d) Ignore reply-only items and implement actionable items
+
+1. Derive `implementation_plan` by copying only the complete sections whose decision is `implementation_needed` from `reviewed_comment_address_plan`, in their original order.
+2. Preserve each copied section verbatim, including its heading, raw comment, decision, reasoning, and plan.
+3. Ignore every `reply_only` section:
+   - do not post its proposed reply
+   - do not invoke `reply_to_review_thread.sh`
+   - do not resolve its review thread
+   - do not include it in `implementation_plan`
+4. Verify that `implementation_plan` contains no `reply_only` section. If the check fails, stop and return `BLOCKED: failed to build actionable comment implementation plan | PR: <url>`.
+5. If `implementation_plan` is empty, record the reply-only count and continue to Phase 5 without invoking `code-implement-loop`.
+6. If `implementation_plan` is non-empty, invoke `code-implement-loop` once using the filtered plan as its direct inline implementation input and preserve its complete output as `comment_implementation_result`.
+7. Do not block or stop based on `comment_implementation_result`, including blocked, failed, or invalid output. Record its status and exact error summary for Phase 6.
+8. Rerun Phase 3 so CI validates the current PR head. When CI is green, continue to Phase 5. Do not rerun Phase 4.
+
+### Phase 5: Update PR body
 
 After all `dd-gitlab/*` checks pass, invoke the `pr-body` skill at `$HOME/dotfiles/claude-skills/pr-body/SKILL.md` with `pr_url`.
 
-Treat `UPDATED` and `SKIPPED` results from `pr-body` as successful completion of this step. Treat `BLOCKED` as a blocked status and stop.
+Treat `UPDATED` and `SKIPPED` results from `pr-body` as successful completion of this phase. Treat `BLOCKED` as a blocked status and stop.
 
-### 5) Return final status
+### Phase 6: Return final status
 
 Use one of:
 
-- `SUCCESS: dd-gitlab checks green and PR body updated | PR: <url>`
-- `SUCCESS: dd-gitlab checks green and PR body left unchanged because existing body is unmarked | PR: <url>`
+- `SUCCESS: review comments processed (<actionable-count> actionable, <reply-only-count> reply-only ignored), dd-gitlab checks green, and PR body updated | PR: <url>`
+- `SUCCESS: review comments processed (<actionable-count> actionable, <reply-only-count> reply-only ignored), dd-gitlab checks green, and PR body left unchanged because existing body is unmarked | PR: <url>`
+- If `code-implement-loop` was invoked for review comments, append `| Comment implementation result: <status and exact error summary, if any>` to either success status. Never convert that result into blocked status.
 - `BLOCKED: merge conflict check failed | PR: <url> | Error: <summary>`
+- `BLOCKED: automatic comment plan review failed | PR: <url> | Error: <summary>`
+- `BLOCKED: failed to build actionable comment implementation plan | PR: <url>`
 - `BLOCKED: rollup-only dd-gitlab failure without fetchable jobs | PR: <url>`
 - `BLOCKED: external-looking dd-gitlab failure but branch already includes latest base | PR: <url>`
-- `BLOCKED: code-implement-loop failed | PR: <url> | Error: <summary>`
+- `BLOCKED: CI code-implement-loop failed | PR: <url> | Error: <summary>`
 - `BLOCKED: <reason> | PR: <url>`

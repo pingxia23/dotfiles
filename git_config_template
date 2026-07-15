@@ -2,6 +2,9 @@
 	autoSetupRemote = true
 	default = current
 
+[remote]
+	pushDefault = origin
+
 [pager]
 	branch = false
 
