@@ -293,6 +293,8 @@ The resulting plan is `reviewed_comment_address_plan`.
 
 ### Phase 5: Update PR body
 
+If this `babysit-pr` run did not make any code changes, skip this phase without invoking `pr-body` and continue to Phase 6.
+
 After all `dd-gitlab/*` checks pass, invoke the `pr-body` skill at `$HOME/dotfiles/claude-skills/pr-body/SKILL.md` with `pr_url`.
 
 Treat `UPDATED` and `SKIPPED` results from `pr-body` as successful completion of this phase. Treat `BLOCKED` as a blocked status and stop.
@@ -303,7 +305,8 @@ Use one of:
 
 - `SUCCESS: review comments processed (<actionable-count> actionable, <reply-only-count> reply-only ignored), dd-gitlab checks green, and PR body updated | PR: <url>`
 - `SUCCESS: review comments processed (<actionable-count> actionable, <reply-only-count> reply-only ignored), dd-gitlab checks green, and PR body left unchanged because existing body is unmarked | PR: <url>`
-- If `code-implement-loop` was invoked for review comments, append `| Comment implementation result: <status and exact error summary, if any>` to either success status. Never convert that result into blocked status.
+- `SUCCESS: review comments processed (<actionable-count> actionable, <reply-only-count> reply-only ignored), dd-gitlab checks green, and PR body update skipped because no code changes were made | PR: <url>`
+- If `code-implement-loop` was invoked for review comments, append `| Comment implementation result: <status and exact error summary, if any>` to the selected success status. Never convert that result into blocked status.
 - `BLOCKED: merge conflict check failed | PR: <url> | Error: <summary>`
 - `BLOCKED: automatic comment plan review failed | PR: <url> | Error: <summary>`
 - `BLOCKED: failed to build actionable comment implementation plan | PR: <url>`
