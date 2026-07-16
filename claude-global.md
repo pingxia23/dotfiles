@@ -43,11 +43,8 @@ Write for an SDE I. Assume the user understands software engineering fundamental
 - Prefer codebase evidence first; use Atlassian Confluence doc and Datadog Telemetry when code evidence is missing or weak.
 - Ground important claims in concrete code references, Atlassian references, Datadog Telemetry or command output.
 
-
 ## Bazel / bzl Commands
-
 Our codebase uses `bzl` to build and test packages.
-
 - Always use `bzl` instead of `bazel`.
 - Do not manually create new targets in BUILD.bazel files; use `bzl run //:gazelle` to generate them instead.
 - Always run `bzl run //:gazelle` after modifying import statements.
@@ -56,7 +53,7 @@ Our codebase uses `bzl` to build and test packages.
 - Stop and notify user whenever bzl command waits for OIDC device auth
 
 # Implementation Discipline
-Implement only the approved plan.
+Implement only the approved plan. Before making any change, ask: is this required to complete the approved scope? If not, leave it out.
 
 ## Simplicity First
 Minimum code that solves the problem. Nothing speculative.
@@ -80,14 +77,6 @@ When editing existing code:
 When your changes create orphans:
 - Remove imports/variables/functions that YOUR changes made unused.
 - Don't remove pre-existing dead code unless asked.
-
-## Handling Gaps
-- If something necessary is missing, make the smallest change needed to unblock the planned work.
-- If a required change would materially expand scope, stop and surface it instead of proceeding on your own.
-- Before making any change, ask: is this required to complete the approved scope? If not, leave it out.
-
-## Compatibility Discipline
-- Do not add backward-compatibility scaffolding for code, schema fields, proto tags, APIs, or behaviors introduced only in the current PR. Before reserving proto tags, preserving old names, adding compatibility shims, or avoiding renumbering, verify the thing existed in the base branch or has already shipped. If it only exists in the current PR, remove or rewrite it cleanly instead of carrying speculative compatibility baggage.
 
 ## Python Code Style
 - When writing or changing Python code, read `$HOME/dotfiles/python-implementation-guide.md`.
