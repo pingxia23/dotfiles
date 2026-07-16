@@ -213,6 +213,7 @@ export function parseArgs(argv) {
     prUrl: null,
     baseRef: null,
     implementationPlanHistoryFile: null,
+    ghFunction: "gh",
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -240,6 +241,9 @@ export function parseArgs(argv) {
     } else if (arg === "--implementation-plan-history-file") {
       args.implementationPlanHistoryFile = value;
       index += 1;
+    } else if (arg === "--gh-function") {
+      args.ghFunction = value;
+      index += 1;
     } else {
       throw new Error(`unknown argument: ${arg}`);
     }
@@ -253,6 +257,9 @@ export function parseArgs(argv) {
   }
   if (!args.implementationPlanHistoryFile) {
     throw new Error("--implementation-plan-history-file is required");
+  }
+  if (!["gh", "gh-ddog", "gh-personal"].includes(args.ghFunction)) {
+    throw new Error("--gh-function must be gh, gh-ddog, or gh-personal");
   }
   if (!args.branch && !(args.prNumber && args.prUrl && args.baseRef)) {
     throw new Error(
@@ -323,11 +330,15 @@ function parseJson(value, label) {
   }
 }
 
-function loadPrMetadata({ worktreeRoot, repo, prNumber, branch }) {
+function loadPrMetadata({ worktreeRoot, repo, prNumber, branch, ghFunction }) {
   const selector = prNumber || branch;
   const result = runSync(
-    "gh",
+    "zsh",
     [
+      "-ic",
+      'source "$HOME/dotfiles/zshrc"; "$@"',
+      "full-branch-review-gh",
+      ghFunction,
       "pr",
       "view",
       "--repo",
@@ -378,8 +389,15 @@ function buildReviewMetadata({
   prNumber,
   prUrl,
   baseRef,
+  ghFunction,
 }) {
-  const pr = loadPrMetadata({ worktreeRoot, repo, prNumber, branch });
+  const pr = loadPrMetadata({
+    worktreeRoot,
+    repo,
+    prNumber,
+    branch,
+    ghFunction,
+  });
   if (prNumber && String(pr.number) !== String(prNumber)) {
     throw new Error(`PR number mismatch: expected ${prNumber}, got ${pr.number}`);
   }
@@ -454,6 +472,7 @@ export async function runDualPrBranchReview({
   prUrl,
   baseRef,
   implementationPlanHistoryFile,
+  ghFunction = "gh",
   reviewSchemaPath = REVIEW_OUTPUT_SCHEMA_PATH,
   reviewSchema = fs.readFileSync(reviewSchemaPath, "utf8").trim(),
   timeout = DEFAULT_REVIEW_TIMEOUT_MS,
@@ -477,6 +496,7 @@ export async function runDualPrBranchReview({
     prNumber,
     prUrl,
     baseRef,
+    ghFunction,
   });
   const prompt = renderPrReviewerPrompt({
     worktreeRoot,

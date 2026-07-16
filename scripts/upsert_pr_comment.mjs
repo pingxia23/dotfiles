@@ -11,7 +11,7 @@ function fail(message) {
 }
 
 function usage() {
-  fail(`Usage: ${path.basename(process.argv[1] ?? "upsert_pr_comment.mjs")} --pr-url <url> --marker <marker> (--body <body> | --delete-existing) [--owner-login <login>]`);
+  fail(`Usage: ${path.basename(process.argv[1] ?? "upsert_pr_comment.mjs")} --pr-url <url> --marker <marker> (--body <body> | --delete-existing) [--owner-login <login>] [--gh-function <function>]`);
 }
 
 function parseArgs(argv) {
@@ -20,6 +20,7 @@ function parseArgs(argv) {
     marker: "",
     body: null,
     ownerLogin: DEFAULT_OWNER_LOGIN,
+    ghFunction: "gh",
     deleteExisting: false,
   };
 
@@ -39,6 +40,9 @@ function parseArgs(argv) {
     } else if (arg === "--owner-login") {
       args.ownerLogin = value ?? "";
       index += 1;
+    } else if (arg === "--gh-function") {
+      args.ghFunction = value ?? "";
+      index += 1;
     } else if (arg === "--delete-existing") {
       args.deleteExisting = true;
     } else if (arg === "--help" || arg === "-h") {
@@ -52,6 +56,7 @@ function parseArgs(argv) {
     !args.prUrl ||
     !args.marker ||
     !args.ownerLogin ||
+    !args.ghFunction ||
     (args.deleteExisting ? args.body !== null : args.body === null)
   ) {
     usage();
@@ -75,12 +80,22 @@ function parsePrUrl(prUrl) {
   };
 }
 
-function runGh(args, failureMessage) {
+function runGh(ghFunction, args, failureMessage) {
   try {
-    return execFileSync("gh", args, {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+    return execFileSync(
+      "zsh",
+      [
+        "-ic",
+        'source "$HOME/dotfiles/zshrc"; "$@"',
+        "upsert-pr-comment-gh",
+        ghFunction,
+        ...args,
+      ],
+      {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
   } catch {
     fail(failureMessage);
   }
@@ -101,8 +116,15 @@ function flattenSlurpedPages(value) {
   return value.flatMap((page) => (Array.isArray(page) ? page : [page]));
 }
 
-function findExistingComment({ repo, prNumber, ownerLogin, marker }) {
+function findExistingComment({
+  repo,
+  prNumber,
+  ownerLogin,
+  marker,
+  ghFunction,
+}) {
   const commentsText = runGh(
+    ghFunction,
     ["api", "--paginate", "--slurp", `repos/${repo}/issues/${prNumber}/comments?per_page=100`],
     `Unable to load PR comments for ${repo}#${prNumber}`,
   );
@@ -139,11 +161,13 @@ function main() {
     prNumber,
     ownerLogin: args.ownerLogin,
     marker: args.marker,
+    ghFunction: args.ghFunction,
   });
 
   if (args.deleteExisting) {
     if (existingComment) {
       runGh(
+        args.ghFunction,
         [
           "api",
           "--method",
@@ -168,10 +192,12 @@ function main() {
 
   const responseText = existingComment
     ? runGh(
+        args.ghFunction,
         ["api", "--method", "PATCH", `repos/${repo}/issues/comments/${existingComment.id}`, "-f", `body=${body}`],
         `Unable to update PR comment for ${canonicalPrUrl}`,
       )
     : runGh(
+        args.ghFunction,
         ["api", "--method", "POST", `repos/${repo}/issues/${prNumber}/comments`, "-f", `body=${body}`],
         `Unable to create PR comment for ${canonicalPrUrl}`,
       );

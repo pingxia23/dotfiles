@@ -1,13 +1,13 @@
 ---
 name: code-implement-loop
-description: "Trigger this skill when implementation should start: if Codex/Claude proposes a plan and the user says 'implement this', 'implement the proposed plan', 'implement it', or equivalent; or if the user explicitly invokes `code-implement-loop`. Accepted implementation input sources are: a Codex/Claude-proposed plan, a user-provided `.md` plan/design file, or user-provided inline implementation instructions. In dd scope it runs uncommitted change review rounds, commits with `commit-smart`, runs up to 2 full branch review rounds, commits review fixes, publishes any remaining full-branch findings in a PR comment, then requests Codex review."
+description: "Trigger this skill when implementation should start: if Codex/Claude proposes a plan and the user says 'implement this', 'implement the proposed plan', 'implement it', or equivalent; or if the user explicitly invokes `code-implement-loop`. Accepted implementation input sources are: a Codex/Claude-proposed plan, a user-provided `.md` plan/design file, or user-provided inline implementation instructions. In dd scope it runs uncommitted change review rounds, commits with `commit-smart`, runs up to 2 `full-branch-review --skip-pr-comment` rounds, commits review fixes, then requests Codex review."
 ---
 
 # Code Implement Loop
 
 ## Overview
 
-Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> branch-scoped plan recording -> TODO breakdown -> implementation (uncommitted) -> uncommitted change review/fix loop -> conditional `commit-smart` when `in_dd_scope=true` -> full branch review/fix loop in dd scope -> conditional second `commit-smart` for review fixes -> conditional PR comment for unaddressed full-branch findings -> Codex review request. The first review loop evaluates only the current uncommitted patch. The second review loop evaluates the full local diff, including existing branch commits and any current uncommitted review fixes, against the fetched PR base after reading the committed implementation-plan history for that PR branch.
+Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> branch-scoped plan recording -> TODO breakdown -> implementation (uncommitted) -> uncommitted change review/fix loop -> conditional `commit-smart` when `in_dd_scope=true` -> full-branch review/fix loop through `full-branch-review --skip-pr-comment` -> conditional second `commit-smart` for review fixes -> Codex review request.
 
 ## Hard Rules
 
@@ -29,10 +29,10 @@ These rules apply to **both initial implementation and review-fix rounds**.
 
 ## Shared Review Result Handling
 
-Use this exact handling for both review loops after the loop-specific reviewer script returns. The only loop-specific inputs are:
+Use this exact handling after either review execution returns. Its inputs are:
 
-- `review_result`: the JSON string returned by the reviewer script
-- `review_plan_context`: the plan context for the current loop: `implementation_plan` for Step 5 and the committed plan history file contents read in Step 7c for Step 7
+- `review_result`: the JSON string returned by the current review
+- `review_plan_context`: the implementation-plan context for the current review
 - `current_round`: the current review round number, starting at 1
 - `max_rounds`: 3 for uncommitted change review, 2 for full branch review
 
@@ -54,7 +54,7 @@ Before applying loop control, filter the parsed findings against `review_plan_co
 3. Treat pre-existing issues in unchanged behavior, adjacent cleanup, broader recommendations, and follow-up work outside the plan context as unrelated. Ignore these P2-or-lower comments: do not fix, record, publish, or use them to determine review status.
 4. Do not discard a P0 or P1 finding.
 5. If `status="revise"` becomes empty only because this filter removed findings, normalize the result to `status="approved"` before applying loop control. A reviewer result that originally returned `status="revise"` with no findings remains blocked as described below.
-6. Replace the loop's review result with strict JSON containing the filtered `findings`, normalized `status`, and an `overall_explanation` that describes only the remaining findings and status. In Step 5 this replaces `review_result`; in Step 7 it replaces `full_review_result`. Use only this filtered result afterward.
+6. Replace `review_result` with strict JSON containing the retained `findings`, normalized `status`, and an `overall_explanation` that describes only the remaining findings and status. Use `review_result` afterward.
 
 ### Review/Fix Loop Control
 
@@ -64,8 +64,7 @@ Before applying loop control, filter the parsed findings against `review_plan_co
 - If `status="revise"` has findings and `current_round < max_rounds`, fix those items only, prioritize by `priority` ascending (`0` -> `3`; unknown priority after known priorities), rerun targeted verification, and continue to the next review round.
 - If `status="revise"` has findings and `current_round >= max_rounds`, record the current findings and attempted fixes, stop the current review loop, continue to the next workflow step without blocking, and include the recorded findings and attempts in the final status.
 - Only retained P0-P2 findings are actionable. Sub-P2 comments, unrelated P2 comments, nits, praise, and broad suggestions must be omitted from `findings` and must not force `status="revise"`.
-- Both review loops use the same structured runner and schema after prompt/context assembly. Each run multiple reviewers. Each reviewer returns only `findings` and `overall_explanation`; the runner derives status from the retained findings. The prompts require applicable specialist review lenses, mandatory evidence per finding, and a self-challenge pass before output.
-- Reviewer scripts return their aggregate findings without priority-based filtering. Apply the shared filtering rules above after either reviewer script returns.
+- Apply these rules to every review result before loop control.
 
 ## Workflow
 
@@ -167,7 +166,7 @@ The reviewer script gathers and evaluates the local uncommitted patch set itself
 1. Run the reviewer script:
    ```bash
    review_result="$(
-   node "$HOME/dotfiles/claude-skills/code-implement-loop/scripts/run_dual_patch_review.mjs" \
+   node "$HOME/dotfiles/scripts/code-review/run_dual_patch_review.mjs" \
       --worktree-root "$worktree_root" \
       --implementation-plan "$implementation_plan"
    )"
@@ -211,54 +210,26 @@ Rules:
 - If finalizing the pending plan fails, report blocked status and do not start full branch review because the current plan would be missing from its intent context.
 - Outside dd scope, do not invoke `commit-smart`, do not create or update a PR, and report success once the reviewed patch is complete.
 
-### 7) Run Full Branch Review In DD Scope
+### 7) Run The Full Branch Review/Fix Loop In DD Scope
 
 - Run a bounded loop with at most **2** rounds.
 
-Each round executes Steps 7a-7c below.
+Each round executes steps below.
 
-#### 7a) Full Branch Review Preflight
+#### 7a) Run Full Branch Review
 
-1. Normalize checkout context through the shared helper:
-   - `eval "$("$HOME/dotfiles/scripts/git-context.sh")"`
-   - The helper must provide: `inside_worktree`, `worktree_root`, `worktree_path`, `branch`, `repo`, `in_dd_scope`.
-   - If helper exits non-zero, stop and report blocked status with helper stderr.
-2. `cd "$worktree_root"`.
-3. Load the PR associated with the current branch:
+Invoke `full-branch-review --skip-pr-comment` and capture its structured JSON as `full_review_result`.
 
-```bash
-if ! pr_meta_json="$(gh pr view --repo "$repo" "$branch" --json number,url,baseRefName,headRefName,headRefOid)"; then
-  echo "FAILED: current branch has no associated PR"
-  exit 1
-fi
-```
+Do not hand-edit `full_review_result`.
 
-4. Parse from `pr_meta_json`:
-   - `pr_number`
-   - `pr_url`
-   - `base_ref`
-   - `head_ref`
-   - `head_sha`
+#### 7b) Handle Reviewer Result
+Resolve the committed implementation-plan history for `review_plan_context`:
 
-```bash
-pr_number="$(jq -r '.number' <<<"$pr_meta_json")"
-pr_url="$(jq -r '.url' <<<"$pr_meta_json")"
-base_ref="$(jq -r '.baseRefName' <<<"$pr_meta_json")"
-head_ref="$(jq -r '.headRefName' <<<"$pr_meta_json")"
-head_sha="$(jq -r '.headRefOid' <<<"$pr_meta_json")"
-```
-
-If `pr_url` is empty or `null`, stop and return `BLOCKED: no associated PR for full branch review`.
-
-5. Confirm the current checkout matches the inferred PR:
-   - `branch` from the helper must equal `head_ref`
-   - `git rev-parse HEAD` must equal `head_sha`
-   - if any check fails, stop and report the mismatch
-6. Ask the plan-history helper for the current branch's committed-history path. This avoids depending on retained variables from Step 2:
 
 ```bash
 if ! committed_plan_history_file="$(
-  node "$HOME/dotfiles/claude-skills/code-implement-loop/scripts/implementation_plan_history.mjs" committed-history-path \
+  node "$HOME/dotfiles/claude-skills/code-implement-loop/scripts/implementation_plan_history.mjs" \
+    committed-history-path \
     --worktree-root "$worktree_root" \
     --branch "$branch"
 )"; then
@@ -267,28 +238,7 @@ if ! committed_plan_history_file="$(
 fi
 ```
 
-7. Keep `committed_plan_history_file` unchanged throughout the full branch review loop. Pass its path only to the full branch reviewer and read the same file for post-review P2 filtering. The reviewer runner validates that the path identifies a non-empty regular file. The Python quality reviewer must receive neither the path nor its contents.
-8. Do not require the worktree to be clean. Round 1 normally reviews the pushed PR branch with a clean worktree; later rounds must include uncommitted review fixes.
-
-#### 7b) Run Reviewer Script
-
-1. Run the shared structured full branch reviewer:
-
-```bash
-full_review_result="$(
-  node "$HOME/dotfiles/claude-skills/code-implement-loop/scripts/run_dual_pr_branch_review.mjs" \
-    --worktree-root "$worktree_root" \
-    --repo "$repo" \
-    --branch "$branch" \
-    --implementation-plan-history-file "$committed_plan_history_file"
-)"
-```
-
-2. Do not hand-edit `full_review_result`.
-
-#### 7c) Handle Reviewer Result
-
-Read the exact committed history file immediately before filtering:
+Read the committed history:
 
 ```bash
 if ! implementation_plan_history="$(<"$committed_plan_history_file")"; then
@@ -306,11 +256,9 @@ Apply **Shared Review Result Handling** with:
 
 Rules:
 
-- The committed history is append-only, so its document order is chronological. The runner passes only the file path to the correctness prompts; each correctness reviewer must open and read that file before reviewing the PR.
-- The reviewer fetches `origin/$base_ref`, validates the current branch equals the PR head branch, validates local `HEAD` equals the remote PR head, computes the merge base, and asks all reviewer passes to inspect `git diff <review_base>` plus untracked non-ignored files.
-- Only the correctness reviewers receive `committed_plan_history_file`. The Python quality reviewer receives neither the file path nor its contents.
-- The reviewer does not require a clean worktree, so later rounds include uncommitted review fixes.
-- After assembling branch context and prompts, the reviewer uses the same `scripts/review-output.schema.json` schema, runner, parsing, and aggregation logic as the uncommitted change review loop. Reviewer output must not be freeform prose.
+- When findings are fixed and another round is available, invoke `full-branch-review --skip-pr-comment` again.
+- Do not post a full-branch review comment from this loop.
+- Do not require a clean worktree. Later rounds may include uncommitted review fixes.
 
 ### 8) Commit Full Branch Review Fixes
 
@@ -325,78 +273,25 @@ Rules:
 - Do not end the workflow as success until this second `commit-smart` has completed when review fixes exist.
 - If the second `commit-smart` fails, report blocked status with the failure reason and attempted remediation.
 
-### 9) Publish Unaddressed Full Branch Review As A PR Comment
-
-After Step 8 completes or is skipped, inspect the last filtered `full_review_result` from Step 7. If its final status is `revise` and findings remain, render those findings and upsert a marked PR comment:
-
-```bash
-review_comment_result=""
-full_review_status="$(jq -r '.status' <<<"$full_review_result")"
-review_marker='<!-- ping-xia-full-branch-review:v1 -->'
-review_owner_login="$(gh api user --jq '.login')"
-if [[ "$full_review_status" == "revise" ]] && \
-   [[ "$(jq '.findings | length' <<<"$full_review_result")" -gt 0 ]]; then
-  review_comment_body="$(
-    jq -r \
-      --arg marker "$review_marker" \
-      --arg worktree_root "$worktree_root" \
-      '
-        [
-          $marker,
-          "",
-          "## Unaddressed Full Branch Review",
-          "",
-          "The final full-branch review still has findings after the bounded fix loop.",
-          "",
-          .overall_explanation,
-          "",
-          ([
-            .findings[] |
-            "### \(.reviewer) — \(.title)\n\n\(.body)\n\n**Evidence:** \(.evidence)\n\n**Location:** `\(.code_location.absolute_file_path | ltrimstr($worktree_root + "/")):\(.code_location.line_range.start)-\(.code_location.line_range.end)`"
-          ] | join("\n\n"))
-        ] | join("\n")
-      ' <<<"$full_review_result"
-  )"
-  review_comment_result="$(
-    node "$HOME/dotfiles/scripts/upsert_pr_comment.mjs" \
-      --pr-url "$pr_url" \
-      --marker "$review_marker" \
-      --body "$review_comment_body" \
-      --owner-login "$review_owner_login"
-  )"
-elif [[ "$full_review_status" == "approved" ]]; then
-  review_comment_result="$(
-    node "$HOME/dotfiles/scripts/upsert_pr_comment.mjs" \
-      --pr-url "$pr_url" \
-      --marker "$review_marker" \
-      --owner-login "$review_owner_login" \
-      --delete-existing
-  )"
-fi
-```
-
-Rules:
-
-- Treat findings as unaddressed only when the last full branch review round returned `status=="revise"` with findings after the bounded fix loop ended. Do not publish an intermediate round.
-- Do not run another reviewer in this step. Publish the existing filtered `full_review_result` without hand-editing it.
-- When unaddressed findings remain, use `scripts/upsert_pr_comment.mjs` to create or update the comment owned by `<!-- ping-xia-full-branch-review:v1 -->`.
-- When the last full branch review returned `status=="approved"`, delete an existing marked comment and do not create a new one.
-- Wait for the helper command to finish when it runs.
-- Do not block on any result from this step, including helper failures or invalid JSON.
-- Do not apply **Shared Review Result Handling** to this step.
-- Do not use this helper output for workflow control.
-
-### 10) Request Codex review
+### 9) Request Codex review
 
 Post `@codex review` as a top-level PR comment:
 
 ```bash
-gh pr comment --repo "$repo" "$pr_url" --body "@codex review"
+repo_owner="${repo%%/*}"
+if [[ "$repo_owner" == "ddoghq" ]]; then
+  gh_function="gh-ddog"
+else
+  gh_function="gh-personal"
+fi
+zsh -ic 'source "$HOME/dotfiles/zshrc"; "$@"' \
+  code-review-gh "$gh_function" pr comment --repo "$repo" "$pr_url" \
+    --body "@codex review"
 ```
 
-If the comment fails to post, carry the failure into the final status but continue to Step 11.
+If the comment fails to post, carry the failure into the final status but continue to Step 10.
 
-### 11) Return final status
+### 10) Return final status
 
 Success format:
 
@@ -404,7 +299,7 @@ Success format:
 - Outside dd scope: `SUCCESS: Implementation complete, uncommitted change review completed | PR: none`
 - If the uncommitted change review continued after 3 rounds without approval, append: `| Uncommitted change findings: {summary} | Attempts: {summary}`
 - If the full branch review continued after 2 rounds without approval, append: `| Full branch findings: {summary} | Attempts: {summary}`
-- If the Codex review comment failed to post in Step 10, append: `| Warning: failed to request Codex review: {exact error summary}`
+- If the Codex review comment failed to post in Step 9, append: `| Warning: failed to request Codex review: {exact error summary}`
 
 Blocked format:
 

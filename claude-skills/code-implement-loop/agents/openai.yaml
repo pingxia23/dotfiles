@@ -1,4 +1,4 @@
 interface:
   display_name: "Code Implement Loop"
-  short_description: "Implement, review, publish, and request review"
-  default_prompt: "Use $code-implement-loop to implement the provided plan, run both review loops, publish any remaining branch findings, and request Codex review."
+  short_description: "Implement, review, commit, and request review"
+  default_prompt: "Use $code-implement-loop to implement the provided plan, run its review/fix loops, commit the changes, and request Codex review."

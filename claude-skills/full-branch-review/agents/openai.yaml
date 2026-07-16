@@ -1,0 +1,4 @@
+interface:
+  display_name: "Full Branch Review"
+  short_description: "Review a PR branch and publish the result"
+  default_prompt: "Use $full-branch-review to preflight and review the current PR branch, then publish and return the raw structured result."
