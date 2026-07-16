@@ -7,7 +7,7 @@ description: "Trigger this skill when implementation should start: if Codex/Clau
 
 ## Overview
 
-Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> TODO breakdown -> implementation (uncommitted) -> uncommitted change review/fix loop -> conditional `commit-smart` when `in_dd_scope=true` -> full branch review/fix loop in dd scope -> conditional second `commit-smart` for review fixes -> conditional PR comment for unaddressed full-branch findings -> Codex review request. The first review loop evaluates only the current uncommitted patch. The second review loop evaluates the full local diff, including existing branch commits and any current uncommitted review fixes, against the fetched PR base.
+Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> branch-scoped plan recording -> TODO breakdown -> implementation (uncommitted) -> uncommitted change review/fix loop -> conditional `commit-smart` when `in_dd_scope=true` -> full branch review/fix loop in dd scope -> conditional second `commit-smart` for review fixes -> conditional PR comment for unaddressed full-branch findings -> Codex review request. The first review loop evaluates only the current uncommitted patch. The second review loop evaluates the full local diff, including existing branch commits and any current uncommitted review fixes, against the fetched PR base after reading the committed implementation-plan history for that PR branch.
 
 ## Hard Rules
 
@@ -32,7 +32,7 @@ These rules apply to **both initial implementation and review-fix rounds**.
 Use this exact handling for both review loops after the loop-specific reviewer script returns. The only loop-specific inputs are:
 
 - `review_result`: the JSON string returned by the reviewer script
-- `implementation_plan`: the implementation plan resolved in Step 2
+- `review_plan_context`: the plan context for the current loop: `implementation_plan` for Step 5 and the committed plan history file contents read in Step 7c for Step 7
 - `current_round`: the current review round number, starting at 1
 - `max_rounds`: 3 for uncommitted change review, 2 for full branch review
 
@@ -47,11 +47,11 @@ Use this exact handling for both review loops after the loop-specific reviewer s
 
 ### Filter Reviewer Findings
 
-Before applying loop control, filter the parsed findings against `implementation_plan`:
+Before applying loop control, filter the parsed findings against `review_plan_context`:
 
 1. Discard every finding below P2. These findings are never actionable.
-2. For each P2 finding, regardless of reviewer, retain it only when its evidence shows that it is directly related to the implementation plan. A P2 finding is directly related when it identifies a defect introduced or modified by the planned implementation, missing behavior or verification explicitly required by the plan, a regression directly caused by the planned change, or a concrete and meaningful quality problem introduced or modified by the planned implementation. Quality problems may include naming, typing, imports, dependencies, module structure, data flow, error handling, test structure, fixtures, or mocks; they do not need to be runtime defects.
-3. Treat pre-existing issues in unchanged behavior, adjacent cleanup, broader recommendations, and follow-up work outside the implementation plan as unrelated. Ignore these P2-or-lower comments: do not fix, record, publish, or use them to determine review status.
+2. For each P2 finding, regardless of reviewer, retain it only when its evidence shows that it is directly related to the plan context. A P2 finding is directly related when it identifies a defect introduced or modified by a planned implementation, missing behavior or verification explicitly required by a plan, a regression directly caused by a planned change, or a concrete and meaningful quality problem introduced or modified by a planned implementation. Quality problems may include naming, typing, imports, dependencies, module structure, data flow, error handling, test structure, fixtures, or mocks; they do not need to be runtime defects.
+3. Treat pre-existing issues in unchanged behavior, adjacent cleanup, broader recommendations, and follow-up work outside the plan context as unrelated. Ignore these P2-or-lower comments: do not fix, record, publish, or use them to determine review status.
 4. Do not discard a P0 or P1 finding.
 5. If `status="revise"` becomes empty only because this filter removed findings, normalize the result to `status="approved"` before applying loop control. A reviewer result that originally returned `status="revise"` with no findings remains blocked as described below.
 6. Replace the loop's review result with strict JSON containing the filtered `findings`, normalized `status`, and an `overall_explanation` that describes only the remaining findings and status. In Step 5 this replaces `review_result`; in Step 7 it replaces `full_review_result`. Use only this filtered result afterward.
@@ -91,6 +91,20 @@ Resolution order:
 - If the argument is a path ending in `.md`, set `implementation_plan` to the contents of that file.
 - Otherwise, set `implementation_plan` to the inline instruction text exactly as provided to the skill.
 - Do not run explore-intent in this skill.
+
+After resolving `implementation_plan`, persist it before creating TODOs:
+
+```bash
+if ! node "$HOME/dotfiles/claude-skills/code-implement-loop/scripts/implementation_plan_history.mjs" record \
+  --worktree-root "$worktree_root" \
+  --branch "$branch" \
+  --implementation-plan "$implementation_plan" >/dev/null; then
+  echo "BLOCKED: failed to record implementation plan"
+  exit 1
+fi
+```
+
+The helper stores two Markdown files under `<git-common-dir>/code-implement-loop/plans/<URL-encoded-branch>/`: an append-only `committed_plan_history.md` and an atomically replaced `pending_implementation_plan.md`. Starting a new implementation replaces any existing pending plan. Both files remain outside the working tree and must not be added to the implementation diff. If the helper fails, stop and report blocked status.
 
 ### 3) Create decision-complete TODOs
 
@@ -165,7 +179,7 @@ The reviewer script gathers and evaluates the local uncommitted patch set itself
 Apply **Shared Review Result Handling** with:
 
 - `review_result="$review_result"`
-- `implementation_plan="$implementation_plan"`
+- `review_plan_context="$implementation_plan"`
 - `current_round`: the current uncommitted change review round number
 - `max_rounds=3`
 
@@ -176,11 +190,25 @@ After the uncommitted change review loop returns approval, or reaches 3 rounds w
 - If `in_dd_scope=false`, stop after reporting success and leave the reviewed changes uncommitted in the worktree.
 - Otherwise, immediately invoke `commit-smart` to commit and push changes.
 
+After `commit-smart` succeeds, or after the user confirms that they committed the implementation manually, finalize the pending plan against the resulting commit:
+
+```bash
+if ! node "$HOME/dotfiles/claude-skills/code-implement-loop/scripts/implementation_plan_history.mjs" finalize \
+  --worktree-root "$worktree_root" \
+  --branch "$branch"; then
+  echo "BLOCKED: failed to finalize committed implementation plan"
+  exit 1
+fi
+```
+
+The helper resolves the current branch's pending and committed-history files, reads the local `HEAD`, appends the pending plan to the committed history, and removes the pending file. The skill must not reproduce those steps.
+
 Rules:
 
 - Do not ask the user for additional confirmation before running `commit-smart` when `in_dd_scope=true`.
 - Do not proceed to the next step until `commit-smart` has completed when `in_dd_scope=true`.
-- If `commit-smart` fails in dd scope, report blocked status with the failure reason and attempted remediation.
+- If `commit-smart` fails in dd scope and no manual commit was completed, report blocked status with the failure reason and attempted remediation. Preserve the pending plan for recovery.
+- If finalizing the pending plan fails, report blocked status and do not start full branch review because the current plan would be missing from its intent context.
 - Outside dd scope, do not invoke `commit-smart`, do not create or update a PR, and report success once the reviewed patch is complete.
 
 ### 7) Run Full Branch Review In DD Scope
@@ -226,7 +254,21 @@ If `pr_url` is empty or `null`, stop and return `BLOCKED: no associated PR for f
    - `branch` from the helper must equal `head_ref`
    - `git rev-parse HEAD` must equal `head_sha`
    - if any check fails, stop and report the mismatch
-6. Do not require the worktree to be clean. Round 1 normally reviews the pushed PR branch with a clean worktree; later rounds must include uncommitted review fixes.
+6. Ask the plan-history helper for the current branch's committed-history path. This avoids depending on retained variables from Step 2:
+
+```bash
+if ! committed_plan_history_file="$(
+  node "$HOME/dotfiles/claude-skills/code-implement-loop/scripts/implementation_plan_history.mjs" committed-history-path \
+    --worktree-root "$worktree_root" \
+    --branch "$branch"
+)"; then
+  echo "BLOCKED: failed to resolve committed implementation plan history"
+  exit 1
+fi
+```
+
+7. Keep `committed_plan_history_file` unchanged throughout the full branch review loop. Pass its path only to the full branch reviewer and read the same file for post-review P2 filtering. The reviewer runner validates that the path identifies a non-empty regular file. The Python quality reviewer must receive neither the path nor its contents.
+8. Do not require the worktree to be clean. Round 1 normally reviews the pushed PR branch with a clean worktree; later rounds must include uncommitted review fixes.
 
 #### 7b) Run Reviewer Script
 
@@ -237,7 +279,8 @@ full_review_result="$(
   node "$HOME/dotfiles/claude-skills/code-implement-loop/scripts/run_dual_pr_branch_review.mjs" \
     --worktree-root "$worktree_root" \
     --repo "$repo" \
-    --branch "$branch"
+    --branch "$branch" \
+    --implementation-plan-history-file "$committed_plan_history_file"
 )"
 ```
 
@@ -245,18 +288,29 @@ full_review_result="$(
 
 #### 7c) Handle Reviewer Result
 
+Read the exact committed history file immediately before filtering:
+
+```bash
+if ! implementation_plan_history="$(<"$committed_plan_history_file")"; then
+  echo "BLOCKED: failed to read committed implementation plan history"
+  exit 1
+fi
+```
+
 Apply **Shared Review Result Handling** with:
 
 - `review_result="$full_review_result"`
-- `implementation_plan="$implementation_plan"`
+- `review_plan_context="$implementation_plan_history"`
 - `current_round`: the current full branch review round number
 - `max_rounds=2`
 
 Rules:
 
-- The helper fetches `origin/$base_ref`, validates the current branch equals the PR head branch, validates local `HEAD` equals the remote PR head, computes `git merge-base HEAD origin/$base_ref`, and asks all reviewer passes to inspect `git diff <review_base>` plus untracked non-ignored files.
-- The helper does not require a clean worktree, so later rounds include uncommitted review fixes.
-- After assembling branch context and prompt, the helper uses the same `scripts/review-output.schema.json` schema, runner, parsing, and aggregation logic as the uncommitted change review loop. Reviewer output must not be freeform prose.
+- The committed history is append-only, so its document order is chronological. The runner passes only the file path to the correctness prompts; each correctness reviewer must open and read that file before reviewing the PR.
+- The reviewer fetches `origin/$base_ref`, validates the current branch equals the PR head branch, validates local `HEAD` equals the remote PR head, computes the merge base, and asks all reviewer passes to inspect `git diff <review_base>` plus untracked non-ignored files.
+- Only the correctness reviewers receive `committed_plan_history_file`. The Python quality reviewer receives neither the file path nor its contents.
+- The reviewer does not require a clean worktree, so later rounds include uncommitted review fixes.
+- After assembling branch context and prompts, the reviewer uses the same `scripts/review-output.schema.json` schema, runner, parsing, and aggregation logic as the uncommitted change review loop. Reviewer output must not be freeform prose.
 
 ### 8) Commit Full Branch Review Fixes
 

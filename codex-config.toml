@@ -107,7 +107,7 @@ source_type = "local"
 source = "/Users/ping.xia/.codex/.tmp/bundled-marketplaces/openai-bundled"
 
 [marketplaces.openai-primary-runtime]
-last_updated = "2026-07-10T14:48:37Z"
+last_updated = "2026-07-16T07:48:39Z"
 source_type = "local"
 source = "/Users/ping.xia/.cache/codex-runtimes/codex-primary-runtime/plugins/openai-primary-runtime"
 
@@ -151,6 +151,8 @@ use_memories = true
 [desktop]
 followUpQueueMode = "queue"
 dock-icon-preference = "codex-system"
+codeFontSize = 14
+sansFontSize = 16
 
 [hooks.state]
 

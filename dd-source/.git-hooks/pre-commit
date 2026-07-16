@@ -423,6 +423,7 @@ warn "🔍 Running tests in domains/assistant..."
 assistant_changed_files=$(get_assistant_changed_coding_files)
 if [[ -n "$assistant_changed_files" ]]; then
     assistant_test_targets="//domains/assistant/...:all"
+    assistant_test_timeout=600
 
     info "  🏗️ Running: bzl build --config=ty //domains/assistant/..."
     if run_bzl_locked build --config=ty //domains/assistant/...; then
@@ -433,12 +434,15 @@ if [[ -n "$assistant_changed_files" ]]; then
         exit 1
     fi
 
-    info "  🧪 Running: bzl test --build_tests_only $assistant_test_targets"
-    if run_bzl_locked test --build_tests_only $assistant_test_targets; then
+    info "  🧪 Running Assistant tests with ${assistant_test_timeout}s timeout"
+    if run_bzl_locked test \
+        --build_tests_only \
+        --test_timeout="$assistant_test_timeout" \
+        "$assistant_test_targets"; then
         success "  ✅ domains/assistant tests passed"
     else
         error "  ❌ domains/assistant tests failed!"
-        error "  Run: bzl test --build_tests_only $assistant_test_targets"
+        error "  Run: bzl test --build_tests_only --test_timeout=$assistant_test_timeout $assistant_test_targets"
         exit 1
     fi
 else
