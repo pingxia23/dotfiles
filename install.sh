@@ -409,7 +409,7 @@ install_gh() {
 # Get absolute path to dotfiles directory
 DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Add cross-shell commands maintained in this repository to PATH.
+# Add dotfiles commands to non-interactive zsh's PATH.
 "$DOTFILES_DIR/scripts/install-dotfiles-bin.sh" "$DOTFILES_DIR"
 
 # Install oh-my-zsh if not already installed

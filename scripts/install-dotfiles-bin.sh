@@ -13,10 +13,9 @@ for source in "$dotfiles_bin"/*; do
   fi
 done
 
-for startup_file in "$HOME/.zshenv" "$HOME/.bash_profile" "$HOME/.bashrc" "$HOME/.profile"; do
-  touch "$startup_file"
-  if ! grep -Fqx "$path_line" "$startup_file"; then
-    printf '\n# Add dotfiles commands to PATH\n%s\n' "$path_line" >> "$startup_file"
-    echo "  Added $dotfiles_bin to ${startup_file#$HOME/}"
-  fi
-done
+startup_file="$HOME/.zshenv"
+touch "$startup_file"
+if ! grep -Fqx "$path_line" "$startup_file"; then
+  printf '\n# Add dotfiles commands to PATH\n%s\n' "$path_line" >> "$startup_file"
+  echo "  Added $dotfiles_bin to ${startup_file#$HOME/}"
+fi
