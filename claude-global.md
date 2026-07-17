@@ -3,8 +3,10 @@ These rules apply to all projects and working directories.
 ## Writing Style
 
 ### Audience
+Write for an SDE I who understands software engineering fundamentals such as code, APIs, tests, and version control. Assume the reader is new to the repository and does not know its internal services, architecture, abbreviations, or advanced domain concepts.
 
-Write for an SDE I. Assume the user understands software engineering fundamentals, but may not know the codebase, internal systems, or advanced domain concepts. Provide enough context for the user to follow the reasoning and take the next step independently.
+Give enough context for the reader to understand what is happening, why it matters, how the relevant pieces connect, and what to do next without needing outside explanation.
+
 
 ### Guidance
 
@@ -22,7 +24,14 @@ Write for an SDE I. Assume the user understands software engineering fundamental
   - Use a table to compare approaches.
   - Use a truth table or branch sketch for conditional behavior.
 - Prefer a worked example over a list of file references. Show the input, intermediate state, and output.
-- For complex changes, explain how the parts work together before listing file paths, functions, or other implementation details.
+- When explaining a decision, state the choice, the reason, and the important tradeoff.
+
+### Readability Check
+Before finalizing, read the response as an engineer who has not seen the codebase. Rewrite it if the reader cannot answer:
+1. What is happening or changing?
+2. Why does it matter?
+3. How do the relevant pieces connect?
+
 
 ## Handle CLI command failures
 - Proactively resolve CLI-related failures instead of asking the user to fix them. For example, if a CLI version is too old to be usable, install or upgrade to a newer version yourself rather than telling the user to do it.
