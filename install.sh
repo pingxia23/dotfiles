@@ -410,7 +410,11 @@ install_gh() {
 DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Add dotfiles commands to non-interactive zsh's PATH.
-"$DOTFILES_DIR/scripts/install-dotfiles-bin.sh" "$DOTFILES_DIR"
+ZSHENV_PATH_LINE='export PATH="$HOME/dotfiles/bin:$PATH"'
+if ! grep -Fqx "$ZSHENV_PATH_LINE" "$HOME/.zshenv" 2>/dev/null; then
+  printf '\n%s\n' "$ZSHENV_PATH_LINE" >> "$HOME/.zshenv"
+  echo "  Added ~/dotfiles/bin to .zshenv"
+fi
 
 # Install oh-my-zsh if not already installed
 if [ ! -d "$HOME/.oh-my-zsh" ]; then
