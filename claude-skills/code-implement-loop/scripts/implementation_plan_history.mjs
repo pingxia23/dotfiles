@@ -92,6 +92,18 @@ export function resolveImplementationPlanPaths({ worktreeRoot, branch }) {
   };
 }
 
+export function deleteImplementationPlan({ worktreeRoot, branch }) {
+  const implementationPlanDir = resolveImplementationPlanDir({
+    worktreeRoot,
+    branch,
+  });
+  fs.rmSync(implementationPlanDir, { recursive: true, force: true });
+  return {
+    status: "deleted",
+    implementation_plan_dir: implementationPlanDir,
+  };
+}
+
 export function recordImplementationPlan({
   worktreeRoot,
   branch,
@@ -221,6 +233,16 @@ function main() {
   if (command === "finalize") {
     requireOptions(options, ["worktree-root", "branch"]);
     const result = finalizeImplementationPlan({
+      worktreeRoot: options["worktree-root"],
+      branch: options.branch,
+    });
+    process.stdout.write(`${JSON.stringify(result)}\n`);
+    return;
+  }
+
+  if (command === "delete") {
+    requireOptions(options, ["worktree-root", "branch"]);
+    const result = deleteImplementationPlan({
       worktreeRoot: options["worktree-root"],
       branch: options.branch,
     });

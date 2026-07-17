@@ -211,6 +211,11 @@ delete-worktree() {
         echo "Local branch '$branch' was not deleted"
       fi
     fi
+    if ! node "$HOME/dotfiles/claude-skills/code-implement-loop/scripts/implementation_plan_history.mjs" delete \
+      --worktree-root "$DD_SOURCE_ROOT" \
+      --branch "$branch" >/dev/null; then
+      echo "Implementation plan metadata for '$branch' was not deleted"
+    fi
   fi
 
   # Delete Bazel output bases that belong to this worktree.
