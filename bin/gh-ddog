@@ -1,0 +1,4 @@
+#!/bin/sh
+
+token="$(gh auth token --hostname github.com --user ping-xia_ddog)" || exit $?
+GH_TOKEN="$token" exec gh "$@"

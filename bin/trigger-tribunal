@@ -1,0 +1,20 @@
+#!/bin/sh
+
+experiment="${1:?Usage: trigger-tribunal <experiment-name>}"
+cronjob="assistant-evaluation-tribunal-${experiment}"
+job_name="tribunal-${experiment}-$(date +%s | tail -c 5)"
+context="general2.us1.prod.dog"
+namespace="rapid-assistant"
+
+echo "Creating job ${job_name} from cronjob ${cronjob}..."
+
+kubectl --context "${context}" -n "${namespace}" create job \
+  --from="cronjob/${cronjob}" "${job_name}" \
+  --dry-run=client -o yaml | \
+yq eval ".spec.template.metadata.annotations[\"ad.datadoghq.com/tags\"] = \"{\\\"kube_cronjob\\\":\\\"${cronjob}\\\"}\"" - | \
+kubectl --context "${context}" -n "${namespace}" apply -f -
+
+echo "Job ${job_name} created."
+echo ""
+echo "Datadog logs:"
+echo "  https://app.datadoghq.com/logs?query=kube_namespace%3A${namespace}%20kube_cronjob%3A${cronjob}"

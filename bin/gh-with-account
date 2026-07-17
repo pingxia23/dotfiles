@@ -1,0 +1,12 @@
+#!/bin/sh
+
+if [ "$#" -lt 1 ]; then
+  echo "Usage: gh-with-account <github-user> [gh-arguments...]" >&2
+  exit 2
+fi
+
+github_user="$1"
+shift
+
+token="$(gh auth token --hostname github.com --user "$github_user")" || exit $?
+GH_TOKEN="$token" exec gh "$@"

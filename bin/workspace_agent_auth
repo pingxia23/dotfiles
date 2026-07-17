@@ -1,0 +1,15 @@
+#!/bin/sh
+
+script_dir="$(CDPATH= cd "$(dirname "$0")" && pwd)" || exit $?
+
+ddtool auth login --datacenter us1.ddbuild.io
+
+if ! "$script_dir/workspace_gh_auth_valid" pingxia23; then
+  echo "GitHub auth missing for DataDog; choose account: pingxia23" >&2
+  ddtool auth github token --org DataDog | gh auth login --with-token || exit $?
+fi
+
+if ! "$script_dir/workspace_gh_auth_valid" ping-xia_ddog; then
+  echo "GitHub auth missing for ddoghq; choose account: ping-xia_ddog" >&2
+  ddtool auth github token --org ddoghq | gh auth login --with-token
+fi

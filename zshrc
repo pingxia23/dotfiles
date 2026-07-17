@@ -54,41 +54,8 @@ export NVM_DIR="$HOME/.nvm"
 # uv (Python package manager) - adds ~/.local/bin to PATH
 export PATH="$HOME/.local/bin:$PATH"
 
-workspace_gh_auth_valid() {
-  local github_user="$1"
-  [[ "$(gh auth status --hostname github.com --json hosts --jq ".hosts[\"github.com\"][] | select(.login == \"$github_user\" and .state == \"success\") | .login" 2>/dev/null)" == "$github_user" ]]
-}
-
-gh-with-account() {
-  local github_user="$1"
-  local token
-  shift
-
-  token="$(gh auth token --hostname github.com --user "$github_user")" || return
-  GH_TOKEN="$token" gh "$@"
-}
-
-gh-ddog() {
-  gh-with-account ping-xia_ddog "$@"
-}
-
-gh-personal() {
-  gh-with-account pingxia23 "$@"
-}
-
-workspace_agent_auth() {
-  ddtool auth login --datacenter us1.ddbuild.io
-
-  if ! workspace_gh_auth_valid pingxia23; then
-    echo "GitHub auth missing for DataDog; choose account: pingxia23" >&2
-    ddtool auth github token --org DataDog | gh auth login --with-token || return
-  fi
-
-  if ! workspace_gh_auth_valid ping-xia_ddog; then
-    echo "GitHub auth missing for ddoghq; choose account: ping-xia_ddog" >&2
-    ddtool auth github token --org ddoghq | gh auth login --with-token
-  fi
-}
+# Cross-shell commands maintained in this repository
+export PATH="$HOME/dotfiles/bin:$PATH"
 
 alias claude_high="workspace_agent_auth && claude --model 'opus[1m]' --effort xhigh --allow-dangerously-skip-permissions"
 alias claude_max="workspace_agent_auth && claude --model 'opus[1m]' --effort max --allow-dangerously-skip-permissions"
@@ -98,28 +65,6 @@ alias codex_high="workspace_agent_auth && codex --model gpt-5.6-sol -c 'model_re
 alias codex_max="workspace_agent_auth && codex --model gpt-5.6-sol -c 'model_reasoning_effort=\"max\"' --dangerously-bypass-approvals-and-sandbox"
 
 export MCP_OAUTH_CALLBACK_PORT=41111
-
-# Trigger tribunal cron jobs with correct kube_cronjob tag
-trigger-tribunal() {
-  local experiment="${1:?Usage: trigger-tribunal <experiment-name>}"
-  local cronjob="assistant-evaluation-tribunal-${experiment}"
-  local job_name="tribunal-${experiment}-$(date +%s | tail -c 5)"  # Short name to fit 63 char limit
-  local context="general2.us1.prod.dog"
-  local namespace="rapid-assistant"
-
-  echo "Creating job ${job_name} from cronjob ${cronjob}..."
-
-  kubectl --context "${context}" -n "${namespace}" create job \
-    --from="cronjob/${cronjob}" "${job_name}" \
-    --dry-run=client -o yaml | \
-  yq eval ".spec.template.metadata.annotations[\"ad.datadoghq.com/tags\"] = \"{\\\"kube_cronjob\\\":\\\"${cronjob}\\\"}\"" - | \
-  kubectl --context "${context}" -n "${namespace}" apply -f -
-
-  echo "Job ${job_name} created."
-  echo ""
-  echo "Datadog logs:"
-  echo "  https://app.datadoghq.com/logs?query=kube_namespace%3A${namespace}%20kube_cronjob%3A${cronjob}"
-}
 
 eval "$(codex completion zsh)"
 

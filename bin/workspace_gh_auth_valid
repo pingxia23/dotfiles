@@ -1,0 +1,9 @@
+#!/bin/sh
+
+if [ "$#" -ne 1 ]; then
+  echo "Usage: workspace_gh_auth_valid <github-user>" >&2
+  exit 2
+fi
+
+github_user="$1"
+[ "$(gh auth status --hostname github.com --json hosts --jq ".hosts[\"github.com\"][] | select(.login == \"$github_user\" and .state == \"success\") | .login" 2>/dev/null)" = "$github_user" ]
