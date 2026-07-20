@@ -36,13 +36,13 @@ NODE_REPL_NODE_MODULE_DIRS = "/Users/ping.xia/Applications/ChatGPT.app/Contents/
 NODE_REPL_NODE_PATH = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node"
 NODE_REPL_TRUSTED_CODE_PATHS = "/Users/ping.xia/.codex"
 CODEX_HOME = "/Users/ping.xia/.codex"
-NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S = "6d25aa7656feac858f3a3bdaea5bcbab0dbfd426c9de8e6931ce90c399ee8e4f,7abc8b22abade944bcd80135500416c7aee60c0e94290c7d644b54428a0013ab"
+NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S = "583bf903a6cfb9b00a01e1583381ce921c71d7585085c6fa6b805baa0f60230b,6d25aa7656feac858f3a3bdaea5bcbab0dbfd426c9de8e6931ce90c399ee8e4f"
 BROWSER_USE_AVAILABLE_BACKENDS = "chrome,iab"
 NODE_REPL_INSTRUCTIONS_USE_CASE_BROWSER = "Control the in-app browser in conjunction with the Browser Plugin."
 NODE_REPL_INSTRUCTIONS_USE_CASE_CHROME = "Control the Chrome browser in conjunction with the Chrome Plugin. Prefer this method of controlling Chrome over alternatives (such as Computer Use) unless the user explicitly mentions an alternative."
 NODE_REPL_INSTRUCTIONS_USE_CASE_COMPUTER_USE = "Control desktop apps on macOS through Computer Use."
 BROWSER_USE_CODEX_APP_BUILD_FLAVOR = "prod"
-BROWSER_USE_CODEX_APP_VERSION = "26.707.91948"
+BROWSER_USE_CODEX_APP_VERSION = "26.715.52143"
 CODEX_CLI_PATH = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/codex"
 
 [mcp_servers.computer-use]
@@ -102,7 +102,7 @@ trust_level = "trusted"
 trust_level = "trusted"
 
 [marketplaces.openai-bundled]
-last_updated = "2026-07-16T18:22:36Z"
+last_updated = "2026-07-20T14:49:11Z"
 source_type = "local"
 source = "/Users/ping.xia/.codex/.tmp/bundled-marketplaces/openai-bundled"
 
@@ -182,3 +182,8 @@ trusted_hash = "sha256:5fcff6cbca89be762be16f81b898baeff0ad79746f20190bbbc6408b1
 
 [apps.connector_20205bf7d4e99a89d7154bb849718324]
 enabled = false
+
+[shell_environment_policy.set]
+BROWSER_USE_AVAILABLE_BACKENDS = "chrome,iab"
+NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S = "583bf903a6cfb9b00a01e1583381ce921c71d7585085c6fa6b805baa0f60230b,6d25aa7656feac858f3a3bdaea5bcbab0dbfd426c9de8e6931ce90c399ee8e4f"
+NODE_REPL_TRUSTED_CODE_PATHS = "/Users/ping.xia/.codex"

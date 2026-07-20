@@ -119,7 +119,9 @@ If `provided_comment_text` was not supplied:
    - `last_comment_body`
    - `comments[]`
 
-If `comments_to_address` is empty, stop and return:
+If a comment is for the reviewer, for example `For reviewer: The changes in this doc are refactoring`, ignore it.
+
+After filtering, if `comments_to_address` is empty, stop and return:
 
 - `NOOP: no comments to address`
 
