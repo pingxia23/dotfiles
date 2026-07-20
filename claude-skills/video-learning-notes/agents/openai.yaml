@@ -1,0 +1,4 @@
+interface:
+  display_name: "Video Learning Notes"
+  short_description: "Turn technical videos into structured study notes"
+  default_prompt: "Use $video-learning-notes to turn this technical video into a progressive study guide."
