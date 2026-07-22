@@ -1,13 +1,13 @@
 ---
 name: code-implement-loop
-description: "Trigger this skill when implementation should start: if Codex/Claude proposes a plan and the user says 'implement this', 'implement the proposed plan', 'implement it', or equivalent; or if the user explicitly invokes `code-implement-loop`. Accepted implementation input sources are: a Codex/Claude-proposed plan, a user-provided `.md` plan/design file, or user-provided inline implementation instructions. In dd scope it runs uncommitted change review rounds, commits with `commit-smart`, runs up to 2 `full-branch-review --skip-pr-comment` rounds, commits review fixes, then requests Codex review."
+description: "Trigger this skill when implementation should start: if Codex/Claude proposes a plan and the user says 'implement this', 'implement the proposed plan', 'implement it', or equivalent; or if the user explicitly invokes `code-implement-loop`. Accepted implementation input sources are: a Codex/Claude-proposed plan, a user-provided `.md` plan/design file, or user-provided inline implementation instructions. In dd scope it runs uncommitted change review rounds, commits with `commit-smart`, requests Codex review, then delegates full-branch review to `full-branch-review`."
 ---
 
 # Code Implement Loop
 
 ## Overview
 
-Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> branch-scoped plan recording -> TODO breakdown -> implementation (uncommitted) -> uncommitted change review/fix loop -> conditional `commit-smart` when `in_dd_scope=true` -> full-branch review/fix loop through `full-branch-review --skip-pr-comment` -> conditional second `commit-smart` for review fixes -> Codex review request.
+Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> branch-scoped plan recording -> TODO breakdown -> implementation (uncommitted) -> uncommitted change review/fix loop -> conditional `commit-smart` when `in_dd_scope=true` -> Codex review request -> full-branch review through `full-branch-review`.
 
 ## Hard Rules
 
@@ -29,12 +29,12 @@ These rules apply to **both initial implementation and review-fix rounds**.
 
 ## Shared Review Result Handling
 
-Use this exact handling after either review execution returns. Its inputs are:
+Use this exact handling after the uncommitted change review execution returns. Its inputs are:
 
 - `review_result`: the JSON string returned by the current review
 - `review_plan_context`: the implementation-plan context for the current review
 - `current_round`: the current review round number, starting at 1
-- `max_rounds`: 3 for uncommitted change review, 2 for full branch review
+- `max_rounds`: 3 for uncommitted change review
 
 ### Parse Reviewer Output
 
@@ -210,70 +210,7 @@ Rules:
 - If finalizing the pending plan fails, report blocked status and do not start full branch review because the current plan would be missing from its intent context.
 - Outside dd scope, do not invoke `commit-smart`, do not create or update a PR, and report success once the reviewed patch is complete.
 
-### 7) Run The Full Branch Review/Fix Loop In DD Scope
-
-- Run a bounded loop with at most **2** rounds.
-
-Each round executes steps below.
-
-#### 7a) Run Full Branch Review
-
-Invoke `full-branch-review --skip-pr-comment` and capture its structured JSON as `full_review_result`.
-
-Do not hand-edit `full_review_result`.
-
-#### 7b) Handle Reviewer Result
-Resolve the committed implementation-plan history for `review_plan_context`:
-
-
-```bash
-if ! committed_plan_history_file="$(
-  node "$HOME/dotfiles/claude-skills/code-implement-loop/scripts/implementation_plan_history.mjs" \
-    committed-history-path \
-    --worktree-root "$worktree_root" \
-    --branch "$branch"
-)"; then
-  echo "BLOCKED: failed to resolve committed implementation plan history"
-  exit 1
-fi
-```
-
-Read the committed history:
-
-```bash
-if ! implementation_plan_history="$(<"$committed_plan_history_file")"; then
-  echo "BLOCKED: failed to read committed implementation plan history"
-  exit 1
-fi
-```
-
-Apply **Shared Review Result Handling** with:
-
-- `review_result="$full_review_result"`
-- `review_plan_context="$implementation_plan_history"`
-- `current_round`: the current full branch review round number
-- `max_rounds=2`
-
-Rules:
-
-- When findings are fixed and another round is available, invoke `full-branch-review --skip-pr-comment` again.
-- Do not post a full-branch review comment from this loop.
-- Do not require a clean worktree. Later rounds may include uncommitted review fixes.
-
-### 8) Commit Full Branch Review Fixes
-
-After the full branch review loop returns approval, or reaches 2 rounds with `status="revise"` and actionable findings:
-
-- If `git status --porcelain` is empty, skip this step and proceed to Step 9.
-- If there are uncommitted changes, immediately invoke `commit-smart` to commit and push the review fixes.
-
-Rules:
-
-- Do not ask the user for additional confirmation before running the second `commit-smart`.
-- Do not end the workflow as success until this second `commit-smart` has completed when review fixes exist.
-- If the second `commit-smart` fails, report blocked status with the failure reason and attempted remediation.
-
-### 9) Request Codex review
+### 7) Request Codex review
 
 Post `@codex review` as a top-level PR comment:
 
@@ -289,26 +226,24 @@ zsh -ic 'source "$HOME/dotfiles/zshrc"; "$@"' \
     --body "@codex review"
 ```
 
-If the comment fails to post, carry the failure into the final status but continue to Step 10.
+If the comment fails to post, carry the failure into the final status but continue to Step 8.
 
-### 10) Return final status
+### 8) Run Full Branch Review In DD Scope
+
+Invoke the `full-branch-review` skill without `--skip-pr-comment` and wait for it to finish.
+
+Always continue to Step 9 after it returns. If the skill invocation fails or reports blocked status, save its exact error summary in `full_branch_review_error` for the final status. Do not retry or otherwise act on its result in this workflow.
+
+### 9) Return final status
 
 Success format:
 
-- In dd scope: `SUCCESS: Implementation complete, uncommitted change review completed, full branch review completed | PR: {url}`
+- In dd scope: `SUCCESS: Implementation complete, uncommitted change review completed, full branch review attempted | PR: {url}`
 - Outside dd scope: `SUCCESS: Implementation complete, uncommitted change review completed | PR: none`
 - If the uncommitted change review continued after 3 rounds without approval, append: `| Uncommitted change findings: {summary} | Attempts: {summary}`
-- If the full branch review continued after 2 rounds without approval, append: `| Full branch findings: {summary} | Attempts: {summary}`
-- If the Codex review comment failed to post in Step 9, append: `| Warning: failed to request Codex review: {exact error summary}`
+- If the Codex review comment failed to post in Step 7, append: `| Warning: failed to request Codex review: {exact error summary}`
+- If `full_branch_review_error` is non-empty, append: `| Warning: full branch review failed: {exact error summary}`
 
 Blocked format:
 
 `BLOCKED: commit-smart failed | PR: {url} | Error: {summary} | Attempts: {summary}`
-
-or
-
-`BLOCKED: Full branch review failed | PR: {url} | Error: {summary}`
-
-or
-
-`BLOCKED: second commit-smart failed | PR: {url} | Error: {summary} | Attempts: {summary}`
