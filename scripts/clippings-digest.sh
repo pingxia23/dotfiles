@@ -44,13 +44,23 @@ needs_processing() {
 archive_completed_digests() {
   local digest_file
   local basename
+  local saved_file
   local archived_count=0
 
   mkdir -p "$SAVED_DIR"
   while IFS= read -r -d '' digest_file; do
     if ! grep -Eq '^[[:space:]]*-[[:space:]]+\[[[:space:]]\][[:space:]]+Review digest([[:space:]]|$)' "$digest_file"; then
+      if [[ ! -s "$digest_file" ]]; then
+        rm -f "$digest_file"
+        continue
+      fi
       basename=$(basename "$digest_file")
-      mv -f "$digest_file" "${SAVED_DIR}/${basename}"
+      saved_file="${SAVED_DIR}/${basename}"
+      if [[ -f "$saved_file" && ! "$digest_file" -nt "$saved_file" ]]; then
+        rm -f "$digest_file"
+        continue
+      fi
+      mv -f "$digest_file" "$saved_file"
       log "Archived: ${basename}"
       archived_count=$((archived_count + 1))
     fi
@@ -112,12 +122,11 @@ FILES_TO_PROCESS=()
 while IFS= read -r source_file; do
   basename=$(basename "$source_file")
   digest_file="${DIGEST_DIR}/${basename}"
-  comparison_file="$digest_file"
   saved_file="${SAVED_DIR}/${basename}"
-  if [[ "$RUN_MODE" == "incremental" && ! -f "$digest_file" && -f "$saved_file" ]]; then
-    comparison_file="$saved_file"
-  fi
-  if needs_processing "$source_file" "$comparison_file"; then
+  if [[ "$RUN_MODE" == "rebuild" ]]; then
+    FILES_TO_PROCESS+=("$source_file")
+  elif needs_processing "$source_file" "$digest_file" &&
+    needs_processing "$source_file" "$saved_file"; then
     FILES_TO_PROCESS+=("$source_file")
   fi
 done < <(python3 -c "
