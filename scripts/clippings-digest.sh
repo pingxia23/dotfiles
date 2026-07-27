@@ -210,7 +210,7 @@ PROMPT_EOF
 # --- Invoke Claude ---
 log "Invoking claude..."
 if ! claude -p "$(cat "$PROMPT_FILE")" \
-  --model 'sonnet[1m]' \
+  --model 'claude-opus-4-6[1m]' \
   --allow-dangerously-skip-permissions \
   --no-session-persistence \
   > /dev/null; then

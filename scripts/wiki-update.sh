@@ -157,8 +157,7 @@ log "Invoking claude..."
 if ! (
   cd "$VAULT_ROOT" &&
   claude -p "$(cat "$PROMPT_FILE")" \
-    --model 'sonnet[1m]' \
-    --effort medium \
+    --model 'claude-opus-4-6[1m]' \
     --allow-dangerously-skip-permissions \
     --no-session-persistence
   > /dev/null

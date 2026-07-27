@@ -1,0 +1,9 @@
+# Add one RSS or Atom feed URL per line.
+# https://example.com/feed.xml
+https://medium.com/feed/jonathans-musings
+https://lucumr.pocoo.org/feed.atom
+https://addyosmani.com/rss.xml
+https://www.letta.com/
+https://karpathy.bearblog.dev/blog/
+https://openai.com/news/engineering/rss.xml
+https://www.anthropic.com/engineering

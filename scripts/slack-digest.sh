@@ -244,7 +244,7 @@ PROMPT_EOF
 # --- Run claude ---
 echo "${LOG_PREFIX} Invoking claude..."
 if ! claude -p "$(cat "$PROMPT_FILE")" \
-  --model 'sonnet[1m]' \
+  --model 'claude-opus-4-6[1m]' \
   --no-session-persistence \
   --allowedTools "Read,Write,Edit,Bash,Glob,Grep,WebFetch,WebSearch,mcp__plugin_slack_slack__*" \
   > "$CLAUDE_STDOUT_FILE"; then
