@@ -111,6 +111,13 @@ last_updated = "2026-07-24T07:48:53Z"
 source_type = "local"
 source = "/Users/ping.xia/.cache/codex-runtimes/codex-primary-runtime/plugins/openai-primary-runtime"
 
+[marketplaces.i-have-adhd]
+last_updated = "2026-07-28T18:18:46Z"
+last_revision = "07684c4ab625dd7d1ea6e99e065f60bc0ac6a1ba"
+source_type = "git"
+source = "https://github.com/ayghri/i-have-adhd.git"
+ref = "main"
+
 [plugins."slack@openai-curated"]
 enabled = true
 
@@ -143,6 +150,9 @@ enabled = false
 
 [plugins."browser@openai-bundled"]
 enabled = false
+
+[plugins."i-have-adhd@i-have-adhd"]
+enabled = true
 
 [memories]
 generate_memories = true
@@ -179,6 +189,9 @@ trusted_hash = "sha256:1d374ea956912e71bf3682f86a44c794c6aac8bde169b17222c4dfc71
 
 [hooks.state."/home/bits/.codex/hooks.json:stop:1:0"]
 trusted_hash = "sha256:5fcff6cbca89be762be16f81b898baeff0ad79746f20190bbbc6408b17b44352"
+
+[hooks.state."i-have-adhd@i-have-adhd:hooks/hooks.json:session_start:0:0"]
+trusted_hash = "sha256:649193980053a380255523cb329d72d43581fadf346676057aa4caccb813dd76"
 
 [apps.connector_20205bf7d4e99a89d7154bb849718324]
 enabled = false
