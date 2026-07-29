@@ -1,5 +1,5 @@
 model = "gpt-5.6-sol"
-model_reasoning_effort = "xhigh"
+model_reasoning_effort = "max"
 model_supports_reasoning_summaries = true
 approval_policy = "never"
 sandbox_mode = "danger-full-access"
@@ -112,7 +112,7 @@ source_type = "local"
 source = "/Users/ping.xia/.cache/codex-runtimes/codex-primary-runtime/plugins/openai-primary-runtime"
 
 [marketplaces.i-have-adhd]
-last_updated = "2026-07-28T18:18:46Z"
+last_updated = "2026-07-28T18:50:54Z"
 last_revision = "07684c4ab625dd7d1ea6e99e065f60bc0ac6a1ba"
 source_type = "git"
 source = "https://github.com/ayghri/i-have-adhd.git"
