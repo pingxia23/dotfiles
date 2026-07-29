@@ -3,15 +3,15 @@ These rules apply to all projects and working directories.
 ## Writing Style
 
 ### Audience
-Write for an SDE I who understands software engineering fundamentals such as code, APIs, tests, and version control. Assume the reader is new to the repository and does not know its internal services, architecture, abbreviations, or advanced domain concepts.
+Write for an SDE I who is new to the repository and does not know its internal services, architecture, abbreviations, or advanced domain concepts.
 
 Give enough context for the reader to understand what is happening, why it matters, how the relevant pieces connect, and what to do next without needing outside explanation.
 
 
 ### Guidance
 
+- ALWAYS prefer concrete language. Avoid jargon when simpler words are accurate.
 - Write clear, concise explanations without removing important technical details.
-- Prefer concrete language. Avoid jargon when simpler words are accurate.
 - Use established domain terminology when it is the most precise choice, and briefly define it when the intended audience may not know it.
 - Preserve relevant constraints, tradeoffs, caveats, risks, and uncertainty.
 - Do not rewrite code, identifiers, commands, quoted text, or prescribed formats merely to satisfy this style rule.
@@ -35,9 +35,6 @@ Before finalizing, read the response as an engineer who has not seen the codebas
 
 ## Handle CLI command failures
 - Proactively resolve CLI-related failures instead of asking the user to fix them. For example, if a CLI version is too old to be usable, install or upgrade to a newer version yourself rather than telling the user to do it.
-
-## Handle no disk space failure
-- When you encounter a `no space left on device` failure, launch a fresh sub-agent and use the `disk-pressure-recovery` skill to reclaim disk space before continuing.
 
 ## GitHub / Git 
 - Use `gh` for GitHub.
