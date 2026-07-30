@@ -7,6 +7,7 @@
     "defaultMode": "bypassPermissions"
   },
   "model": "opus[1m]",
+  "fastMode": true,
   "hooks": {
     "Notification": [
       {

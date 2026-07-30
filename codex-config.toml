@@ -1,5 +1,5 @@
 model = "gpt-5.6-sol"
-model_reasoning_effort = "xHigh"
+model_reasoning_effort = "xhigh"
 model_supports_reasoning_summaries = true
 approval_policy = "never"
 sandbox_mode = "danger-full-access"
@@ -50,6 +50,9 @@ command = "./Codex Computer Use.app/Contents/SharedSupport/SkyComputerUseClient.
 args = ["mcp"]
 cwd = "."
 enabled = false
+
+[mcp_servers.openaiDeveloperDocs]
+url = "https://developers.openai.com/mcp"
 
 [tui]
 theme = "catppuccin-macchiato"
@@ -102,7 +105,7 @@ trust_level = "trusted"
 trust_level = "trusted"
 
 [marketplaces.openai-bundled]
-last_updated = "2026-07-29T15:20:59Z"
+last_updated = "2026-07-30T13:08:07Z"
 source_type = "local"
 source = "/Users/ping.xia/.codex/.tmp/bundled-marketplaces/openai-bundled"
 
