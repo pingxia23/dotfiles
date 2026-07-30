@@ -12,6 +12,18 @@
         ]
       }
     ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/dotfiles/codex-hooks/writing-style-reminder.mjs\"",
+            "timeout": 5,
+            "additionalContextLimit": 300
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
