@@ -7,7 +7,6 @@
     "defaultMode": "bypassPermissions"
   },
   "model": "opus[1m]",
-  "fastMode": true,
   "hooks": {
     "Notification": [
       {
@@ -59,6 +58,7 @@
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "xhigh",
+  "fastMode": true,
   "autoMemoryEnabled": true,
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark"
