@@ -1,6 +1,6 @@
 ---
 name: babysit-pr
-description: "Babysit the GitHub PR associated with the current branch: check and resolve merge conflicts, loop on `dd-gitlab/*` CI checks until they pass, then automatically plan and implement unresolved actionable review comments after at most two plan-review rounds; rerun CI after comment-driven changes, classify concrete CI failures, merge the latest base when failures look external, use `code-implement-loop` for PR-caused failures, and update the PR body at the end."
+description: "Babysit the GitHub PR associated with the current branch: check and resolve merge conflicts, wait for DDCI orchestration to finish, loop on `dd-gitlab/*` CI checks until they pass, then automatically plan and implement unresolved actionable review comments after at most two plan-review rounds; rerun CI after comment-driven changes, classify concrete CI failures, merge the latest base when failures look external, use `code-implement-loop` for PR-caused failures, and update the PR body at the end."
 ---
 
 # Babysit PR
@@ -99,6 +99,11 @@ Each iteration includes these actions:
 
 ```bash
 checks_json="$(gh pr checks --repo "$repo" "$pr_url" --json name,workflow,state,bucket,link)"
+ddci_status_checks_json="$(
+  jq '
+    map(select(.name == "DDCI Status"))
+  ' <<<"$checks_json"
+)"
 dd_gitlab_checks_json="$(
   jq '
     map(select(.name | startswith("dd-gitlab/")))
@@ -106,20 +111,25 @@ dd_gitlab_checks_json="$(
 )"
 ```
 
-2. Partition the `dd-gitlab/*` checks:
+2. Before evaluating `dd-gitlab/*`, require DDCI orchestration to reach a terminal state:
+   - if there are zero `DDCI Status` checks, treat orchestration as not started yet; sleep for a fixed interval such as `60` seconds, then start the next loop iteration
+   - if any `DDCI Status` check has `bucket=="pending"`, orchestration may still publish additional `dd-gitlab/*` checks; sleep for a fixed interval such as `60` seconds, then start the next loop iteration
+   - only evaluate `dd-gitlab/*` after at least one `DDCI Status` check exists and none are pending
+   - do not declare `dd-gitlab/*` green merely because all currently visible checks passed while `DDCI Status` was absent or pending
+3. Partition the `dd-gitlab/*` checks:
    - `pending`: `bucket=="pending"`
    - `failed`: `bucket=="fail"` or `bucket=="cancel"`
    - `passed`: `bucket=="pass"`
-3. If there are zero `dd-gitlab/*` checks, treat that as "jobs not started yet" rather than success. Sleep for a fixed interval such as `60` seconds, then start the next loop iteration.
-4. If any `dd-gitlab/*` checks are still pending, do not handle failures yet. Sleep for a fixed interval such as `60` seconds, then start the next loop iteration.
-5. Once there are one or more `dd-gitlab/*` checks and zero pending `dd-gitlab/*` checks:
+4. If there are zero `dd-gitlab/*` checks, treat that as "jobs not started yet" rather than success. Sleep for a fixed interval such as `60` seconds, then start the next loop iteration.
+5. If any `dd-gitlab/*` checks are still pending, do not handle failures yet. Sleep for a fixed interval such as `60` seconds, then start the next loop iteration.
+6. Once DDCI is terminal and there are one or more `dd-gitlab/*` checks with zero pending `dd-gitlab/*` checks:
    - if all `dd-gitlab/*` checks passed, skip the remaining actions in this iteration and exit the loop
    - otherwise continue with the failure-handling actions below
-6. Split the failed `dd-gitlab/*` checks into:
+7. Split the failed `dd-gitlab/*` checks into:
    - `fetchable_failed_jobs`: failed checks whose `link` contains `taskId=gitlab` and `taskExecutionId=`
    - `rollup_only_failures`: failed checks such as `dd-gitlab/default-pipeline` whose link does not include a concrete `taskExecutionId=`
-7. If there are no `fetchable_failed_jobs`, stop and report blocked status with the failing rollup checks. The skill cannot fetch logs for a rollup-only failure.
-8. For each job in `fetchable_failed_jobs`:
+8. If there are no `fetchable_failed_jobs`, stop and report blocked status with the failing rollup checks. The skill cannot fetch logs for a rollup-only failure.
+9. For each job in `fetchable_failed_jobs`:
    - fetch the failure log with:
 
    ```bash
@@ -145,7 +155,7 @@ dd_gitlab_checks_json="$(
      - runner or CI environment bootstrap failures
      - truncated logs with no concrete repo target, test, or command failure visible
 
-9. If **any** job in `fetchable_failed_jobs` is classified as `likely not caused by this PR`, do not invoke `code-implement-loop` yet. Remediate against the freshest base branch first:
+10. If **any** job in `fetchable_failed_jobs` is classified as `likely not caused by this PR`, do not invoke `code-implement-loop` yet. Remediate against the freshest base branch first:
    - run:
 
    ```bash
@@ -165,16 +175,16 @@ dd_gitlab_checks_json="$(
    - invoke `commit-smart` immediately to create or push the merge result
    - after `commit-smart` completes, sleep for a fixed interval such as `60` seconds, then start the next loop iteration.
 
-10. Hand off `fetchable_failed_jobs` that are still classified as `likely caused by this PR` to `code-implement-loop`. The handoff must include, for each such job:
+11. Hand off `fetchable_failed_jobs` that are still classified as `likely caused by this PR` to `code-implement-loop`. The handoff must include, for each such job:
 
 - the PR URL
 - the GitLab job URL from `web_url`
 - the local trace file path from `trace_file`
 - the failure summary extracted from the trace
 
-11. Invoke `code-implement-loop` with that raw failure context as the entire implementation scope.
-12. If `code-implement-loop` returns blocked status, propagate it and stop.
-13. If `code-implement-loop` succeeds, start the next iteration of this CI loop and repoll the `dd-gitlab/*` checks.
+12. Invoke `code-implement-loop` with that raw failure context as the entire implementation scope.
+13. If `code-implement-loop` returns blocked status, propagate it and stop.
+14. If `code-implement-loop` succeeds, start the next iteration of this CI loop and repoll the `dd-gitlab/*` checks.
 
 Example handoff to `code-implement-loop`:
 
