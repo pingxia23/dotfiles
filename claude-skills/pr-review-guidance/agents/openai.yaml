@@ -1,4 +1,0 @@
-interface:
-  display_name: "PR Review Guidance"
-  short_description: "Read a PR thoroughly and post or update a top-level review guide comment"
-  default_prompt: "Use $pr-review-guidance on this PR URL to add a top-level review-guidance comment."
