@@ -89,10 +89,17 @@ function readCredentials() {
   }
 }
 
-function credentialFor(credentials, serverName) {
+function credentialFor(credentials, server) {
   return Object.values(credentials).find(
-    (credential) => credential?.server_name === serverName,
+    (credential) =>
+      credential?.server_name === server.name &&
+      credential?.server_url === server.url,
   );
+}
+
+function credentialIsExpired(credential) {
+  const expiresAt = Number(credential?.expires_at);
+  return Number.isFinite(expiresAt) && expiresAt <= Date.now();
 }
 
 function hasInitializeResult(text) {
@@ -121,13 +128,17 @@ function hasInitializeResult(text) {
 
 async function probeServer(server, token) {
   try {
+    const headers = {
+      "Content-Type": "application/json",
+      Accept: "application/json, text/event-stream",
+    };
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
     const response = await postJson(
       server.url,
-      {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        Accept: "application/json, text/event-stream",
-      },
+      headers,
       {
         jsonrpc: "2.0",
         id: 1,
@@ -149,14 +160,14 @@ async function probeServer(server, token) {
       hasInitializeResult(response.body)
     ) {
       log(`${server.name} probe ok`);
-      return true;
+      return { ok: true, statusCode: response.statusCode };
     }
 
     log(`${server.name} probe failed http_status=${response.statusCode}`);
-    return false;
+    return { ok: false, statusCode: response.statusCode };
   } catch (error) {
     log(`${server.name} probe failed: ${error.message}`);
-    return false;
+    return { ok: false, statusCode: null };
   }
 }
 
@@ -275,15 +286,33 @@ async function main() {
   const credentials = readCredentials();
 
   for (const server of servers) {
-    const credential = credentialFor(credentials, server.name);
+    const credential = credentialFor(credentials, server);
     if (!credential?.access_token) {
-      log(`${server.name} missing OAuth credential`);
+      const probe = await probeServer(server);
+      if (probe.ok) {
+        log(`${server.name} reachable without OAuth credential`);
+        continue;
+      }
+
+      log(`${server.name} missing usable OAuth credential`);
       await runLogin(server.name);
       continue;
     }
 
-    if (!(await probeServer(server, credential.access_token))) {
+    if (credentialIsExpired(credential)) {
+      log(`${server.name} OAuth credential expired`);
       await runLogin(server.name);
+      continue;
+    }
+
+    const probe = await probeServer(server, credential.access_token);
+    // A 403 means the token lacks permission; repeating login returns the same scopes.
+    if (!probe.ok && probe.statusCode === 401) {
+      await runLogin(server.name);
+    } else if (!probe.ok) {
+      log(
+        `${server.name} probe failed with unexpired OAuth credential; skip login`,
+      );
     }
   }
 }
