@@ -104,6 +104,9 @@ trust_level = "trusted"
 [projects."/Users/ping.xia/Documents/pydantic-ai"]
 trust_level = "trusted"
 
+[projects."/Users/ping.xia/Documents/AI_learning"]
+trust_level = "trusted"
+
 [marketplaces.openai-bundled]
 last_updated = "2026-08-05T16:27:06Z"
 source_type = "local"
@@ -113,13 +116,6 @@ source = "/Users/ping.xia/.codex/.tmp/bundled-marketplaces/openai-bundled"
 last_updated = "2026-08-06T07:19:50Z"
 source_type = "local"
 source = "/Users/ping.xia/.cache/codex-runtimes/codex-primary-runtime/plugins/openai-primary-runtime"
-
-[marketplaces.i-have-adhd]
-last_updated = "2026-08-05T23:47:47Z"
-last_revision = "b837bf132b9d05765c5deed5b30935f562abba86"
-source_type = "git"
-source = "https://github.com/ayghri/i-have-adhd.git"
-ref = "main"
 
 [plugins."slack@openai-curated"]
 enabled = true
