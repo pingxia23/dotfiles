@@ -20,30 +20,10 @@ js_repl = false
 url = "https://mcp.atlassian.com/v1/mcp"
 
 [mcp_servers.datadog]
-url = "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp?toolsets=core,llmobs,ddsql,apm,kubernetes,synthetics"
+url = "https://mcp.datadoghq.com/v1/mcp?toolsets=core,llmobs,ddsql,apm,kubernetes,synthetics"
 
 [mcp_servers.datadog_staging]
-url = "https://mcp.datad0g.com/api/unstable/mcp-server/mcp?toolsets=core,llmobs,ddsql,apm,kubernetes,synthetics"
-
-[mcp_servers.node_repl]
-args = []
-command = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl"
-startup_timeout_sec = 120
-
-[mcp_servers.node_repl.env]
-NODE_REPL_NATIVE_PIPE_CONNECT_TIMEOUT_MS = "1000"
-NODE_REPL_NODE_MODULE_DIRS = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/cua_node/lib/node_modules"
-NODE_REPL_NODE_PATH = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node"
-NODE_REPL_TRUSTED_CODE_PATHS = "/Users/ping.xia/.codex:/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/cua_node/lib/node_modules"
-CODEX_HOME = "/Users/ping.xia/.codex"
-NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S = "091a81603ff202a16ed56557709bf42d97caf8f0dd2e07ae9e26d7c014d71035"
-BROWSER_USE_AVAILABLE_BACKENDS = "chrome,iab"
-NODE_REPL_INSTRUCTIONS_USE_CASE_BROWSER = "Control the in-app browser in conjunction with the Browser Plugin."
-NODE_REPL_INSTRUCTIONS_USE_CASE_CHROME = "Control the Chrome browser in conjunction with the Chrome Plugin. Prefer this method of controlling Chrome over alternatives (such as Computer Use) unless the user explicitly mentions an alternative."
-NODE_REPL_INSTRUCTIONS_USE_CASE_COMPUTER_USE = "Control desktop apps on macOS through Computer Use."
-BROWSER_USE_CODEX_APP_BUILD_FLAVOR = "prod"
-BROWSER_USE_CODEX_APP_VERSION = "26.730.61639"
-CODEX_CLI_PATH = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/codex"
+url = "https://mcp.datad0g.com/v1/mcp?toolsets=core,llmobs,ddsql,apm,kubernetes,synthetics"
 
 [mcp_servers.computer-use]
 command = "./Codex Computer Use.app/Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient"
@@ -107,8 +87,11 @@ trust_level = "trusted"
 [projects."/Users/ping.xia/Documents/AI_learning"]
 trust_level = "trusted"
 
+[projects."/Users/ping.xia/Documents/ChatGPT/Digests"]
+trust_level = "trusted"
+
 [marketplaces.openai-bundled]
-last_updated = "2026-08-05T16:27:06Z"
+last_updated = "2026-08-08T20:48:01Z"
 source_type = "local"
 source = "/Users/ping.xia/.codex/.tmp/bundled-marketplaces/openai-bundled"
 
@@ -195,7 +178,22 @@ trusted_hash = "sha256:f4d7869182e6ee6f4c1c25d2a751a39544a813d8a7303b33bf6dcd27d
 [apps.connector_20205bf7d4e99a89d7154bb849718324]
 enabled = false
 
+[apps.asdk_app_69e8c7f174a08191a28b6da96c8062c4]
+enabled = false
+
+[apps.connector_5f3c8c41a1e54ad7a76272c89e2554fa]
+enabled = false
+
+[apps.connector_6a0529e9cfcc81909a0212e07b04b875]
+enabled = false
+
+[apps.connector_openai_codex_document_control]
+enabled = false
+
+[apps.connector_openai_hotline]
+enabled = false
+
 [shell_environment_policy.set]
 BROWSER_USE_AVAILABLE_BACKENDS = "chrome,iab"
-NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S = "091a81603ff202a16ed56557709bf42d97caf8f0dd2e07ae9e26d7c014d71035"
+NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S = "323bc3e687e17d7e377238d9f4c69111c4d0e6219103b6316d8c52082489533b"
 NODE_REPL_TRUSTED_CODE_PATHS = "/Users/ping.xia/.codex:/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/cua_node/lib/node_modules"
