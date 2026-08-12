@@ -203,60 +203,15 @@ Fix the failing dd-gitlab CI jobs for PR https://github.com/DataDog/dd-source/pu
 
 Run this phase once, after the initial Phase 3 CI run is green.
 
-#### 4a) Load unresolved review threads
+#### 4a) Create the comment address plan
 
-1. Run:
+1. Invoke the `plan-pr-comments` skill exactly once to create the initial plan. Use `$HOME/dotfiles/claude-skills/plan-pr-comments/SKILL.md` with the validated `pr_url` and no `provided_comment_text`.
+2. After the planner returns, this skill owns `comments_to_address` and `comment_address_plan` for the rest of Phase 4. Do not invoke `plan-pr-comments` again or reload the comments. Handle every automated review and revision in subsection 4b within this skill.
+3. If the planner returns `NOOP: no comments to address`, record zero processed comments and continue to Phase 5.
 
-```bash
-comments_json="$(
-  "$HOME/dotfiles/claude-skills/address-pr-comments/scripts/list_unresolved_review_threads.sh" \
-    "$pr_url"
-)"
-```
+#### 4b) Review and revise the plan at most twice
 
-2. Treat the script output as the source of truth for unresolved, non-outdated review threads.
-3. Build one `comments_to_address` collection. For each thread, preserve:
-   - `thread_id`
-   - `path`, `line`, and `original_line`
-   - `diff_hunk`
-   - `comment_url`
-   - `last_comment_id` and `last_comment_body`
-   - `comments[]`
-4. If `comments_to_address` is empty, record zero processed comments and continue to Phase 5.
-
-#### 4b) Create a comment address plan
-
-Classify every `comments_to_address` item as one of:
-
-- `reply_only`: the reviewer asks for clarification, rationale, or acknowledgment, and no code, test, docs, or config change is needed.
-- `implementation_needed`: the reviewer requests or implies a code, test, docs, or config change. Treat ambiguous requests conservatively as `implementation_needed`. For future work, follow-up PRs, or optional improvements, plan only a concise TODO comment in the relevant code path.
-
-Create one plan section for every item:
-
-```markdown
-## <thread_id> - <short title>
-
-Raw comment:
-<last_comment_body>
-
-Decision: reply_only | implementation_needed
-
-Reasoning:
-<why this classification is correct from the current code and PR state>
-
-Plan:
-<for reply_only, describe the reply that would answer the reviewer; it will not be posted>
-
-<for implementation_needed, describe the concrete code, test, docs, or config changes>
-
-<for future work, identify where the TODO comment should be added and what it should say>
-```
-
-Before drafting the plan, inspect the current code and PR state needed to ground each classification and proposed change. Do not add work beyond the unresolved feedback.
-
-#### 4c) Review and revise the plan at most twice
-
-Set `comment_address_plan` to the complete plan from subsection 4b. Run at most two review rounds.
+Use `comment_address_plan` from subsection 4a. Run at most two review rounds.
 
 For each round, invoke:
 
@@ -286,7 +241,7 @@ Apply this control flow:
 
 The resulting plan is `reviewed_comment_address_plan`.
 
-#### 4d) Ignore reply-only items and implement actionable items
+#### 4c) Ignore reply-only items and implement actionable items
 
 1. Derive `implementation_plan` by copying only the complete sections whose decision is `implementation_needed` from `reviewed_comment_address_plan`, in their original order.
 2. Preserve each copied section verbatim, including its heading, raw comment, decision, reasoning, and plan.

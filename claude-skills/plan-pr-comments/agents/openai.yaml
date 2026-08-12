@@ -1,0 +1,4 @@
+interface:
+  display_name: "Plan PR Comments"
+  short_description: "Build the initial read-only PR comment plan"
+  default_prompt: "Use $plan-pr-comments to create the initial plan for review comments without revising a prior plan or changing the pull request or code."

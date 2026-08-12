@@ -11,6 +11,7 @@ Process unresolved PR review threads for the pull request that is already checke
 
 - First, review the `# Global Rules` from your memory file and apply them before the skill-specific rules below.
 - Always infer the PR from the current branch with `gh`, then validate that local state matches the inferred PR.
+- Invoke `plan-pr-comments` only once to create the initial plan. Handle every user-requested plan revision inside this skill without invoking the planner again.
 - Always stop after the classification step and present the comment address plan to the user. The user may request plan revisions multiple times. Never proceed to reply or delegation until the user explicitly approves the current plan.
 - Treat the user-approved comment address plan as the source of truth. Before delegating actionable work, derive an implementation plan containing only the approved `implementation_needed` item sections; never pass `reply_only` sections or discussion URLs to `code-implement-loop`.
 - Do not add scope beyond the unresolved actionable review feedback.
@@ -75,120 +76,39 @@ If `comment_author_login` is empty, stop and return `FAILED: unable to determine
    - `git rev-parse HEAD` must equal `head_sha`
    - if any check fails, stop and report the mismatch
 
-### 1) Parse input
+### 1) Create the comment address plan
 
-1. Parse the invocation arguments:
-   - reject any flag as `FAILED: unsupported flag: <flag>`
-   - treat all non-flag input as `provided_comment_text`
-   - preserve multiline text and formatting when building the raw comment
-   - if the provided text contains multiple clearly separated reviewer comments, keep them as separate `provided-comment-{N}` items; otherwise treat the full text as one comment
-
-### 2) Confirm inferred PR scope
-
-Use only the inferred `pr_url` for the rest of the workflow. Directly supplied comment text changes the feedback source, not the PR identity.
-
-### 3) Build `comments_to_address`
-
-Build one `comments_to_address` collection. Each item in the collection is a `comment_to_address` record. Every later step must read from this collection instead of branching back to the original input source.
-
-If `provided_comment_text` was supplied:
-
-1. Convert the supplied text into one or more `comment_to_address` records in `comments_to_address`.
-2. Preserve multiline text and formatting in `raw_comment`.
-3. If the provided text contains multiple clearly separated reviewer comments, create one item per comment; otherwise treat the full text as one comment.
-4. Each provided-comment item must include:
-   - `source: provided_comment`
-   - `id: provided-comment-{N}`
-   - `raw_comment`
-
-If `provided_comment_text` was not supplied:
-
-1. Run:
-   - `"$HOME/dotfiles/claude-skills/address-pr-comments/scripts/list_unresolved_review_threads.sh" "$pr_url"`
-2. Treat the script output as the source of truth for unresolved review threads.
-3. Convert each returned unresolved, non-outdated review thread into one `comment_to_address` record in `comments_to_address`.
-4. Each unresolved-thread `comment_to_address` record must include:
-   - `source: unresolved_thread`
-   - `id: <thread_id>`
-   - `raw_comment: <last_comment_body>`
-   - `thread_id`
-   - `path`
-   - `line`
-   - `original_line`
-   - `diff_hunk`
-   - `comment_url`
-   - `last_comment_id`
-   - `last_comment_body`
-   - `comments[]`
-
-If a comment is for the reviewer, for example `For reviewer: The changes in this doc are refactoring`, ignore it.
-
-After filtering, if `comments_to_address` is empty, stop and return:
-
-- `NOOP: no comments to address`
-
-### 4) Classify each item
-
-Classify each `comments_to_address` item into one of:
-
-- `reply_only`
-- `implementation_needed`
-
-Use this rubric:
-
-- `reply_only`:
-  - the reviewer is asking for clarification, rationale, or acknowledgment
-  - a truthful answer can be given from the current code and PR state
-  - no code, test, docs, or config change is needed
-- `implementation_needed`:
-  - the reviewer requests or clearly implies a code, test, docs, or config change
-  - the reviewer calls out future work, a follow-up PR, an optional/non-blocking improvement, or a longer-term TODO; address this by adding a concise TODO comment in the relevant code path instead of implementing the future work in the current PR
-  - the request is ambiguous; default here conservatively
-
-Before drafting the comment address plan or any `reply_body`, re-read the `## Writing Style` section from your memory file and apply it to the generated prose.
-
-Before taking any action, create a comment address plan that covers every `comments_to_address` item. Use this format for each item:
-
-```markdown
-## <comments_to_address.id> - <short title>
-
-Raw comment:
-<raw reviewer comment>
-
-Decision: reply_only | implementation_needed
-
-Reasoning:
-<why this classification is correct from the current code and PR state>
-
-Plan:
-<for reply_only, set reply_body to the exact prefixed reply.>
-
-<for implementation_needed, describe the concrete code, test, docs, or config changes needed. Prefer pseudocode over prose.>
-
-<for future-work comments, identify where the TODO comment should be added and what it should say.>
-```
+1. Reject any flag as `FAILED: unsupported flag: <flag>`.
+2. Treat all non-flag input as `provided_comment_text`.
+3. Invoke the `plan-pr-comments` skill exactly once to create the initial plan. Use `$HOME/dotfiles/claude-skills/plan-pr-comments/SKILL.md` with:
+   - the validated `pr_url`
+   - `provided_comment_text` when the user supplied it
+4. After the planner returns, this skill owns `comments_to_address` and `comment_address_plan`. Treat them as the source of truth. Do not invoke `plan-pr-comments` again or reload the comments.
+5. If the planner returns `NOOP: no comments to address`, return that result and stop.
+6. Before presenting `comment_address_plan`, update only each `reply_only` plan so its `reply_body` is the exact substantive reply prefixed by the global GitHub pull request comment disclosure. Use `comment_author_login` for the authenticated GitHub login.
+7. Keep the resulting prefixed plan as `comment_address_plan`. Do not change any raw comment, decision, reasoning, or `implementation_needed` plan.
 
 Approval gate:
 
 - Stop here and return only the plan plus:
   - `PLAN_READY: approve this plan to continue, or request revisions.`
-- If the user requests revisions, update the plan and stop at this gate again.
+- If the user requests revisions, revise the current `comment_address_plan` entirely within this skill. Preserve `comments_to_address`, apply the Step 1 reply-prefix rule again, and stop at this gate again. Do not invoke `plan-pr-comments` again or reload the comments.
 - Only treat an explicit approval of the current plan as permission to continue. Examples: `approved`, `approve this plan`, `looks good, proceed`, `continue with this plan`.
 
-### 5) Reply to clarification-only items
+### 2) Reply to clarification-only items
 
-Do this step only after Step 4 has produced a comment address plan and the user explicitly approved the current plan.
+Do this step only after Step 1 has produced a comment address plan and the user explicitly approved the current plan.
 
 For each `reply_only` item:
 
-1. Use the approved `reply_body` from the plan.
-2. Apply the global GitHub pull request comment disclosure rule to `reply_body`. Use `comment_author_login` for the authenticated GitHub login.
+1. Use the approved `reply_body` from the plan exactly as written.
+2. Verify that `reply_body` follows the global GitHub pull request comment disclosure rule. Do not add or rewrite text after approval.
 3. If `source` is `unresolved_thread`, reply with:
    - `"$HOME/dotfiles/claude-skills/address-pr-comments/scripts/reply_to_review_thread.sh" "$repo" "<pr-number>" "<last-comment-id>" "<reply_body>"`
    - Do not resolve the thread.
 4. If `source` is `provided_comment`, return `reply_body` in the final status. Do not post it to GitHub because provided comments have no thread target.
 
-### 6) Delegate actionable items
+### 3) Delegate actionable items
 
 If one or more items are `implementation_needed`:
 
@@ -218,7 +138,7 @@ Plan:
 Update the condition and add a regression test for the existing caller.
 ```
 
-### 7) Return final status
+### 4) Return final status
 
 Use one of these formats:
 
