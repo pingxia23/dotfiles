@@ -41,9 +41,11 @@ Before finalizing, read the response as an engineer who has not seen the codebas
 - Before running GitHub commands, identify the repository's exact owner. `DataDog` and `ddoghq` are distinct owners; Use `gh-ddog` for `ddoghq/*` repositories. Use `gh-personal` for `DataDog/*` and personal repositories. 
 - Never use `gh auth switch`; it changes global state and can affect other terminals or agents.
 - Only address unresolved PR comments; never resolve PR comments.
-- When posting a comment on a pull request on behalf of the user, mark the comment as AI-generated so reviewers can tell it did not come from a human. Prefix the comment body with a clear disclosure line, for example:
+- When posting a comment on a pull request on behalf of the user, prefix the comment body with exactly the following disclosure line. Replace `@username` with the authenticated GitHub login:
 
   > _AI-generated comment (posted by an agent on behalf of @username)._
+
+  Do not use alternate disclosure text. Put one blank line between the disclosure and the comment body.
 
   Apply this to all agent-authored PR content, including top-level comments, review-thread replies, and inline review comments. This does not apply to a PR description the user reviewed before submission, but it does apply to follow-up comments posted autonomously by an agent.
 - Do not rename the current branch or force-push unless explicitly asked.

@@ -15,12 +15,6 @@ Process unresolved PR review threads for the pull request that is already checke
 - Treat the user-approved comment address plan as the source of truth. Before delegating actionable work, derive an implementation plan containing only the approved `implementation_needed` item sections; never pass `reply_only` sections or discussion URLs to `code-implement-loop`.
 - Do not add scope beyond the unresolved actionable review feedback.
 - Do not post follow-up replies after `code-implement-loop` finishes.
-- Every GitHub reply or PR comment posted by this skill must start with exactly:
-
-```text
-AI generated Comment
-<actual comment>
-```
 
 ## Input Contract
 
@@ -68,7 +62,15 @@ head_sha="$(jq -r '.headRefOid' <<<"$pr_meta_json")"
 
 If `pr_url` is empty or `null`, stop and return `FAILED: current branch has no associated PR`.
 
-5. Confirm the current checkout matches the inferred PR:
+5. Get the authenticated GitHub login:
+
+```bash
+comment_author_login="$(gh api user --jq '.login')"
+```
+
+If `comment_author_login` is empty, stop and return `FAILED: unable to determine authenticated GitHub login`.
+
+6. Confirm the current checkout matches the inferred PR:
    - `branch` from the helper must equal `head_ref`
    - `git rev-parse HEAD` must equal `head_sha`
    - if any check fails, stop and report the mismatch
@@ -180,7 +182,7 @@ Do this step only after Step 4 has produced a comment address plan and the user 
 For each `reply_only` item:
 
 1. Use the approved `reply_body` from the plan.
-2. The `reply_body` must start with `AI generated Comment` on the first line, followed by the actual reply text on the next line.
+2. Apply the global GitHub pull request comment disclosure rule to `reply_body`. Use `comment_author_login` for the authenticated GitHub login.
 3. If `source` is `unresolved_thread`, reply with:
    - `"$HOME/dotfiles/claude-skills/address-pr-comments/scripts/reply_to_review_thread.sh" "$repo" "<pr-number>" "<last-comment-id>" "<reply_body>"`
    - Do not resolve the thread.
