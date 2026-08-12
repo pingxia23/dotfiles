@@ -1,13 +1,13 @@
 ---
 name: code-implement-loop
-description: "Trigger this skill when implementation should start: if Codex/Claude proposes a plan and the user says 'implement this', 'implement the proposed plan', 'implement it', or equivalent; or if the user explicitly invokes `code-implement-loop`. Accepted implementation input sources are: a Codex/Claude-proposed plan, a user-provided `.md` plan/design file, or user-provided inline implementation instructions. In dd scope it runs uncommitted change review rounds, commits with `commit-smart`, requests Codex review, then delegates full-branch review to `full-branch-review`."
+description: "Trigger this skill when implementation should start: if Codex/Claude proposes a plan and the user says 'implement this', 'implement the proposed plan', 'implement it', or equivalent; or if the user explicitly invokes `code-implement-loop`. Accepted implementation input sources are: a Codex/Claude-proposed plan, a user-provided `.md` plan/design file, or user-provided inline implementation instructions. In dd scope it runs uncommitted change review rounds, commits with `commit-smart`, requests Codex review, then delegates full-branch review to `full-branch-review` unless `--skip-full-branch-review` is supplied."
 ---
 
 # Code Implement Loop
 
 ## Overview
 
-Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> branch-scoped plan recording -> TODO breakdown -> implementation (uncommitted) -> uncommitted change review/fix loop -> conditional `commit-smart` when `in_dd_scope=true` -> Codex review request -> full-branch review through `full-branch-review`.
+Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> branch-scoped plan recording -> TODO breakdown -> implementation (uncommitted) -> uncommitted change review/fix loop -> conditional `commit-smart` when `in_dd_scope=true` -> Codex review request -> optional full-branch review through `full-branch-review`.
 
 ## Hard Rules
 
@@ -78,6 +78,8 @@ Before applying loop control, filter the parsed findings against `review_plan_co
 
 ### 2) Input contract
 
+Accept the optional `--skip-full-branch-review` control flag before the implementation source. Set `skip_full_branch_review=true` when it is present. Otherwise, set `skip_full_branch_review=false`.
+
 Accept one of the following as the implementation source:
 
 1. **`.md` file path** — a path to a plan/design document.
@@ -85,9 +87,11 @@ Accept one of the following as the implementation source:
 
 Resolution order:
 
-- If input is completely empty (no file path and no instructions), stop and return:
+- Remove the leading `--skip-full-branch-review` control flag before resolving the implementation source. Do not include the flag in `implementation_plan` or the recorded plan history.
+- Reject any other leading flag as `FAILED: unsupported flag: <flag>`.
+- If the remaining input is completely empty (no file path and no instructions), stop and return:
   - `FAILED: provide a .md plan file or describe the changes to implement`
-- If the argument is a path ending in `.md`, set `implementation_plan` to the contents of that file.
+- If the remaining argument is a path ending in `.md`, set `implementation_plan` to the contents of that file.
 - Otherwise, set `implementation_plan` to the inline instruction text exactly as provided to the skill.
 - Do not run explore-intent in this skill.
 
@@ -212,6 +216,8 @@ Rules:
 
 ### 7) Request Codex review
 
+Run this step when `skip_full_branch_review=true`. The flag controls only Step 8.
+
 Post `@codex review` as a top-level PR comment:
 
 ```bash
@@ -230,7 +236,9 @@ If the comment fails to post, carry the failure into the final status but contin
 
 ### 8) Run Full Branch Review In DD Scope
 
-Invoke the `full-branch-review` skill without `--skip-pr-comment` and wait for it to finish.
+If `skip_full_branch_review=true`, do not invoke `full-branch-review`. Continue directly to Step 9.
+
+Otherwise, invoke the `full-branch-review` skill without `--skip-pr-comment` and wait for it to finish.
 
 Always continue to Step 9 after it returns. If the skill invocation fails or reports blocked status, save its exact error summary in `full_branch_review_error` for the final status. Do not retry or otherwise act on its result in this workflow.
 
@@ -239,6 +247,7 @@ Always continue to Step 9 after it returns. If the skill invocation fails or rep
 Success format:
 
 - In dd scope: `SUCCESS: Implementation complete, uncommitted change review completed, full branch review attempted | PR: {url}`
+- In dd scope with `skip_full_branch_review=true`: `SUCCESS: Implementation complete, uncommitted change review completed, full branch review skipped | PR: {url}`
 - Outside dd scope: `SUCCESS: Implementation complete, uncommitted change review completed | PR: none`
 - If the uncommitted change review continued after 3 rounds without approval, append: `| Uncommitted change findings: {summary} | Attempts: {summary}`
 - If the Codex review comment failed to post in Step 7, append: `| Warning: failed to request Codex review: {exact error summary}`

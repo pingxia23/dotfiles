@@ -1,6 +1,6 @@
 ---
 name: babysit-pr
-description: "Babysit the GitHub PR associated with the current branch: check and resolve merge conflicts, wait for DDCI orchestration to finish, loop on `dd-gitlab/*` CI checks until they pass, then automatically plan and implement unresolved actionable review comments after at most two plan-review rounds; rerun CI after comment-driven changes, classify concrete CI failures, merge the latest base when failures look external, use `code-implement-loop` for PR-caused failures, and update the PR body at the end."
+description: "Babysit the GitHub PR associated with the current branch: check and resolve merge conflicts, wait for DDCI orchestration to finish, loop on `dd-gitlab/*` CI checks until they pass, then automatically plan and implement unresolved actionable review comments after at most two plan-review rounds; rerun CI after comment-driven changes, classify concrete CI failures, merge the latest base when failures look external, use `code-implement-loop` without its full-branch review for PR-caused failures, and update the PR body at the end."
 ---
 
 # Babysit PR
@@ -16,6 +16,7 @@ description: "Babysit the GitHub PR associated with the current branch: check an
   - updating the PR body at the end
 - Treat `dd-gitlab/default-pipeline` as a rollup check, not a concrete job trace source.
 - Never reply to or resolve a review thread. Ignore comments classified as `reply_only` after plan review.
+- Always invoke `code-implement-loop` with `--skip-full-branch-review`. This skill owns the complete PR-level loop and must not start a separate full-branch review from an implementation subflow.
 
 ## Workflow
 
@@ -182,7 +183,7 @@ dd_gitlab_checks_json="$(
 - the local trace file path from `trace_file`
 - the failure summary extracted from the trace
 
-12. Invoke `code-implement-loop` with that raw failure context as the entire implementation scope.
+12. Invoke `code-implement-loop --skip-full-branch-review` with that raw failure context as the entire implementation scope.
 13. If `code-implement-loop` returns blocked status, propagate it and stop.
 14. If `code-implement-loop` succeeds, start the next iteration of this CI loop and repoll the `dd-gitlab/*` checks.
 
@@ -252,7 +253,7 @@ The resulting plan is `reviewed_comment_address_plan`.
    - do not include it in `implementation_plan`
 4. Verify that `implementation_plan` contains no `reply_only` section. If the check fails, stop and return `BLOCKED: failed to build actionable comment implementation plan | PR: <url>`.
 5. If `implementation_plan` is empty, record the reply-only count and continue to Phase 5 without invoking `code-implement-loop`.
-6. If `implementation_plan` is non-empty, invoke `code-implement-loop` once using the filtered plan as its direct inline implementation input and preserve its complete output as `comment_implementation_result`.
+6. If `implementation_plan` is non-empty, invoke `code-implement-loop --skip-full-branch-review` once using the filtered plan as its direct inline implementation input and preserve its complete output as `comment_implementation_result`.
 7. Do not block or stop based on `comment_implementation_result`, including blocked, failed, or invalid output. Record its status and exact error summary for Phase 6.
 8. Rerun Phase 3 so CI validates the current PR head. When CI is green, continue to Phase 5. Do not rerun Phase 4.
 
