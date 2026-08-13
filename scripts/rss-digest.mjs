@@ -1,42 +1,18 @@
 #!/usr/bin/env node
 
-import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
-import {
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  writeFileSync,
-} from "node:fs";
-import { homedir } from "node:os";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { generateRssDigest } from "./learning-digest.mjs";
+
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const FEEDS_FILE = path.join(SCRIPT_DIR, "rss-feeds.txt");
-const CLIPPINGS_DIR = path.join(
-  homedir(),
-  "Documents",
-  "obsidian",
-  "Digests",
-  "clippings",
-);
-const DIGEST_DIR = path.join(
-  homedir(),
-  "Documents",
-  "obsidian",
-  "Digests",
-  "clippings_digest",
-);
-const SAVED_DIR = path.join(homedir(), "Documents", "obsidian", "Digests", "saved");
-const DIGEST_SCRIPT = path.join(SCRIPT_DIR, "clippings-digest.sh");
-const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
-const HASH_LENGTH = 12;
 const LOG_PREFIX = "[rss-digest]";
+const USAGE = `Usage: rss-digest.mjs [--start <time> --end <time>]
 
-function log(message) {
-  console.log(`${LOG_PREFIX} ${message}`);
-}
+Without arguments, process the complete previous day in the local timezone.
+For a backfill, provide both ISO 8601 times. The start is inclusive. The end is exclusive.`;
 
 function decodeXml(value) {
   return value
@@ -156,93 +132,97 @@ export function normalizeArticleUrl(value) {
   return url.toString();
 }
 
-export function urlHash(normalizedUrl) {
-  return createHash("sha256")
-    .update(normalizedUrl)
-    .digest("hex")
-    .slice(0, HASH_LENGTH);
-}
-
-export function isWithinPastMonth(published, now = new Date()) {
-  if (!published) {
-    return false;
+function validDate(value) {
+  if (!value) {
+    return null;
   }
-  const publishedAt = new Date(published);
-  if (Number.isNaN(publishedAt.getTime())) {
-    return false;
-  }
-  return publishedAt <= now && publishedAt >= new Date(now.getTime() - MONTH_MS);
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
-export function entryIsWithinPastMonth(entry, now = new Date()) {
-  return (
-    isWithinPastMonth(entry.published, now) ||
-    isWithinPastMonth(entry.updated, now)
-  );
+export function entryPublicationDate(entry) {
+  return validDate(entry.published) ?? validDate(entry.updated);
 }
 
-function isoDate(date) {
-  return date.toISOString().slice(0, 10);
-}
-
-function localDate(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function slugify(title) {
-  return (
-    title
-      .normalize("NFKD")
-      .replace(/\p{Mark}/gu, "")
-      .toLowerCase()
-      .replace(/[^\p{Letter}\p{Number}]+/gu, "-")
-      .replace(/^-|-$/g, "")
-      .slice(0, 80)
-      .replace(/-$/g, "") || "article"
-  );
-}
-
-export function buildFilename(title, publishedAt, hash) {
-  return `${isoDate(publishedAt)}-${slugify(title)}--${hash}.md`;
-}
-
-export function renderClipping({
-  title,
-  url,
-  publishedAt,
-  createdAt,
-  content,
-}) {
-  const body = content || "The feed did not provide an article summary.";
-  return `---
-title: ${JSON.stringify(title)}
-source: ${JSON.stringify(url)}
-published: ${isoDate(publishedAt)}
-created: ${localDate(createdAt)}
----
-
-Source: [Read the original article](<${url}>)
-
-${body}
-`;
-}
-
-export function synchronizeDigestFrontmatter(source, digest, digestCreatedAt) {
-  const sourceMatch = source.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
-  const digestMatch = digest.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n([\s\S]*)$/);
-  if (!sourceMatch || !digestMatch) {
-    throw new Error("Unable to synchronize malformed RSS digest frontmatter");
+export function parseTimeWindow(args, now = new Date()) {
+  if (args.length === 0) {
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const start = new Date(end);
+    start.setDate(start.getDate() - 1);
+    return { end, start };
   }
 
-  return `---
-${sourceMatch[1]}
-digest_created: ${localDate(digestCreatedAt)}
----
+  let startValue;
+  let endValue;
+  for (let index = 0; index < args.length; index += 2) {
+    const option = args[index];
+    const value = args[index + 1];
+    if (!value || !["--start", "--end"].includes(option)) {
+      throw new Error(USAGE);
+    }
+    if (option === "--start") {
+      startValue = value;
+    } else {
+      endValue = value;
+    }
+  }
 
-${digestMatch[1].trimStart()}`;
+  if (!startValue || !endValue) {
+    throw new Error(`Both --start and --end are required.\n\n${USAGE}`);
+  }
+  const start = validDate(startValue);
+  const end = validDate(endValue);
+  if (!start || !end) {
+    throw new Error(`--start and --end must be valid ISO 8601 times.\n\n${USAGE}`);
+  }
+  if (start >= end) {
+    throw new Error("--start must be earlier than --end.");
+  }
+  return { end, start };
+}
+
+export function selectEntriesInWindow(entries, start, end) {
+  const candidates = [];
+
+  for (const entry of entries) {
+    const publishedAt = entryPublicationDate(entry);
+    if (!publishedAt || publishedAt < start || publishedAt >= end) {
+      continue;
+    }
+
+    let normalizedUrl;
+    try {
+      normalizedUrl = normalizeArticleUrl(entry.url);
+    } catch {
+      continue;
+    }
+
+    candidates.push({
+      content: entry.content || "The feed did not provide an article summary.",
+      normalizedUrl,
+      publishedAt: publishedAt.toISOString(),
+      title: entry.title,
+      url: entry.url,
+    });
+  }
+
+  candidates.sort((left, right) => right.publishedAt.localeCompare(left.publishedAt));
+
+  const seenUrls = new Set();
+  return candidates
+    .filter(({ normalizedUrl }) => {
+      if (seenUrls.has(normalizedUrl)) {
+        return false;
+      }
+      seenUrls.add(normalizedUrl);
+      return true;
+    })
+    .map(({ normalizedUrl: _, ...entry }) => entry);
+}
+
+export function selectRecentEntries(entries, now = new Date()) {
+  const { end, start } = parseTimeWindow([], now);
+  return selectEntriesInWindow(entries, start, end);
 }
 
 function readFeedUrls() {
@@ -250,95 +230,6 @@ function readFeedUrls() {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line && !line.startsWith("#"));
-}
-
-export function sourceUrlFromNote(note) {
-  const frontmatter = note.match(/^---\r?\n([\s\S]*?)\r?\n---/)?.[1] ?? "";
-  const source = frontmatter.match(
-    /^source:\s*(?:"([^"]+)"|'([^']+)'|(\S.*?))\s*$/m,
-  );
-  return source?.[1] ?? source?.[2] ?? source?.[3] ?? "";
-}
-
-function knownHashes() {
-  const hashes = new Set();
-  for (const directory of [CLIPPINGS_DIR, DIGEST_DIR, SAVED_DIR]) {
-    let filenames = [];
-    try {
-      filenames = readdirSync(directory);
-    } catch (error) {
-      if (error.code !== "ENOENT") {
-        throw error;
-      }
-    }
-    for (const filename of filenames) {
-      const match = filename.match(/--([a-f0-9]{12})\.md$/);
-      if (match) {
-        hashes.add(match[1]);
-      }
-      if (!filename.endsWith(".md")) {
-        continue;
-      }
-      const note = readFileSync(path.join(directory, filename), "utf8");
-      const sourceUrl = sourceUrlFromNote(note);
-      if (sourceUrl) {
-        try {
-          hashes.add(urlHash(normalizeArticleUrl(sourceUrl)));
-        } catch {
-          // Ignore non-URL source fields from unrelated notes.
-        }
-      }
-    }
-  }
-  return hashes;
-}
-
-function rssDigestContents() {
-  const contents = new Map();
-  for (const directory of [DIGEST_DIR, SAVED_DIR]) {
-    let filenames = [];
-    try {
-      filenames = readdirSync(directory);
-    } catch (error) {
-      if (error.code !== "ENOENT") {
-        throw error;
-      }
-    }
-    for (const filename of filenames) {
-      if (/--[a-f0-9]{12}\.md$/.test(filename)) {
-        contents.set(filename, readFileSync(path.join(directory, filename), "utf8"));
-      }
-    }
-  }
-  return contents;
-}
-
-function synchronizeChangedRssDigests(previousContents, now) {
-  for (const filename of readdirSync(CLIPPINGS_DIR)) {
-    if (!/--[a-f0-9]{12}\.md$/.test(filename)) {
-      continue;
-    }
-    const source = readFileSync(path.join(CLIPPINGS_DIR, filename), "utf8");
-    for (const directory of [DIGEST_DIR, SAVED_DIR]) {
-      const digestPath = path.join(directory, filename);
-      let digest;
-      try {
-        digest = readFileSync(digestPath, "utf8");
-      } catch (error) {
-        if (error.code === "ENOENT") {
-          continue;
-        }
-        throw error;
-      }
-      if (previousContents.get(filename) !== digest) {
-        writeFileSync(
-          digestPath,
-          synchronizeDigestFrontmatter(source, digest, now),
-          "utf8",
-        );
-      }
-    }
-  }
 }
 
 async function fetchFeed(feedUrl) {
@@ -350,87 +241,67 @@ async function fetchFeed(feedUrl) {
     throw new Error(`${feedUrl}: HTTP ${response.status}`);
   }
   const entries = parseFeedEntries(await response.text());
-  if (entries.length === 0 && response.headers.get("content-type")?.includes("text/html")) {
-    throw new Error(`${feedUrl}: no RSS or Atom entries found`);
-  }
   return entries.map((entry) => ({
     ...entry,
     url: new URL(entry.url, feedUrl).href,
   }));
 }
 
-async function main() {
-  const feedUrls = readFeedUrls();
-  if (feedUrls.length === 0) {
-    log(`No feeds configured in ${FEEDS_FILE}`);
+function printFeedFailures(failures) {
+  if (failures.length === 0) {
     return;
   }
+  console.log("\n## Feed failures\n");
+  for (const failure of failures) {
+    console.log(`- ${failure}`);
+  }
+}
 
-  mkdirSync(CLIPPINGS_DIR, { recursive: true });
-  const hashes = knownHashes();
-  const now = new Date();
-  let createdCount = 0;
-  let failedFeedCount = 0;
+async function main() {
+  if (process.argv[2] === "--help") {
+    console.log(USAGE);
+    return;
+  }
+  const { end, start } = parseTimeWindow(process.argv.slice(2));
+  const feedUrls = readFeedUrls();
+  if (feedUrls.length === 0) {
+    throw new Error(`No feeds configured in ${FEEDS_FILE}`);
+  }
 
-  const results = await Promise.allSettled(
-    feedUrls.map(async (feedUrl) => ({
-      feedUrl,
-      entries: await fetchFeed(feedUrl),
-    })),
-  );
+  const results = await Promise.allSettled(feedUrls.map(fetchFeed));
+  const entries = [];
+  const failures = [];
 
-  for (const result of results) {
-    if (result.status === "rejected") {
-      failedFeedCount += 1;
-      console.error(`${LOG_PREFIX} Feed failed: ${result.reason.message}`);
-      continue;
-    }
-
-    for (const entry of result.value.entries) {
-      if (!entryIsWithinPastMonth(entry, now)) {
-        continue;
-      }
-
-      let normalizedUrl;
-      try {
-        normalizedUrl = normalizeArticleUrl(entry.url);
-      } catch (error) {
-        console.error(`${LOG_PREFIX} Skipping ${entry.url}: ${error.message}`);
-        continue;
-      }
-
-      const hash = urlHash(normalizedUrl);
-      if (hashes.has(hash)) {
-        continue;
-      }
-
-      const publishedAt = new Date(entry.published || entry.updated);
-      const filename = buildFilename(entry.title, publishedAt, hash);
-      writeFileSync(
-        path.join(CLIPPINGS_DIR, filename),
-        renderClipping({
-          title: entry.title,
-          url: entry.url,
-          publishedAt,
-          createdAt: now,
-          content: entry.content,
-        }),
-        { encoding: "utf8", flag: "wx" },
-      );
-      hashes.add(hash);
-      createdCount += 1;
-      log(`Fetched: ${filename}`);
+  for (const [index, result] of results.entries()) {
+    if (result.status === "fulfilled") {
+      entries.push(...result.value);
+    } else {
+      failures.push(result.reason?.message ?? `${feedUrls[index]}: unknown error`);
     }
   }
 
-  log(`Fetched ${createdCount} new entries from the past 30 days.`);
-  const previousDigestContents = rssDigestContents();
-  execFileSync(DIGEST_SCRIPT, { stdio: "inherit" });
-  synchronizeChangedRssDigests(previousDigestContents, now);
-
-  if (failedFeedCount > 0) {
-    throw new Error(`${failedFeedCount} feed(s) failed`);
+  if (failures.length === feedUrls.length) {
+    throw new Error(`All feeds failed:\n- ${failures.join("\n- ")}`);
   }
+
+  const recentEntries = selectEntriesInWindow(entries, start, end);
+  if (recentEntries.length === 0) {
+    console.log(
+      `No RSS entries were published from ${start.toISOString()} through ${end.toISOString()}.`,
+    );
+  } else {
+    const digest = generateRssDigest({
+      entries: recentEntries,
+      windowEnd: end.toISOString(),
+      windowStart: start.toISOString(),
+    });
+    if (!digest) {
+      throw new Error("Digest generation returned no content");
+    }
+    console.log(digest);
+  }
+
+  printFeedFailures(failures);
 }
 
 const isMain =

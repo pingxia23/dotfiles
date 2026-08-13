@@ -5,6 +5,7 @@ CLIPPINGS_DIR="$HOME/Documents/obsidian/Digests/clippings"
 DIGEST_DIR="$HOME/Documents/obsidian/Digests/clippings_digest"
 SAVED_DIR="$HOME/Documents/obsidian/Digests/saved"
 LOG_PREFIX="[clippings-digest]"
+DIGEST_ENGINE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/learning-digest.mjs"
 
 log() {
   printf '%s %s\n' "$LOG_PREFIX" "$1"
@@ -146,83 +147,11 @@ for f in "${FILES_TO_PROCESS[@]}"; do
   log "  - $(basename "$f")"
 done
 
-# --- Build prompt ---
-TODAY=$(/bin/date +%Y-%m-%d)
-PROMPT_FILE=$(mktemp /tmp/clippings-digest-prompt.XXXXXX)
-trap 'rm -f "$PROMPT_FILE"' EXIT
-
-{
-  cat <<PROMPT_EOF
-Create learning digest notes from web clippings.
-
-For each source file listed below, read it and create a corresponding digest file in the output directory.
-
-OUTPUT DIRECTORY: ${DIGEST_DIR}
-
-For each source file, write a digest file at: ${DIGEST_DIR}/<same filename as source>
-
-STYLE
-
-Use plain English as much as possible. Avoid dense, abstract phrasing. Say what you mean in simple sentences. For example, don't write "Calibrate upward from a sustainable baseline rather than pushing agent count until something breaks." Instead write "Start with fewer threads than you're tempted to use, because the failure mode is subtle: you still feel productive, but your review quality drops."
-
-FRONTMATTER RULES
-- Preserve the original YAML frontmatter from the source file exactly, but make these changes:
-  - Replace the "clippings" tag with "clippings/digest"
-  - Add a field: digest_created: ${TODAY}
-- Do not add or remove any other frontmatter fields.
-
-DIGEST BODY FORMAT
-
-After the closing --- of the frontmatter, write the digest using this structure:
-
-## Key Takeaways
-
-3-5 bullet points. Each bullet is one concrete learning from the article. Format each as:
-
-- **[Short imperative phrase]** — 1-2 sentences explaining the reasoning or motivation behind this recommendation. Be specific enough that the reader can learn from it without reading the original.
-
-
-## Best Practices
-
-(Include this section only if the article suggests concrete actions, habits, or workflows.)
-
-1-3 bullet points. Each is a specific, actionable step the reader can try in their own work. Start each with a verb.
-
-QUALITY GUIDELINES
-- Be technically precise. Preserve specific numbers, thresholds, tool names, and techniques from the article.
-- Write for a software engineer. No generic self-help language.
-- Each bullet should stand alone. A reader should get value from any single bullet without reading the others.
-- Prefer the author's concrete examples over abstract restatements.
-- Total digest body (after frontmatter) should be 200-500 words.
-- Do not include a title heading (the frontmatter title is sufficient for Obsidian).
-
-ENDING
-
-For each digest file, at the very end add one blank line and then exactly:
-
-- [ ] Review digest "{title}" 📅 ${TODAY}
-
-where {title} is the title from the source file's YAML frontmatter.
-
-IMPORTANT: For each source file, write the digest file directly. No preamble, no code fences, no commentary.
-IMPORTANT: Each output file must start with --- (YAML frontmatter opening) on the first line.
-IMPORTANT: If a source file cannot be read or is empty, skip it and move on to the next.
-
-SOURCE FILES TO PROCESS:
-PROMPT_EOF
-
-  for f in "${FILES_TO_PROCESS[@]}"; do
-    echo "- ${f}"
-  done
-} > "$PROMPT_FILE"
-
 # --- Invoke Claude ---
+TODAY=$(/bin/date +%Y-%m-%d)
 log "Invoking claude..."
-if ! claude -p "$(cat "$PROMPT_FILE")" \
-  --model 'claude-opus-4-6[1m]' \
-  --allow-dangerously-skip-permissions \
-  --no-session-persistence \
-  > /dev/null; then
+if ! node "$DIGEST_ENGINE" clippings "$DIGEST_DIR" "$TODAY" \
+  "${FILES_TO_PROCESS[@]}"; then
   log_error "Claude invocation failed."
   exit 1
 fi
