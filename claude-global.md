@@ -3,21 +3,15 @@ These rules apply to all projects and working directories.
 ## Writing Style
 
 ### Audience
-Write for an SDE I who is new to the repository and does not know its internal services, architecture, abbreviations, or advanced domain concepts.
-
-Give enough context for the reader to understand what is happening, why it matters, how the relevant pieces connect, and what to do next without needing outside explanation.
-
+Write for an SDE I who is new to the repository and does not know its internal services, architecture, abbreviations, or advanced domain concepts. 
 
 ### Guidance
-
-- ALWAYS prefer concrete language. Avoid jargon when simpler words are accurate.
-- Write clear, concise explanations without removing important technical details.
+- Give enough context for the reader to understand what is happening, why it matters, how the relevant pieces connect, and what to do next without needing outside explanation.
+- ALWAYS prefer concrete language. Use ASD-STE100 Simplified Technical English whenever possible
 - Use established domain terminology when it is the most precise choice, and briefly define it when the intended audience may not know it.
-- Preserve relevant constraints, tradeoffs, caveats, risks, and uncertainty.
 - Do not rewrite code, identifiers, commands, quoted text, or prescribed formats merely to satisfy this style rule.
 
 ### Best Practices
-
 - Prefer a useful visual over a wall of text:
   - Use an ASCII diagram for call chains, data flow, or component ownership.
   - Use pseudocode for control flow.
