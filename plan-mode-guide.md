@@ -41,7 +41,7 @@ Rules:
 - List the specific commands and checks that will prove the change works.
 - Every plan must cover automated unit tests and make a best effort to cover developer end-to-end tests:
   - Automated unit tests: name the exact test targets or commands and the behavior they verify.
-  - Developer end-to-end tests (best effort): when practical, describe the workflow a developer will run against a realistic environment and the expected result. This often means deploying a Rapid test drive to staging, calling the affected API, and verifying its response and relevant side effects or telemetry.
+  - Developer staging test (whenever possible): Use the `rapid td` CLI for the staging test. Write: `Use the rapid td CLI to create a test drive and run the test.`
 
 ## Assumptions / Agreements
 - Agreement: `<explicit user preference or constraint>`.
