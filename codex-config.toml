@@ -1,6 +1,8 @@
 model = "gpt-5.6-sol"
 model_reasoning_effort = "high"
 model_supports_reasoning_summaries = true
+model_context_window = 1000000
+model_auto_compact_token_limit = 800000
 approval_policy = "never"
 sandbox_mode = "danger-full-access"
 personality = "pragmatic"
@@ -45,6 +47,7 @@ url = "https://developers.openai.com/mcp"
 args = []
 command = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl"
 startup_timeout_sec = 120
+enabled = false
 
 [mcp_servers.node_repl.env]
 NODE_REPL_NATIVE_PIPE_CONNECT_TIMEOUT_MS = "1000"
@@ -64,6 +67,7 @@ CODEX_CLI_PATH = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/co
 [mcp_servers.trajectory]
 command = "/Users/ping.xia/.trajectory/bin/trajectory"
 args = ["mcp"]
+enabled = false
 
 [tui]
 theme = "catppuccin-macchiato"
@@ -170,7 +174,7 @@ enabled = false
 enabled = false
 
 [plugins."trajectory@trajectory"]
-enabled = true
+enabled = false
 
 [memories]
 generate_memories = true
