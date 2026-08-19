@@ -12,7 +12,18 @@ export const CLAUDE_ARGS = Object.freeze([
   "--allow-dangerously-skip-permissions",
   "--no-session-persistence",
 ]);
-export const RSS_CLAUDE_ARGS = Object.freeze(["--tools", "Read"]);
+export const RSS_CODEX_ARGS = Object.freeze([
+  "exec",
+  "--skip-git-repo-check",
+  "--ephemeral",
+  "--sandbox",
+  "read-only",
+  "--model",
+  "gpt-5.6-terra",
+  "--config",
+  'model_reasoning_effort="high"',
+  "-",
+]);
 
 function styleInstructions() {
   return `STYLE
@@ -48,6 +59,24 @@ QUALITY BAR
 - Explain how systems work, not how they are marketed.
 - Prefer the author's concrete examples over abstract restatements.
 - Total digest body (after frontmatter) should be 200-500 words.`;
+}
+
+function rssDigestBodyInstructions() {
+  return `## Summary
+
+Write one short paragraph (one or two sentences) that explains the article's main argument. Start with "The author argues" or "The article reports" when the conclusion is an opinion or an unverified claim.
+
+## Key points
+
+Include 2-4 bullets containing only the most important examples, mechanisms, or limits from the article. Attribute estimates, forecasts, and disputed claims to the article or author. Do not add advice, recommendations, actions, or conclusions that are not in the article.
+
+QUALITY BAR
+- Write for a software engineer. Use plain, direct language.
+- Preserve concrete numbers, tools, components, and mechanisms from the article when useful.
+- Keep each bullet to one or two sentences.
+- State important limits, assumptions, and uncertainty.
+- Prefer the author's concrete examples over abstract restatements.
+- Total digest body should be 120-300 words.`;
 }
 
 export function buildClippingsPrompt({ digestDir, sourceFiles, today }) {
@@ -109,15 +138,16 @@ DIGEST BODY FORMAT
 
 Write the digest using this structure:
 
-${digestBodyInstructions()}
+${rssDigestBodyInstructions()}
 
 OUTPUT FORMAT
 
 - Return Markdown only. Do not add frontmatter, a table of contents, a review checkbox, or commentary about the task.
 - Start with: RSS entries published from ${windowStart} through ${windowEnd}.
-- For each entry, add a first-level heading in this exact form: # [Article title](article URL)
+- For each entry, add a first-level heading in this exact form: # Article title
 - On the next line, write: Published: <published time>
-- After that line, add the digest body in the shared format above.
+- On the following line, write: Source: <article URL>
+- After those lines, add the digest body in the shared format above.
 - Keep entries in the order provided.
 
 RSS ENTRIES:
@@ -145,12 +175,14 @@ export function cleanRssDigestOutput(output, { windowEnd, windowStart }) {
 }
 
 export function generateRssDigest(options) {
+  const prompt = buildRssPrompt(options);
   const output = execFileSync(
-    "claude",
-    [...claudeArgs(buildRssPrompt(options)), ...RSS_CLAUDE_ARGS],
+    "codex",
+    RSS_CODEX_ARGS,
     {
       encoding: "utf8",
-      stdio: ["ignore", "pipe", "inherit"],
+      input: prompt,
+      stdio: ["pipe", "pipe", "pipe"],
     },
   );
   return cleanRssDigestOutput(output, options);
