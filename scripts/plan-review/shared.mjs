@@ -2,10 +2,13 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 export const DEFAULT_REVIEW_TIMEOUT_MS = 5 * 60 * 1000;
+export const PI_PLAN_REVIEW_EXTENSION_PATH = fileURLToPath(
+  new URL("./pi_plan_review_output.mjs", import.meta.url),
+);
 export const PI_REVIEW_ARGS = Object.freeze([
-  "-p",
   "--provider",
   "ai-gw-baseten",
   "--model",
@@ -13,11 +16,20 @@ export const PI_REVIEW_ARGS = Object.freeze([
   "--thinking",
   "high",
   "--no-session",
+  "--mode",
+  "json",
+  "--extension",
+  PI_PLAN_REVIEW_EXTENSION_PATH,
   "--tools",
-  "read,bash,edit,write,grep,find,ls,mcp",
+  "read,bash,edit,write,grep,find,ls,mcp,submit_plan_review",
 ]);
 export const CODEX_REVIEW_MODEL = "gpt-5.5";
 export const CODEX_REVIEW_EFFORT = "high";
+const PI_PLAN_REVIEW_SUBMISSION_INSTRUCTIONS = `## Pi Plan Review Submission
+
+Your final action must be one submit_plan_review tool call.
+Do not return the plan review as assistant text.
+Do not call submit_plan_review with other tools in the same tool batch.`;
 
 export function getText(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -114,6 +126,34 @@ export function isReviewObject(value) {
   );
 }
 
+function hasOnlyKeys(value, allowedKeys) {
+  const allowed = new Set(allowedKeys);
+  return Object.keys(value).every((key) => allowed.has(key));
+}
+
+export function validatePlanReviewOutput(value) {
+  const errors = [];
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return { valid: false, errors: ["plan review must be an object"] };
+  }
+  if (!hasOnlyKeys(value, ["verdict", "comments"])) {
+    errors.push("plan review contains additional properties");
+  }
+  if (!["approve", "revise"].includes(value.verdict)) {
+    errors.push('verdict must be "approve" or "revise"');
+  }
+  if (!Array.isArray(value.comments)) {
+    errors.push("comments must be an array");
+  } else {
+    value.comments.forEach((comment, index) => {
+      if (typeof comment !== "string") {
+        errors.push(`comments[${index}] must be a string`);
+      }
+    });
+  }
+  return { valid: errors.length === 0, errors };
+}
+
 export function parseJsonObject(value) {
   try {
     const parsed = JSON.parse(value);
@@ -124,24 +164,116 @@ export function parseJsonObject(value) {
 }
 
 export function parsePiReviewOutput(output) {
-  const parsed = parseJsonObject(output);
-  if (!parsed) {
-    return null;
+  const events = [];
+  for (const [index, rawLine] of output.split(/\r?\n/).entries()) {
+    const line = rawLine.trim();
+    if (!line) {
+      continue;
+    }
+    try {
+      const event = JSON.parse(line);
+      if (!event || typeof event !== "object" || Array.isArray(event)) {
+        return {
+          review: null,
+          errors: [`Pi output line ${index + 1} is not a JSON object`],
+        };
+      }
+      events.push(event);
+    } catch {
+      return {
+        review: null,
+        errors: [`Pi output line ${index + 1} is not valid JSON`],
+      };
+    }
   }
 
-  if (isReviewObject(parsed)) {
-    return parsed;
+  const submissions = events.filter(
+    (event) =>
+      event.type === "tool_execution_end" &&
+      event.toolName === "submit_plan_review",
+  );
+  if (submissions.length === 0) {
+    return {
+      review: null,
+      errors: ["missing submit_plan_review tool result"],
+    };
+  }
+  if (submissions.length !== 1) {
+    return {
+      review: null,
+      errors: [
+        `expected one submit_plan_review tool result, found ${submissions.length}`,
+      ],
+    };
   }
 
-  if (
-    parsed.structured_output &&
-    typeof parsed.structured_output === "object" &&
-    isReviewObject(parsed.structured_output)
-  ) {
-    return parsed.structured_output;
+  const submission = submissions[0];
+  if (submission.isError !== false) {
+    return {
+      review: null,
+      errors: ["submit_plan_review tool call failed"],
+    };
   }
 
-  return null;
+  const submissionIndex = events.indexOf(submission);
+  const finalAssistantMessageIndex = events.findLastIndex(
+    (event, index) =>
+      index < submissionIndex &&
+      event.type === "message_end" &&
+      event.message?.role === "assistant",
+  );
+  if (finalAssistantMessageIndex !== -1) {
+    const companionTool = events
+      .slice(finalAssistantMessageIndex + 1, submissionIndex + 1)
+      .find(
+        (event) =>
+          typeof event.type === "string" &&
+          event.type.startsWith("tool_execution_") &&
+          event.toolName !== "submit_plan_review",
+      );
+    if (companionTool) {
+      return {
+        review: null,
+        errors: [
+          `submit_plan_review shared its final tool batch with ${companionTool.toolName}`,
+        ],
+      };
+    }
+  }
+
+  const laterAction = events.slice(submissionIndex + 1).some((event) => {
+    if (
+      (typeof event.type === "string" &&
+        event.type.startsWith("tool_execution_")) ||
+      event.type === "message_update" ||
+      event.type === "turn_start"
+    ) {
+      return true;
+    }
+    return (
+      (event.type === "message_start" || event.type === "message_end") &&
+      event.message?.role === "assistant"
+    );
+  });
+  if (laterAction) {
+    return {
+      review: null,
+      errors: ["submit_plan_review was not the final Pi action"],
+    };
+  }
+
+  const review = submission.result?.details;
+  const validation = validatePlanReviewOutput(review);
+  if (!validation.valid) {
+    return {
+      review: null,
+      errors: validation.errors.map(
+        (error) => `submit_plan_review.${error}`,
+      ),
+    };
+  }
+
+  return { review, errors: [] };
 }
 
 export function parseCodexReviewOutput(output) {
@@ -162,7 +294,11 @@ export async function reviewPlanWithPi({
   const promptPath = path.join(promptDirectory, "prompt.md");
   let piResult;
   try {
-    fs.writeFileSync(promptPath, prompt, "utf8");
+    fs.writeFileSync(
+      promptPath,
+      `${prompt}\n\n${PI_PLAN_REVIEW_SUBMISSION_INSTRUCTIONS}\n`,
+      "utf8",
+    );
     piResult = await spawnWithTimeout(
       "pi",
       [...PI_REVIEW_ARGS, `@${promptPath}`],
@@ -192,19 +328,18 @@ export async function reviewPlanWithPi({
   }
 
   const output = (piResult.stdout || "").trim();
-  log(`trimmed pi review output:\n${output}`);
+  log(`pi plan-review event stream chars=${output.length}`);
 
-  const review = parsePiReviewOutput(output);
-  if (!review) {
-    log(
-      `invalid pi review stdout=${JSON.stringify(
-        (piResult.stdout || "").slice(0, 500),
-      )}`,
-    );
-    return { review: null, reason: "invalid pi review output" };
+  const parsed = parsePiReviewOutput(output);
+  if (!parsed.review) {
+    log(`invalid pi plan review output: ${parsed.errors.join("; ")}`);
+    return {
+      review: null,
+      reason: `invalid pi plan review output: ${parsed.errors.join("; ")}`,
+    };
   }
 
-  return { review, reason: null };
+  return { review: parsed.review, reason: null };
 }
 
 export async function reviewPlanWithCodex({
