@@ -12,9 +12,12 @@ export const REVIEW_OUTPUT_SCHEMA_PATH = path.join(
   SCRIPT_DIR,
   "review-output.schema.json",
 );
+export const PI_REVIEW_EXTENSION_PATH = path.join(
+  SCRIPT_DIR,
+  "pi_review_output.mjs",
+);
 export const DEFAULT_REVIEW_TIMEOUT_MS = 10 * 60 * 1000;
 export const PI_REVIEW_ARGS = Object.freeze([
-  "-p",
   "--provider",
   "ai-gw-baseten",
   "--model",
@@ -22,8 +25,12 @@ export const PI_REVIEW_ARGS = Object.freeze([
   "--thinking",
   "high",
   "--no-session",
+  "--mode",
+  "json",
+  "--extension",
+  PI_REVIEW_EXTENSION_PATH,
   "--tools",
-  "read,bash,grep,find,ls",
+  "read,bash,grep,find,ls,submit_review",
 ]);
 export const CODEX_REVIEW_MODEL = "gpt-5.5";
 export const CODEX_REVIEW_EFFORT = "high";
@@ -33,6 +40,11 @@ const REVIEWERS = [
   "correctness_pi",
   "pythonQuality_codex",
 ];
+const PI_REVIEW_SUBMISSION_INSTRUCTIONS = `## Pi Review Submission
+
+Your final action must be one submit_review tool call.
+Do not return the review as assistant text.
+Do not call submit_review with other tools in the same tool batch.`;
 const reviewLog = createLogger({ tag: TAG, logFile: LOG_FILE });
 
 export function renderPythonQualityReviewPrompt({
@@ -435,33 +447,113 @@ export function parseCodexReviewOutput(output) {
 }
 
 export function parsePiReviewOutput(output) {
-  const parsed = parseJsonObject(output);
-  if (!parsed) {
-    return { review: null, errors: ["output is not a JSON object"] };
-  }
-
-  const direct = parseReviewObject(parsed);
-  if (direct.review) {
-    return direct;
-  }
-
-  if (
-    parsed.structured_output &&
-    typeof parsed.structured_output === "object" &&
-    !Array.isArray(parsed.structured_output)
-  ) {
-    const structured = parseReviewObject(parsed.structured_output);
-    if (structured.review) {
-      return structured;
+  const events = [];
+  for (const [index, rawLine] of output.split(/\r?\n/).entries()) {
+    const line = rawLine.trim();
+    if (!line) {
+      continue;
     }
+    try {
+      const event = JSON.parse(line);
+      if (!event || typeof event !== "object" || Array.isArray(event)) {
+        return {
+          review: null,
+          errors: [`Pi output line ${index + 1} is not a JSON object`],
+        };
+      }
+      events.push(event);
+    } catch {
+      return {
+        review: null,
+        errors: [`Pi output line ${index + 1} is not valid JSON`],
+      };
+    }
+  }
 
+  const submissions = events.filter(
+    (event) =>
+      event.type === "tool_execution_end" &&
+      event.toolName === "submit_review",
+  );
+  if (submissions.length === 0) {
     return {
       review: null,
-      errors: structured.errors.map((error) => `structured_output.${error}`),
+      errors: ["missing submit_review tool result"],
+    };
+  }
+  if (submissions.length !== 1) {
+    return {
+      review: null,
+      errors: [
+        `expected one submit_review tool result, found ${submissions.length}`,
+      ],
     };
   }
 
-  return { review: null, errors: direct.errors };
+  const submission = submissions[0];
+  if (submission.isError !== false) {
+    return {
+      review: null,
+      errors: ["submit_review tool call failed"],
+    };
+  }
+
+  const submissionIndex = events.indexOf(submission);
+  const finalAssistantMessageIndex = events.findLastIndex(
+    (event, index) =>
+      index < submissionIndex &&
+      event.type === "message_end" &&
+      event.message?.role === "assistant",
+  );
+  if (finalAssistantMessageIndex !== -1) {
+    const companionTool = events
+      .slice(finalAssistantMessageIndex + 1, submissionIndex + 1)
+      .find(
+        (event) =>
+          typeof event.type === "string" &&
+          event.type.startsWith("tool_execution_") &&
+          event.toolName !== "submit_review",
+      );
+    if (companionTool) {
+      return {
+        review: null,
+        errors: [
+          `submit_review shared its final tool batch with ${companionTool.toolName}`,
+        ],
+      };
+    }
+  }
+
+  const laterAction = events.slice(submissionIndex + 1).some((event) => {
+    if (
+      (typeof event.type === "string" &&
+        event.type.startsWith("tool_execution_")) ||
+      event.type === "message_update" ||
+      event.type === "turn_start"
+    ) {
+      return true;
+    }
+    return (
+      (event.type === "message_start" || event.type === "message_end") &&
+      event.message?.role === "assistant"
+    );
+  });
+  if (laterAction) {
+    return {
+      review: null,
+      errors: ["submit_review was not the final Pi action"],
+    };
+  }
+
+  const parsed = parseReviewObject(submission.result?.details);
+  if (!parsed.review) {
+    return {
+      review: null,
+      errors: parsed.errors.map((error) => `submit_review.${error}`),
+    };
+  }
+
+  return parsed;
 }
 
 export async function runPiReview({
@@ -476,7 +568,11 @@ export async function runPiReview({
   );
   let result;
   try {
-    fs.writeFileSync(promptPath, prompt, "utf8");
+    fs.writeFileSync(
+      promptPath,
+      `${prompt}\n\n${PI_REVIEW_SUBMISSION_INSTRUCTIONS}\n`,
+      "utf8",
+    );
     result = await spawnWithTimeout(
       "pi",
       [...PI_REVIEW_ARGS, `@${promptPath}`],
@@ -507,15 +603,11 @@ export async function runPiReview({
   }
 
   const output = (result.stdout || "").trim();
-  reviewLog(`trimmed pi review output:\n${output}`);
+  reviewLog(`pi review event stream chars=${output.length}`);
 
   const parsed = parsePiReviewOutput(output);
   if (!parsed.review) {
-    reviewLog(
-      `invalid pi review stdout=${JSON.stringify(
-        (result.stdout || "").slice(0, 500),
-      )}`,
-    );
+    reviewLog(`invalid pi review output: ${parsed.errors.join("; ")}`);
     return {
       review: null,
       reason: `invalid pi review output: ${parsed.errors.join("; ")}`,
