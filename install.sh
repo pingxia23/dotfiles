@@ -94,22 +94,6 @@ install_nodejs() {
   fi
 }
 
-# Install Claude Code CLI
-install_claude_code() {
-  if ! command_exists claude; then
-    echo "Installing Claude Code CLI..."
-
-    if command_exists npm; then
-      npm install -g @anthropic-ai/claude-code
-      echo "Claude Code installed successfully"
-    else
-      echo "npm not found. Please install Node.js first."
-    fi
-  else
-    echo "Claude Code is already installed"
-  fi
-}
-
 # Install uv (Python package manager)
 install_uv_uvx() {
   if ! command_exists uv; then
@@ -289,7 +273,6 @@ setup_dd_source() {
 
   # Create directories
   mkdir -p "$DD_SOURCE_DIR/.vscode"
-  mkdir -p "$DD_SOURCE_DIR/.claude"
   mkdir -p "$DD_SOURCE_DIR/.git/hooks"
 
   # Symlinked files (auto-sync with dotfiles repo)
@@ -443,9 +426,6 @@ fi
 # Install Node.js 18+ if needed
 install_nodejs
 
-# Install Claude Code
-install_claude_code
-
 # Install uv
 install_uv_uvx
 
@@ -487,32 +467,6 @@ if ! grep -q "$DOTFILES_SOURCE_LINE" "$HOME/.zshrc" 2>/dev/null; then
 else
   echo "Dotfiles source line already exists in .zshrc"
 fi
-
-# Setup Claude global configuration (symlinked)
-echo "Setting up Claude global configuration..."
-if [ -f "$DOTFILES_DIR/claude-global.md" ]; then
-  create_symlink "$DOTFILES_DIR/claude-global.md" "$HOME/.claude/CLAUDE.md"
-else
-  echo "  claude-global.md not found in dotfiles directory"
-fi
-
-if [ -f "$DOTFILES_DIR/claude-settings.json" ]; then
-  create_symlink "$DOTFILES_DIR/claude-settings.json" "$HOME/.claude/settings.json"
-else
-  echo "  claude-settings.json not found in dotfiles directory"
-fi
-
-# Setup Claude commands (symlink directory)
-create_symlink "$DOTFILES_DIR/claude-commands" "$HOME/.claude/commands"
-
-# Setup Claude agents (symlink directory)
-create_symlink "$DOTFILES_DIR/claude-agents" "$HOME/.claude/agents"
-
-# Setup Claude skills (symlink directory)
-create_symlink "$DOTFILES_DIR/claude-skills" "$HOME/.claude/skills"
-
-# Setup Claude hooks (symlink directory)
-create_symlink "$DOTFILES_DIR/claude-hooks" "$HOME/.claude/hooks"
 
 # Setup Codex configuration (symlinked)
 echo "Setting up Codex configuration..."

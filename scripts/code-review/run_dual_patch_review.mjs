@@ -299,7 +299,7 @@ async function main() {
           findings: [],
           reviews: {
             Correctness_codex: null,
-            correctness_claude: null,
+            correctness_pi: null,
             pythonQuality_codex: null,
           },
           unavailable: [{ reviewer: "runner", reason: error.message }],

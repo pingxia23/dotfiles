@@ -4,5 +4,7 @@ https://medium.com/feed/jonathans-musings
 https://lucumr.pocoo.org/feed.atom
 https://www.letta.com/
 https://karpathy.bearblog.dev/blog/
-https://openai.com/news/engineering/rss.xml
+https://developers.openai.com/rss.xml
 https://www.anthropic.com/engineering
+https://www.tobyord.com/writing?format=rss
+https://openai.com/news/rss.xml

@@ -57,9 +57,6 @@ export PATH="$HOME/.local/bin:$PATH"
 # Cross-shell commands maintained in this repository
 export PATH="$HOME/dotfiles/bin:$PATH"
 
-alias claude_high="workspace_agent_auth && claude --model 'opus[1m]' --effort xhigh --allow-dangerously-skip-permissions"
-alias claude_max="workspace_agent_auth && claude --model 'opus[1m]' --effort max --allow-dangerously-skip-permissions"
-
 alias codex_medium="workspace_agent_auth && codex --model gpt-5.6-sol -c 'model_reasoning_effort=\"high\"' --dangerously-bypass-approvals-and-sandbox"
 alias codex_high="workspace_agent_auth && codex --model gpt-5.6-sol -c 'model_reasoning_effort=\"xhigh\"' -c 'service_tier=\"fast\"' --dangerously-bypass-approvals-and-sandbox"
 alias codex_max="workspace_agent_auth && codex --model gpt-5.6-sol -c 'model_reasoning_effort=\"max\"' -c 'service_tier=\"fast\"' --dangerously-bypass-approvals-and-sandbox"

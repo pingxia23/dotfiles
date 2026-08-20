@@ -295,7 +295,6 @@ const cwd =
 const reviewerResults = await runPlanReviewers({
   prompt,
   cwd,
-  reviewSchema,
   reviewSchemaPath: REVIEW_SCHEMA_PATH,
   log,
   codexTempPrefix: "stop-plan-gate-codex",

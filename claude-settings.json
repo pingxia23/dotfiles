@@ -7,30 +7,6 @@
     "defaultMode": "bypassPermissions"
   },
   "model": "opus[1m]",
-  "hooks": {
-    "Notification": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/slack-notify.sh",
-            "async": true
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/dotfiles/scripts/plan-review/claude-stop-plan-gate.mjs\"",
-            "timeout": 900
-          }
-        ]
-      }
-    ]
-  },
   "enabledPlugins": {
     "slack@claude-plugins-official": true,
     "codex@openai-codex": true,

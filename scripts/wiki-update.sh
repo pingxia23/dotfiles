@@ -56,8 +56,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if ! command -v claude >/dev/null 2>&1; then
-  log_error "claude CLI is not installed or not on PATH."
+if ! command -v codex >/dev/null 2>&1; then
+  log_error "codex CLI is not installed or not on PATH."
   exit 1
 fi
 
@@ -153,16 +153,16 @@ trap 'rm -f "$PROMPT_FILE"' EXIT
   done
 } > "$PROMPT_FILE"
 
-log "Invoking claude..."
-if ! (
-  cd "$VAULT_ROOT" &&
-  claude -p "$(cat "$PROMPT_FILE")" \
-    --model 'claude-opus-4-6[1m]' \
-    --allow-dangerously-skip-permissions \
-    --no-session-persistence
-  > /dev/null
-) ; then
-  log_error "Claude invocation failed."
+log "Invoking codex..."
+if ! codex exec \
+  --skip-git-repo-check \
+  --ephemeral \
+  --sandbox workspace-write \
+  --model gpt-5.6-terra \
+  --config 'model_reasoning_effort="high"' \
+  --cd "$VAULT_ROOT" \
+  - < "$PROMPT_FILE" > /dev/null; then
+  log_error "Codex invocation failed."
   exit 1
 fi
 

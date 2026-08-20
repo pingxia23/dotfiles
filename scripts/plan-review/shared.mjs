@@ -4,8 +4,18 @@ import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 
 export const DEFAULT_REVIEW_TIMEOUT_MS = 5 * 60 * 1000;
-export const CLAUDE_REVIEW_MODEL = "claude-opus-4-6[1m]";
-export const CLAUDE_REVIEW_EFFORT = "high";
+export const PI_REVIEW_ARGS = Object.freeze([
+  "-p",
+  "--provider",
+  "ai-gw-baseten",
+  "--model",
+  "baseten/zai-org/GLM-5.2",
+  "--thinking",
+  "high",
+  "--no-session",
+  "--tools",
+  "read,bash,edit,write,grep,find,ls,mcp",
+]);
 export const CODEX_REVIEW_MODEL = "gpt-5.5";
 export const CODEX_REVIEW_EFFORT = "high";
 
@@ -113,7 +123,7 @@ export function parseJsonObject(value) {
   }
 }
 
-export function parseClaudeReviewOutput(output) {
+export function parsePiReviewOutput(output) {
   const parsed = parseJsonObject(output);
   if (!parsed) {
     return null;
@@ -139,69 +149,59 @@ export function parseCodexReviewOutput(output) {
   return isReviewObject(parsed) ? parsed : null;
 }
 
-export async function reviewPlanWithClaude({
+export async function reviewPlanWithPi({
   prompt,
   cwd,
-  reviewSchema,
   log,
   timeout = DEFAULT_REVIEW_TIMEOUT_MS,
 }) {
-  log(
-    `running claude in cwd=${cwd} model=${CLAUDE_REVIEW_MODEL} effort=${CLAUDE_REVIEW_EFFORT}`,
+  log(`running pi in cwd=${cwd} with GLM 5.2 high thinking`);
+  const promptDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "pi-plan-review-"),
   );
-  const claudeResult = await spawnWithTimeout(
-    "claude",
-    [
-      "-p",
-      "--model",
-      CLAUDE_REVIEW_MODEL,
-      "--effort",
-      CLAUDE_REVIEW_EFFORT,
-      "--no-session-persistence",
-      "--allowedTools",
-      "Read,Write,Edit,Bash,Glob,Grep,WebFetch,WebSearch",
-      "--output-format",
-      "json",
-      "--json-schema",
-      reviewSchema,
-      prompt,
-    ],
-    {
-      cwd,
-      timeout,
-    },
-  );
+  const promptPath = path.join(promptDirectory, "prompt.md");
+  let piResult;
+  try {
+    fs.writeFileSync(promptPath, prompt, "utf8");
+    piResult = await spawnWithTimeout(
+      "pi",
+      [...PI_REVIEW_ARGS, `@${promptPath}`],
+      { cwd, timeout },
+    );
+  } finally {
+    fs.rmSync(promptDirectory, { force: true, recursive: true });
+  }
   log(
-    `claude exit=${claudeResult.status ?? "null"} signal=${
-      claudeResult.signal ?? "null"
-    } stderr_chars=${getText(claudeResult.stderr).length}`,
+    `pi exit=${piResult.status ?? "null"} signal=${
+      piResult.signal ?? "null"
+    } stderr_chars=${getText(piResult.stderr).length}`,
   );
 
-  if (claudeResult.error) {
+  if (piResult.error) {
     return {
       review: null,
-      reason: `claude spawn failed: ${claudeResult.error.message}`,
+      reason: `pi spawn failed: ${piResult.error.message}`,
     };
   }
 
-  if (claudeResult.status !== 0) {
+  if (piResult.status !== 0) {
     return {
       review: null,
-      reason: `claude non-zero exit: ${claudeResult.status}`,
+      reason: `pi non-zero exit: ${piResult.status}`,
     };
   }
 
-  const output = (claudeResult.stdout || "").trim();
-  log(`trimmed claude review output:\n${output}`);
+  const output = (piResult.stdout || "").trim();
+  log(`trimmed pi review output:\n${output}`);
 
-  const review = parseClaudeReviewOutput(output);
+  const review = parsePiReviewOutput(output);
   if (!review) {
     log(
-      `invalid claude review stdout=${JSON.stringify(
-        (claudeResult.stdout || "").slice(0, 500),
+      `invalid pi review stdout=${JSON.stringify(
+        (piResult.stdout || "").slice(0, 500),
       )}`,
     );
-    return { review: null, reason: "invalid claude review output" };
+    return { review: null, reason: "invalid pi review output" };
   }
 
   return { review, reason: null };
@@ -365,17 +365,15 @@ export function mergeReviewComments(reviews) {
 export async function runPlanReviewers({
   prompt,
   cwd,
-  reviewSchema,
   reviewSchemaPath,
   log,
   codexTempPrefix,
 }) {
-  const claudeReview = runReviewer(
-    "Claude",
-    reviewPlanWithClaude({
+  const piReview = runReviewer(
+    "Pi",
+    reviewPlanWithPi({
       prompt,
       cwd,
-      reviewSchema,
       log,
     }),
   );
@@ -389,7 +387,7 @@ export async function runPlanReviewers({
       tempPrefix: codexTempPrefix,
     }),
   );
-  const reviewerResults = await Promise.all([codexReview, claudeReview]);
+  const reviewerResults = await Promise.all([codexReview, piReview]);
 
   for (const { reviewer, review, reason } of reviewerResults) {
     if (review) {

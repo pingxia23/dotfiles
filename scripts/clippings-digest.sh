@@ -91,8 +91,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # --- Prerequisites ---
-if ! command -v claude >/dev/null 2>&1; then
-  log_error "claude CLI is not installed or not on PATH."
+if ! command -v codex >/dev/null 2>&1; then
+  log_error "codex CLI is not installed or not on PATH."
   exit 1
 fi
 
@@ -147,12 +147,12 @@ for f in "${FILES_TO_PROCESS[@]}"; do
   log "  - $(basename "$f")"
 done
 
-# --- Invoke Claude ---
+# --- Invoke Codex ---
 TODAY=$(/bin/date +%Y-%m-%d)
-log "Invoking claude..."
+log "Invoking codex..."
 if ! node "$DIGEST_ENGINE" clippings "$DIGEST_DIR" "$TODAY" \
   "${FILES_TO_PROCESS[@]}"; then
-  log_error "Claude invocation failed."
+  log_error "Codex invocation failed."
   exit 1
 fi
 

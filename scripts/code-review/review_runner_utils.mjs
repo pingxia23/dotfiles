@@ -13,14 +13,24 @@ export const REVIEW_OUTPUT_SCHEMA_PATH = path.join(
   "review-output.schema.json",
 );
 export const DEFAULT_REVIEW_TIMEOUT_MS = 10 * 60 * 1000;
-export const CLAUDE_REVIEW_MODEL = "claude-opus-4-6[1m]";
-export const CLAUDE_REVIEW_EFFORT = "high";
+export const PI_REVIEW_ARGS = Object.freeze([
+  "-p",
+  "--provider",
+  "ai-gw-baseten",
+  "--model",
+  "baseten/zai-org/GLM-5.2",
+  "--thinking",
+  "high",
+  "--no-session",
+  "--tools",
+  "read,bash,grep,find,ls",
+]);
 export const CODEX_REVIEW_MODEL = "gpt-5.5";
 export const CODEX_REVIEW_EFFORT = "high";
 
 const REVIEWERS = [
   "Correctness_codex",
-  "correctness_claude",
+  "correctness_pi",
   "pythonQuality_codex",
 ];
 const reviewLog = createLogger({ tag: TAG, logFile: LOG_FILE });
@@ -424,7 +434,7 @@ export function parseCodexReviewOutput(output) {
   return parseReviewObject(parsed);
 }
 
-export function parseClaudeReviewOutput(output) {
+export function parsePiReviewOutput(output) {
   const parsed = parseJsonObject(output);
   if (!parsed) {
     return { review: null, errors: ["output is not a JSON object"] };
@@ -454,36 +464,29 @@ export function parseClaudeReviewOutput(output) {
   return { review: null, errors: direct.errors };
 }
 
-export async function runClaudeReview({
+export async function runPiReview({
   prompt,
   cwd,
-  reviewSchema,
   timeout = DEFAULT_REVIEW_TIMEOUT_MS,
 }) {
-  reviewLog(
-    `running claude in cwd=${cwd} model=${CLAUDE_REVIEW_MODEL} effort=${CLAUDE_REVIEW_EFFORT}`,
+  reviewLog(`running pi in cwd=${cwd} with GLM 5.2 high thinking`);
+  const promptPath = path.join(
+    os.tmpdir(),
+    `pi-code-review-${randomUUID()}.md`,
   );
-  const result = await spawnWithTimeout(
-    "claude",
-    [
-      "-p",
-      "--model",
-      CLAUDE_REVIEW_MODEL,
-      "--effort",
-      CLAUDE_REVIEW_EFFORT,
-      "--no-session-persistence",
-      "--allowedTools",
-      "Read,Bash,Glob,Grep",
-      "--output-format",
-      "json",
-      "--json-schema",
-      reviewSchema,
-      prompt,
-    ],
-    { cwd, timeout },
-  );
+  let result;
+  try {
+    fs.writeFileSync(promptPath, prompt, "utf8");
+    result = await spawnWithTimeout(
+      "pi",
+      [...PI_REVIEW_ARGS, `@${promptPath}`],
+      { cwd, timeout },
+    );
+  } finally {
+    fs.rmSync(promptPath, { force: true });
+  }
   reviewLog(
-    `claude exit=${result.status ?? "null"} signal=${
+    `pi exit=${result.status ?? "null"} signal=${
       result.signal ?? "null"
     } stderr_chars=${getText(result.stderr).length}`,
   );
@@ -491,31 +494,31 @@ export async function runClaudeReview({
   if (result.error) {
     return {
       review: null,
-      reason: `claude spawn failed: ${result.error.message}`,
+      reason: `pi spawn failed: ${result.error.message}`,
     };
   }
   if (result.status !== 0) {
     return {
       review: null,
-      reason: `claude non-zero exit: ${result.status}${
+      reason: `pi non-zero exit: ${result.status}${
         getText(result.stderr) ? `: ${getText(result.stderr)}` : ""
       }`,
     };
   }
 
   const output = (result.stdout || "").trim();
-  reviewLog(`trimmed claude review output:\n${output}`);
+  reviewLog(`trimmed pi review output:\n${output}`);
 
-  const parsed = parseClaudeReviewOutput(output);
+  const parsed = parsePiReviewOutput(output);
   if (!parsed.review) {
     reviewLog(
-      `invalid claude review stdout=${JSON.stringify(
+      `invalid pi review stdout=${JSON.stringify(
         (result.stdout || "").slice(0, 500),
       )}`,
     );
     return {
       review: null,
-      reason: `invalid claude review output: ${parsed.errors.join("; ")}`,
+      reason: `invalid pi review output: ${parsed.errors.join("; ")}`,
     };
   }
 
@@ -729,22 +732,20 @@ export async function runDualReviewPrompt({
   prompt,
   pythonQualityPrompt,
   reviewSchemaPath = REVIEW_OUTPUT_SCHEMA_PATH,
-  reviewSchema = fs.readFileSync(reviewSchemaPath, "utf8").trim(),
   timeout = DEFAULT_REVIEW_TIMEOUT_MS,
   codexReviewRunner = runCodexReview,
-  claudeReviewRunner = runClaudeReview,
+  piReviewRunner = runPiReview,
 }) {
   reviewLog(
-    "reviewers launched: Correctness_codex, correctness_claude, pythonQuality_codex",
+    "reviewers launched: Correctness_codex, correctness_pi, pythonQuality_codex",
   );
-  const claudeReview = runReviewerOnce({
-    reviewer: "correctness_claude",
+  const piReview = runReviewerOnce({
+    reviewer: "correctness_pi",
     prompt,
     runReview: (reviewPrompt) =>
-      claudeReviewRunner({
+      piReviewRunner({
         prompt: reviewPrompt,
         cwd: worktreeRoot,
-        reviewSchema,
         timeout,
       }),
   });
@@ -775,7 +776,7 @@ export async function runDualReviewPrompt({
 
   const results = await Promise.all([
     codexReview,
-    claudeReview,
+    piReview,
     pythonQualityReview,
   ]);
   const aggregate = aggregateReviews(results);

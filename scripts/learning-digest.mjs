@@ -4,13 +4,17 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-export const CLAUDE_ARGS = Object.freeze([
-  "-p",
-  "PROMPT",
+export const CLIPPINGS_CODEX_ARGS = Object.freeze([
+  "exec",
+  "--skip-git-repo-check",
+  "--ephemeral",
+  "--sandbox",
+  "workspace-write",
   "--model",
-  "claude-opus-4-6[1m]",
-  "--allow-dangerously-skip-permissions",
-  "--no-session-persistence",
+  "gpt-5.6-terra",
+  "--config",
+  'model_reasoning_effort="high"',
+  "-",
 ]);
 export const RSS_CODEX_ARGS = Object.freeze([
   "exec",
@@ -155,13 +159,11 @@ ${JSON.stringify(entries, null, 2)}
 `;
 }
 
-function claudeArgs(prompt) {
-  return CLAUDE_ARGS.map((argument) => (argument === "PROMPT" ? prompt : argument));
-}
-
 export function generateClippingDigests(options) {
-  execFileSync("claude", claudeArgs(buildClippingsPrompt(options)), {
-    stdio: ["ignore", "ignore", "inherit"],
+  execFileSync("codex", CLIPPINGS_CODEX_ARGS, {
+    cwd: path.dirname(options.digestDir),
+    input: buildClippingsPrompt(options),
+    stdio: ["pipe", "ignore", "inherit"],
   });
 }
 

@@ -154,7 +154,7 @@ enabled = false
 enabled = false
 
 [plugins."presentations@openai-primary-runtime"]
-enabled = true
+enabled = false
 
 [plugins."template-creator@openai-primary-runtime"]
 enabled = false

@@ -70,6 +70,7 @@ else
   LATEST=$(/bin/date -j -f "%Y-%m-%d %H:%M:%S" "${TARGET_THURSDAY} 23:59:59" +%s)
 fi
 
+mkdir -p "$DIGEST_DIR"
 DIGEST_FILE="${DIGEST_DIR}/${TARGET_THURSDAY}-ai-slack-digest.md"
 DIGEST_REVIEW_FOOTER="- [ ] Review AI slack digest ${TARGET_THURSDAY} 📅 ${TARGET_THURSDAY}"
 
@@ -87,16 +88,16 @@ if [[ -f "$DIGEST_FILE" && ! -s "$DIGEST_FILE" ]]; then
   rm -f "$DIGEST_FILE"
 fi
 
-if ! command -v claude >/dev/null 2>&1; then
-  echo "${LOG_PREFIX} claude CLI is not installed or not on PATH."
+if ! command -v codex >/dev/null 2>&1; then
+  echo "${LOG_PREFIX} codex CLI is not installed or not on PATH."
   exit 1
 fi
 
 # --- Write prompt to temp file ---
 PROMPT_FILE=$(mktemp /tmp/slack-digest-prompt.XXXXXX)
 OUTPUT_FILE=$(mktemp /tmp/slack-digest-output.XXXXXX)
-CLAUDE_STDOUT_FILE=$(mktemp /tmp/slack-digest-claude-stdout.XXXXXX)
-trap 'rm -f "$PROMPT_FILE" "$OUTPUT_FILE" "$CLAUDE_STDOUT_FILE"' EXIT
+CODEX_STDOUT_FILE=$(mktemp /tmp/slack-digest-codex-stdout.XXXXXX)
+trap 'rm -f "$PROMPT_FILE" "$OUTPUT_FILE" "$CODEX_STDOUT_FILE"' EXIT
 
 cat > "$PROMPT_FILE" <<PROMPT_EOF
 Produce a weekly technical learning digest from Slack for the week ending Thursday (${TARGET_THURSDAY}).
@@ -122,13 +123,13 @@ Already handled by the calling script. Proceed to Step 2.
 STEP 2 — READ SLACK
 
 - Read all messages in Slack channel ${CHANNEL_ID} from ${RANGE_START} 00:00:00 through ${TARGET_THURSDAY} 23:59:59.
-  Use mcp__plugin_slack_slack__slack_read_channel with:
+  Use the configured Slack plugin's channel-reading tool with:
   - channel_id: "${CHANNEL_ID}"
   - oldest: "${OLDEST}"
   - latest: "${LATEST}"
   - limit: 100
 - Paginate until you have all messages.
-- For every message that has thread replies (reply_count > 0), use mcp__plugin_slack_slack__slack_read_thread with that message ts as message_ts to get full thread context.
+- For every message that has thread replies (reply_count > 0), use the configured Slack plugin's thread-reading tool with that message ts as message_ts to get full thread context.
 - Important: some messages that appear as top-level channel messages are actually "also sent to channel" replies. Always inspect the thread and attribute the discussion to the original parent topic.
 - Merge thread replies into the parent discussion. Never list thread replies as separate digest items.
 
@@ -241,23 +242,26 @@ IMPORTANT: Never write raw error text or payloads such as:
 - [{"status":401, ...}]
 PROMPT_EOF
 
-# --- Run claude ---
-echo "${LOG_PREFIX} Invoking claude..."
-if ! claude -p "$(cat "$PROMPT_FILE")" \
-  --model 'claude-opus-4-6[1m]' \
-  --no-session-persistence \
-  --allowedTools "Read,Write,Edit,Bash,Glob,Grep,WebFetch,WebSearch,mcp__plugin_slack_slack__*" \
-  > "$CLAUDE_STDOUT_FILE"; then
-  echo "${LOG_PREFIX} Claude invocation failed; digest not created."
+# --- Run Codex ---
+echo "${LOG_PREFIX} Invoking codex..."
+if ! codex exec \
+  --skip-git-repo-check \
+  --ephemeral \
+  --sandbox workspace-write \
+  --model gpt-5.6-terra \
+  --config 'model_reasoning_effort="high"' \
+  --cd "$DIGEST_DIR" \
+  - < "$PROMPT_FILE" > "$CODEX_STDOUT_FILE"; then
+  echo "${LOG_PREFIX} Codex invocation failed; digest not created."
   exit 1
 fi
 
 if [[ ! -f "$OUTPUT_FILE" || ! -s "$OUTPUT_FILE" ]]; then
-  if [[ -s "$CLAUDE_STDOUT_FILE" ]]; then
-    echo "${LOG_PREFIX} Claude wrote to stdout instead of the requested file; validating stdout."
-    mv "$CLAUDE_STDOUT_FILE" "$OUTPUT_FILE"
+  if [[ -s "$CODEX_STDOUT_FILE" ]]; then
+    echo "${LOG_PREFIX} Codex wrote to stdout instead of the requested file; validating stdout."
+    mv "$CODEX_STDOUT_FILE" "$OUTPUT_FILE"
   else
-    echo "${LOG_PREFIX} Claude did not write the digest file; digest not created."
+    echo "${LOG_PREFIX} Codex did not write the digest file; digest not created."
     exit 1
   fi
 fi
