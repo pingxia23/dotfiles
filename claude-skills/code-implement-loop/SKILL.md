@@ -1,6 +1,6 @@
 ---
 name: code-implement-loop
-description: "Trigger this skill when implementation should start: if Codex/Claude proposes a plan and the user says 'implement this', 'implement the proposed plan', 'implement it', or equivalent; or if the user explicitly invokes `code-implement-loop`. Accepted implementation input sources are: a Codex/Claude-proposed plan, a user-provided `.md` plan/design file, or user-provided inline implementation instructions. In dd scope it runs uncommitted change review rounds, commits with `commit-smart`, requests Codex review, then delegates full-branch review to `full-branch-review` unless `--skip-full-branch-review` is supplied."
+description: "Implement an approved plan through a deterministic review loop. Select this skill automatically for 'implement it' requests only inside `~/dd` (or its resolved absolute path). Outside `~/dd`, use it only when the user explicitly invokes `code-implement-loop` or another skill delegates work to it. Accept a prior plan, a `.md` plan file, or inline implementation instructions. In dd scope, commit and run PR review workflows; outside dd scope, leave reviewed changes uncommitted."
 ---
 
 # Code Implement Loop
@@ -12,6 +12,7 @@ Implement a task in a deterministic sequence: plan intake (`.md` file or direct 
 ## Hard Rules
 
 - First, review the `# Global Rules` from your memory file and apply them before the skill-specific rules below.
+- Routing guard: outside `~/dd` (or its resolved absolute path), do not use this skill for a generic implementation request. Continue only when the user explicitly invoked `code-implement-loop` or another skill explicitly delegated work to it.
 - Never use destructive cleanup commands (`git reset --hard`, `git checkout -- .`, `git clean -fd`).
 - Approval definition: `approval` means the reviewer script returns `status="approved"`, never user confirmation.
 - Stop and notify user whenever bzl command waits for OIDC device auth

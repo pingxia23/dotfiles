@@ -36,15 +36,15 @@ create_symlink() {
   echo "  Symlinked $target -> $source"
 }
 
-# Check if Node.js is installed and version is 18+
+# Check if Node.js is installed and version is 22+
 check_nodejs() {
   if command_exists node; then
     NODE_VERSION=$(node -v | cut -d 'v' -f 2 | cut -d '.' -f 1)
-    if [ "$NODE_VERSION" -ge 18 ]; then
+    if [ "$NODE_VERSION" -ge 22 ]; then
       echo "Node.js v$(node -v | cut -d 'v' -f 2) is already installed"
       return 0
     else
-      echo "Node.js v$(node -v | cut -d 'v' -f 2) is installed but version 18+ is required"
+      echo "Node.js v$(node -v | cut -d 'v' -f 2) is installed but version 22+ is required"
       return 1
     fi
   else
@@ -57,19 +57,20 @@ check_nodejs() {
 # Installation Functions
 # =============================================================================
 
-# Install Node.js if not already installed or version is less than 18
+# Install Node.js if not already installed or version is less than 22
 install_nodejs() {
   if ! check_nodejs; then
-    echo "Installing Node.js 18+..."
+    echo "Installing Node.js 22+..."
 
     if [[ "$OSTYPE" == "darwin"* ]]; then
       # macOS - use Homebrew if available
       if command_exists brew; then
-        brew install node@18
+        brew install node@22
         # Add to PATH if needed
-        if ! command_exists node || [ "$(node -v | cut -d 'v' -f 2 | cut -d '.' -f 1)" -lt 18 ]; then
-          echo 'export PATH="/usr/local/opt/node@18/bin:$PATH"' >> ~/.zshrc
-          export PATH="/usr/local/opt/node@18/bin:$PATH"
+        if ! command_exists node || [ "$(node -v | cut -d 'v' -f 2 | cut -d '.' -f 1)" -lt 22 ]; then
+          NODE_22_BIN="$(brew --prefix node@22)/bin"
+          echo "export PATH=\"$NODE_22_BIN:\$PATH\"" >> ~/.zshrc
+          export PATH="$NODE_22_BIN:$PATH"
         fi
       else
         echo "Homebrew not found. Please install Homebrew first or install Node.js manually."
@@ -85,12 +86,23 @@ install_nodejs() {
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
       fi
 
-      # Install and use Node.js 18
-      nvm install 18
-      nvm use 18
+      # Install and use Node.js 22
+      nvm install 22
+      nvm use 22
     else
       echo "Unsupported OS. Please install Node.js manually."
     fi
+  fi
+}
+
+# Install or update the standalone Codex CLI
+install_codex() {
+  if [[ "$OSTYPE" == "darwin"* ]] || [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    echo "Installing standalone Codex CLI..."
+    curl -fsSL https://chatgpt.com/codex/install.sh | sh
+    echo "Codex CLI installed successfully"
+  else
+    echo "Unsupported OS. Please install Codex manually."
   fi
 }
 
@@ -423,8 +435,11 @@ else
   echo "zsh-syntax-highlighting is already installed"
 fi
 
-# Install Node.js 18+ if needed
+# Install Node.js 22+ if needed
 install_nodejs
+
+# Install Codex CLI
+install_codex
 
 # Install uv
 install_uv_uvx

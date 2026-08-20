@@ -91,7 +91,8 @@ When your changes create orphans:
 - When writing or changing Python code, read `$HOME/dotfiles/python-implementation-guide.md`.
 
 # Skill Routing Override
-- **ALWAYS** `code-implement-loop` skill to implement a plan, if the current working directory is within `~/dd` (or its resolved absolute path), and the latest assistant response proposed an implementation plan and the user replies with `implement this`, `implement it`, `implement the proposed plan`, `carry out the plan`, or equivalent.
+- Use `code-implement-loop` skill to implement a plan, **if the current working directory is within `~/dd` (or its resolved absolute path)**, and the latest assistant response proposed an implementation plan and the user replies with `implement this`, `implement it`, `implement the proposed plan`, `carry out the plan`, or equivalent.
+- Outside `~/dd` (or its resolved absolute path), do not select `code-implement-loop` for a generic implementation request. Use it only when the user explicitly invokes `code-implement-loop` or another skill explicitly delegates work to it.
 
 ## Plan Mode Output Template
 - When writing a final proposed plan, read `$HOME/dotfiles/plan-mode-guide.md` and follow the template/guidance there.
