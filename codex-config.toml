@@ -129,7 +129,7 @@ source_type = "local"
 source = "/Users/ping.xia/.codex/.tmp/bundled-marketplaces/openai-bundled"
 
 [marketplaces.openai-primary-runtime]
-last_updated = "2026-08-19T00:48:48Z"
+last_updated = "2026-08-19T23:49:53Z"
 source_type = "local"
 source = "/Users/ping.xia/.cache/codex-runtimes/codex-primary-runtime/plugins/openai-primary-runtime"
 
@@ -139,9 +139,6 @@ source_type = "local"
 source = "/Users/ping.xia/.trajectory/codex-marketplace"
 
 [plugins."slack@openai-curated"]
-enabled = true
-
-[plugins."dd@datadog-claude-plugins"]
 enabled = true
 
 [plugins."sites@openai-bundled"]
@@ -197,12 +194,6 @@ trusted_hash = "sha256:1d374ea956912e71bf3682f86a44c794c6aac8bde169b17222c4dfc71
 
 [hooks.state."/Users/ping.xia/.codex/hooks.json:stop:1:0"]
 trusted_hash = "sha256:5fcff6cbca89be762be16f81b898baeff0ad79746f20190bbbc6408b17b44352"
-
-[hooks.state."dd@datadog-claude-plugins:hooks/hooks.json:session_start:0:0"]
-trusted_hash = "sha256:a506e76ca69c4e69723a414d9251cf4b02db5b0432058c64ca3f6c8684786c73"
-
-[hooks.state."dd@datadog-claude-plugins:hooks/hooks.json:user_prompt_submit:0:0"]
-trusted_hash = "sha256:6a58e770acd72ebdd9038420c45d024a9b1478a89cc7145d5e1751792216b884"
 
 [hooks.state."/home/bits/.codex/hooks.json:session_start:0:0"]
 trusted_hash = "sha256:ac47a21a96720cb9d1473caa1dea1b58a7426c41e0568fcd18634b9307a232f1"

@@ -1,0 +1,18 @@
+{
+  "defaultProvider": "ai-gw-baseten",
+  "defaultModel": "baseten/zai-org/GLM-5.2",
+  "defaultThinkingLevel": "high",
+  "packages": [
+    "npm:pi-subagents",
+    "npm:pi-mcp-adapter",
+    "npm:pi-powerline-footer",
+    "npm:@juicesharp/rpiv-ask-user-question",
+    "npm:@datadog/pi-plugin",
+    "../../dd/datadog-pi-packages/packages/refresh-models",
+    "../../dd/datadog-pi-packages/packages/research-web",
+    "../../dd/datadog-pi-packages/packages/session-cost",
+    "../../dd/datadog-pi-packages/packages/compaction-continue"
+  ],
+  "lastChangelogVersion": "0.84.2",
+  "theme": "dark"
+}

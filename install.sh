@@ -546,6 +546,20 @@ else
   echo "  codex-hooks/hooks.json not found in dotfiles directory"
 fi
 
+# Setup Pi configuration (symlinked)
+echo "Setting up Pi configuration..."
+if [ -f "$DOTFILES_DIR/pi-settings.json" ]; then
+  create_symlink "$DOTFILES_DIR/pi-settings.json" "$HOME/.pi/agent/settings.json"
+else
+  echo "  pi-settings.json not found in dotfiles directory"
+fi
+
+if [ -f "$DOTFILES_DIR/pi-mcp.json" ]; then
+  create_symlink "$DOTFILES_DIR/pi-mcp.json" "$HOME/.pi/agent/mcp.json"
+else
+  echo "  pi-mcp.json not found in dotfiles directory"
+fi
+
 echo ""
 echo "============================================="
 echo "Installation complete!"
