@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
@@ -15,7 +16,6 @@ export const PI_REVIEW_ARGS = Object.freeze([
   "baseten/zai-org/GLM-5.2",
   "--thinking",
   "high",
-  "--no-session",
   "--mode",
   "json",
   "--extension",
@@ -33,6 +33,37 @@ Do not call submit_plan_review with other tools in the same tool batch.`;
 
 export function getText(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+export function getPiSessionRoot() {
+  if (process.env.PI_CODING_AGENT_SESSION_DIR) {
+    return path.resolve(process.env.PI_CODING_AGENT_SESSION_DIR);
+  }
+  const agentDir = process.env.PI_CODING_AGENT_DIR
+    ? path.resolve(process.env.PI_CODING_AGENT_DIR)
+    : path.join(os.homedir(), ".pi", "agent");
+  return path.join(agentDir, "sessions");
+}
+
+export function findPiSessionFile(sessionRoot, sessionId) {
+  if (!fs.existsSync(sessionRoot)) {
+    return null;
+  }
+  const pendingDirectories = [sessionRoot];
+  const expectedSuffix = `_${sessionId}.jsonl`;
+
+  while (pendingDirectories.length > 0) {
+    const directory = pendingDirectories.pop();
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const entryPath = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        pendingDirectories.push(entryPath);
+      } else if (entry.isFile() && entry.name.endsWith(expectedSuffix)) {
+        return entryPath;
+      }
+    }
+  }
+  return null;
 }
 
 export function createLogger({ tag, logFile, stderr = false }) {
@@ -287,6 +318,11 @@ export async function reviewPlanWithPi({
   log,
   timeout = DEFAULT_REVIEW_TIMEOUT_MS,
 }) {
+  const sessionId = randomUUID();
+  const sessionRoot = getPiSessionRoot();
+  log(
+    `pi_session_started ${JSON.stringify({ session_id: sessionId, session_root: sessionRoot, cwd })}`,
+  );
   log(`running pi in cwd=${cwd} with GLM 5.2 high thinking`);
   const promptDirectory = fs.mkdtempSync(
     path.join(os.tmpdir(), "pi-plan-review-"),
@@ -301,7 +337,7 @@ export async function reviewPlanWithPi({
     );
     piResult = await spawnWithTimeout(
       "pi",
-      [...PI_REVIEW_ARGS, `@${promptPath}`],
+      [...PI_REVIEW_ARGS, "--session-id", sessionId, `@${promptPath}`],
       { cwd, timeout },
     );
   } finally {
@@ -311,6 +347,15 @@ export async function reviewPlanWithPi({
     `pi exit=${piResult.status ?? "null"} signal=${
       piResult.signal ?? "null"
     } stderr_chars=${getText(piResult.stderr).length}`,
+  );
+  log(
+    `pi_session_finished ${JSON.stringify({
+      session_id: sessionId,
+      session_file: findPiSessionFile(sessionRoot, sessionId),
+      timed_out: piResult.error?.message.includes("timed out") ?? false,
+      exit_status: piResult.status,
+      signal: piResult.signal,
+    })}`,
   );
 
   if (piResult.error) {
