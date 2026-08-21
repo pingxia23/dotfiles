@@ -2,6 +2,9 @@
   "defaultProvider": "ai-gw-baseten",
   "defaultModel": "baseten/zai-org/GLM-5.2",
   "defaultThinkingLevel": "high",
+  "extensions": [
+    "~/dotfiles/pi-extensions/slack-notify.mjs"
+  ],
   "packages": [
     "npm:pi-subagents",
     "npm:pi-mcp-adapter",
