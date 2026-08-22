@@ -134,9 +134,7 @@ async function main() {
     prompt,
     cwd: args.worktreeRoot,
     reviewSchema,
-    reviewSchemaPath: REVIEW_SCHEMA_PATH,
     log,
-    codexTempPrefix: "babysit-pr-comment-plan-codex",
   });
 
   process.stdout.write(

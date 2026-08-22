@@ -4,41 +4,17 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  CODE_REVIEWER_CONFIGS,
+  CODE_REVIEW_TIMEOUT_MS,
+} from "../reviewer_config.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const TAG = "[review-runner-utils]";
 const LOG_FILE = path.join(SCRIPT_DIR, "review-runner-utils.log");
-export const REVIEW_OUTPUT_SCHEMA_PATH = path.join(
-  SCRIPT_DIR,
-  "review-output.schema.json",
-);
-export const PI_REVIEW_EXTENSION_PATH = path.join(
-  SCRIPT_DIR,
-  "pi_review_output.mjs",
-);
-export const DEFAULT_REVIEW_TIMEOUT_MS = 10 * 60 * 1000;
-export const PI_REVIEW_ARGS = Object.freeze([
-  "--provider",
-  "ai-gw-baseten",
-  "--model",
-  "baseten/zai-org/GLM-5.2",
-  "--thinking",
-  "high",
-  "--mode",
-  "json",
-  "--extension",
-  PI_REVIEW_EXTENSION_PATH,
-  "--tools",
-  "read,bash,grep,find,ls,submit_review",
-]);
-export const CODEX_REVIEW_MODEL = "gpt-5.5";
-export const CODEX_REVIEW_EFFORT = "high";
+export const DEFAULT_REVIEW_TIMEOUT_MS = CODE_REVIEW_TIMEOUT_MS;
 
-const REVIEWERS = [
-  "Correctness_codex",
-  "correctness_pi",
-  "pythonQuality_codex",
-];
+const REVIEWERS = CODE_REVIEWER_CONFIGS.map(({ reviewer }) => reviewer);
 const PI_REVIEW_SUBMISSION_INSTRUCTIONS = `## Pi Review Submission
 
 Your final action must be one submit_review tool call.
@@ -206,17 +182,6 @@ export function createLogger({ tag, logFile }) {
   };
 }
 
-export function parseJsonObject(value) {
-  try {
-    const parsed = JSON.parse(value);
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? parsed
-      : null;
-  } catch {
-    return null;
-  }
-}
-
 export function spawnWithTimeout(command, args, options = {}) {
   return new Promise((resolve) => {
     let stdout = "";
@@ -310,10 +275,6 @@ export function assertZero(result, label) {
       }`,
     );
   }
-}
-
-export function sanitizeFilePart(value) {
-  return value.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
 function hasOnlyKeys(value, allowedKeys) {
@@ -467,15 +428,6 @@ function parseReviewObject(value) {
   return { review: normalizeReview(value), errors: [] };
 }
 
-export function parseCodexReviewOutput(output) {
-  const parsed = parseJsonObject(output);
-  if (!parsed) {
-    return { review: null, errors: ["output is not a JSON object"] };
-  }
-
-  return parseReviewObject(parsed);
-}
-
 export function parsePiReviewOutput(output) {
   const events = [];
   for (const [index, rawLine] of output.split(/\r?\n/).entries()) {
@@ -589,6 +541,14 @@ export function parsePiReviewOutput(output) {
 export async function runPiReview({
   prompt,
   cwd,
+  reviewer,
+  provider,
+  model,
+  thinking,
+  serviceTier,
+  mode,
+  extensionPath,
+  tools,
   timeout = DEFAULT_REVIEW_TIMEOUT_MS,
 }) {
   const sessionId = randomUUID();
@@ -596,7 +556,9 @@ export async function runPiReview({
   reviewLog(
     `pi_session_started ${JSON.stringify({ session_id: sessionId, session_root: sessionRoot, cwd })}`,
   );
-  reviewLog(`running pi in cwd=${cwd} with GLM 5.2 high thinking`);
+  reviewLog(
+    `running pi reviewer=${reviewer} cwd=${cwd} provider=${provider} model=${model} thinking=${thinking} service_tier=${serviceTier || "default"}`,
+  );
   const promptPath = path.join(
     os.tmpdir(),
     `pi-code-review-${sessionId}.md`,
@@ -610,7 +572,23 @@ export async function runPiReview({
     );
     result = await spawnWithTimeout(
       "pi",
-      [...PI_REVIEW_ARGS, "--session-id", sessionId, `@${promptPath}`],
+      [
+        "--provider",
+        provider,
+        "--model",
+        model,
+        "--thinking",
+        thinking,
+        "--mode",
+        mode,
+        "--extension",
+        extensionPath,
+        "--tools",
+        tools,
+        "--session-id",
+        sessionId,
+        `@${promptPath}`,
+      ],
       { cwd, timeout },
     );
   } finally {
@@ -655,118 +633,6 @@ export async function runPiReview({
     return {
       review: null,
       reason: `invalid pi review output: ${parsed.errors.join("; ")}`,
-    };
-  }
-
-  return { review: parsed.review, reason: null };
-}
-
-export async function runCodexReview({
-  prompt,
-  cwd,
-  reviewSchemaPath,
-  outputLabel = "Codex",
-  timeout = DEFAULT_REVIEW_TIMEOUT_MS,
-}) {
-  reviewLog(`checking codex auth in cwd=${cwd}`);
-  const authResult = spawnSync("codex", ["login", "status"], {
-    cwd,
-    encoding: "utf8",
-    timeout: 15_000,
-  });
-
-  if (authResult.error) {
-    return {
-      review: null,
-      reason: `codex auth spawn failed: ${authResult.error.message}`,
-    };
-  }
-  if (authResult.status !== 0) {
-    return {
-      review: null,
-      reason: `codex auth check failed: ${
-        getText(authResult.stderr) || authResult.status
-      }`,
-    };
-  }
-
-  const tmpFile = path.join(
-    os.tmpdir(),
-    `code-implement-loop-${sanitizeFilePart(outputLabel)}-${randomUUID()}.json`,
-  );
-  reviewLog(
-    `running codex in cwd=${cwd} model=${CODEX_REVIEW_MODEL} effort=${CODEX_REVIEW_EFFORT} service_tier=fast output=${tmpFile}`,
-  );
-  const result = await spawnWithTimeout(
-    "codex",
-    [
-      "exec",
-      "--model",
-      CODEX_REVIEW_MODEL,
-      "-c",
-      `model_reasoning_effort="${CODEX_REVIEW_EFFORT}"`,
-      "-c",
-      'service_tier="fast"',
-      "--sandbox",
-      "read-only",
-      "--ephemeral",
-      "--output-schema",
-      reviewSchemaPath,
-      "-o",
-      tmpFile,
-      prompt,
-    ],
-    { cwd, timeout },
-  );
-  reviewLog(
-    `codex exit=${result.status ?? "null"} signal=${
-      result.signal ?? "null"
-    } stderr_chars=${getText(result.stderr).length}`,
-  );
-
-  if (result.error) {
-    try {
-      fs.unlinkSync(tmpFile);
-    } catch {}
-    return {
-      review: null,
-      reason: `codex spawn failed: ${result.error.message}`,
-    };
-  }
-  if (result.status !== 0) {
-    try {
-      fs.unlinkSync(tmpFile);
-    } catch {}
-    return {
-      review: null,
-      reason: `codex non-zero exit: ${result.status}${
-        getText(result.stderr) ? `: ${getText(result.stderr)}` : ""
-      }`,
-    };
-  }
-
-  let output = "";
-  try {
-    output = fs.readFileSync(tmpFile, "utf8").trim();
-  } catch (error) {
-    return {
-      review: null,
-      reason: `failed to read codex output: ${error.message}`,
-    };
-  } finally {
-    try {
-      fs.unlinkSync(tmpFile);
-    } catch {}
-  }
-
-  reviewLog(`trimmed codex review output:\n${output}`);
-
-  const parsed = parseCodexReviewOutput(output);
-  if (!parsed.review) {
-    reviewLog(`invalid codex review stdout=${JSON.stringify(output.slice(0, 500))}`);
-    return {
-      review: null,
-      reason: `invalid codex review output: ${parsed.errors.join("; ")}`,
     };
   }
 
@@ -867,54 +733,28 @@ export async function runDualReviewPrompt({
   worktreeRoot,
   prompt,
   pythonQualityPrompt,
-  reviewSchemaPath = REVIEW_OUTPUT_SCHEMA_PATH,
   timeout = DEFAULT_REVIEW_TIMEOUT_MS,
-  codexReviewRunner = runCodexReview,
   piReviewRunner = runPiReview,
 }) {
   reviewLog(
-    "reviewers launched: Correctness_codex, correctness_pi, pythonQuality_codex",
+    `reviewers launched: ${REVIEWERS.join(", ")}`,
   );
-  const piReview = runReviewerOnce({
-    reviewer: "correctness_pi",
-    prompt,
-    runReview: (reviewPrompt) =>
-      piReviewRunner({
-        prompt: reviewPrompt,
-        cwd: worktreeRoot,
-        timeout,
-      }),
-  });
-  const codexReview = runReviewerOnce({
-    reviewer: "Correctness_codex",
-    prompt,
-    runReview: (reviewPrompt) =>
-      codexReviewRunner({
-        prompt: reviewPrompt,
-        cwd: worktreeRoot,
-        reviewSchemaPath,
-        outputLabel: "Correctness_codex",
-        timeout,
-      }),
-  });
-  const pythonQualityReview = runReviewerOnce({
-    reviewer: "pythonQuality_codex",
-    prompt: pythonQualityPrompt,
-    runReview: (reviewPrompt) =>
-      codexReviewRunner({
-        prompt: reviewPrompt,
-        cwd: worktreeRoot,
-        reviewSchemaPath,
-        outputLabel: "pythonQuality_codex",
-        timeout,
-      }),
-  });
+  const reviews = CODE_REVIEWER_CONFIGS.map((config) =>
+    runReviewerOnce({
+      reviewer: config.reviewer,
+      prompt:
+        config.promptKind === "pythonQuality" ? pythonQualityPrompt : prompt,
+      runReview: (reviewPrompt) =>
+        piReviewRunner({
+          ...config,
+          prompt: reviewPrompt,
+          cwd: worktreeRoot,
+          timeout,
+        }),
+    }),
+  );
 
-  const results = await Promise.all([
-    codexReview,
-    piReview,
-    pythonQualityReview,
-  ]);
+  const results = await Promise.all(reviews);
   const aggregate = aggregateReviews(results);
   reviewLog(`aggregate status=${aggregate.status}`);
   return aggregate;

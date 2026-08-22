@@ -4,7 +4,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   DEFAULT_REVIEW_TIMEOUT_MS,
-  REVIEW_OUTPUT_SCHEMA_PATH,
   assertZero,
   createLogger,
   getText,
@@ -12,6 +11,7 @@ import {
   runDualReviewPrompt,
   runSync,
 } from "./review_runner_utils.mjs";
+import { CODE_REVIEWER_CONFIGS } from "../reviewer_config.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const TAG = "[dual-pr-branch-review]";
@@ -473,8 +473,6 @@ export async function runDualPrBranchReview({
   baseRef,
   implementationPlanHistoryFile,
   ghFunction = "gh",
-  reviewSchemaPath = REVIEW_OUTPUT_SCHEMA_PATH,
-  reviewSchema = fs.readFileSync(reviewSchemaPath, "utf8").trim(),
   timeout = DEFAULT_REVIEW_TIMEOUT_MS,
 }) {
   const implementationPlanHistoryStats = fs.statSync(
@@ -531,8 +529,6 @@ export async function runDualPrBranchReview({
     worktreeRoot,
     prompt,
     pythonQualityPrompt,
-    reviewSchemaPath,
-    reviewSchema,
     timeout,
   });
 
@@ -552,11 +548,9 @@ async function main() {
         {
           status: "blocked",
           findings: [],
-          reviews: {
-            Correctness_codex: null,
-            correctness_pi: null,
-            pythonQuality_codex: null,
-          },
+          reviews: Object.fromEntries(
+            CODE_REVIEWER_CONFIGS.map(({ reviewer }) => [reviewer, null]),
+          ),
           unavailable: [{ reviewer: "runner", reason: error.message }],
           overall_explanation: error.message,
         },
