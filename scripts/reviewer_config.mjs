@@ -4,12 +4,17 @@ export const REVIEWER_MODELS = Object.freeze({
   gpt: Object.freeze({
     provider: "openai",
     model: "gpt-5.5",
-    thinking: "high",
+    thinking: "medium",
     serviceTier: "fast",
   }),
   gemini: Object.freeze({
     provider: "google",
     model: "gemini-3.7-flash",
+    thinking: "medium",
+  }),
+  claude: Object.freeze({
+    provider: "ai-gw-anthropic-1m",
+    model: "anthropic/claude-opus-4-6",
     thinking: "medium",
   }),
 });
@@ -58,6 +63,13 @@ export const CODE_REVIEWER_CONFIGS = Object.freeze([
     tools: "read,bash,grep,find,ls,submit_review",
   }),
   piReviewerConfig({
+    reviewer: "correctness_claude",
+    promptKind: "correctness",
+    model: REVIEWER_MODELS.claude,
+    outputExtensionPath: CODE_REVIEW_OUTPUT_EXTENSION_PATH,
+    tools: "read,bash,grep,find,ls,submit_review",
+  }),
+  piReviewerConfig({
     reviewer: "pythonQuality_gpt",
     promptKind: "pythonQuality",
     model: REVIEWER_MODELS.gpt,
@@ -76,6 +88,12 @@ export const PLAN_REVIEWER_CONFIGS = Object.freeze([
   piReviewerConfig({
     reviewer: "plan_gemini",
     model: REVIEWER_MODELS.gemini,
+    outputExtensionPath: PLAN_REVIEW_OUTPUT_EXTENSION_PATH,
+    tools: "read,bash,edit,write,grep,find,ls,mcp,submit_plan_review",
+  }),
+  piReviewerConfig({
+    reviewer: "plan_claude",
+    model: REVIEWER_MODELS.claude,
     outputExtensionPath: PLAN_REVIEW_OUTPUT_EXTENSION_PATH,
     tools: "read,bash,edit,write,grep,find,ls,mcp,submit_plan_review",
   }),
