@@ -112,10 +112,7 @@ The helper stores two Markdown files under `<git-common-dir>/code-implement-loop
 
 ### 3) Create decision-complete TODOs
 
-Before creating implementation TODOs:
-
-- If running as Claude, read `CLAUDE.md`.
-- Otherwise, read `AGENTS.md`.
+Before creating implementation TODOs, read `AGENTS.md`.
 
 Build an ordered TODO checklist before editing code.
 

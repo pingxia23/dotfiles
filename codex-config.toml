@@ -1,5 +1,5 @@
 model = "gpt-5.6-sol"
-model_reasoning_effort = "xhigh"
+model_reasoning_effort = "high"
 model_supports_reasoning_summaries = true
 model_context_window = 800000
 model_auto_compact_token_limit = 700000
