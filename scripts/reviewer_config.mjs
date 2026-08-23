@@ -28,14 +28,12 @@ const PLAN_REVIEW_OUTPUT_EXTENSION_PATH = fileURLToPath(
 
 function piReviewerConfig({
   reviewer,
-  promptKind,
   model,
   outputExtensionPath,
   tools,
 }) {
   return Object.freeze({
     reviewer,
-    promptKind,
     runner: "pi",
     mode: "json",
     ...model,
@@ -49,30 +47,20 @@ export const PLAN_REVIEW_TIMEOUT_MS = 5 * 60 * 1000;
 
 export const CODE_REVIEWER_CONFIGS = Object.freeze([
   piReviewerConfig({
-    reviewer: "correctness_gpt",
-    promptKind: "correctness",
+    reviewer: "code_review_gpt",
     model: REVIEWER_MODELS.gpt,
     outputExtensionPath: CODE_REVIEW_OUTPUT_EXTENSION_PATH,
     tools: "read,bash,grep,find,ls,submit_review",
   }),
   piReviewerConfig({
-    reviewer: "correctness_gemini",
-    promptKind: "correctness",
+    reviewer: "code_review_gemini",
     model: REVIEWER_MODELS.gemini,
     outputExtensionPath: CODE_REVIEW_OUTPUT_EXTENSION_PATH,
     tools: "read,bash,grep,find,ls,submit_review",
   }),
   piReviewerConfig({
-    reviewer: "correctness_claude",
-    promptKind: "correctness",
+    reviewer: "code_review_claude",
     model: REVIEWER_MODELS.claude,
-    outputExtensionPath: CODE_REVIEW_OUTPUT_EXTENSION_PATH,
-    tools: "read,bash,grep,find,ls,submit_review",
-  }),
-  piReviewerConfig({
-    reviewer: "pythonQuality_gpt",
-    promptKind: "pythonQuality",
-    model: REVIEWER_MODELS.gpt,
     outputExtensionPath: CODE_REVIEW_OUTPUT_EXTENSION_PATH,
     tools: "read,bash,grep,find,ls,submit_review",
   }),

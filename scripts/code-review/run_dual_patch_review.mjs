@@ -2,9 +2,8 @@
 import { fileURLToPath } from "node:url";
 import {
   DEFAULT_REVIEW_TIMEOUT_MS,
-  renderCorrectnessReviewPrompt,
-  renderPythonQualityReviewPrompt,
-  runDualReviewPrompt,
+  renderCodeReviewPrompt,
+  runReviewPrompt,
 } from "./review_runner_utils.mjs";
 import { CODE_REVIEWER_CONFIGS } from "../reviewer_config.mjs";
 
@@ -40,7 +39,7 @@ function parseArgs(argv) {
 }
 
 export function renderReviewerPrompt(args) {
-  return renderCorrectnessReviewPrompt({
+  return renderCodeReviewPrompt({
     reviewScope: "the full current local uncommitted patch set",
     reviewContext: `- Worktree root: ${args.worktreeRoot}
 - Diff baseline: local \`HEAD\`
@@ -65,23 +64,6 @@ ${args.implementationPlan}`,
   });
 }
 
-function renderPythonQualityPrompt(args) {
-  return renderPythonQualityReviewPrompt({
-    reviewScope: "the full current local uncommitted patch set",
-    reviewContext: `- Worktree root: ${args.worktreeRoot}
-- Resolved implementation plan for this run: ${args.implementationPlan}`,
-    gatherInstructions: `1. \`cd "${args.worktreeRoot}"\`.
-2. Build the patch set relative to \`HEAD\`:
-   - tracked changes: \`git diff --binary HEAD\`
-   - untracked non-ignored files: \`git ls-files --others --exclude-standard | LC_ALL=C sort\`
-   - for each untracked file, append a synthetic patch with \`git diff --no-index --binary -- /dev/null "$path" || true\`
-3. Build the changed-files list from \`git diff --name-status HEAD\` plus the sorted untracked files.
-4. If the changed-files list contains no \`.py\` files, return no findings immediately.
-5. Inspect the current contents and surrounding package patterns for every changed Python file.
-6. Compare the Python changes with the implementation plan, but report only quality issues introduced by the patch.`,
-  });
-}
-
 export async function runDualPatchReview({
   worktreeRoot,
   implementationPlan,
@@ -91,15 +73,9 @@ export async function runDualPatchReview({
     worktreeRoot,
     implementationPlan,
   });
-  const pythonQualityPrompt = renderPythonQualityPrompt({
-    worktreeRoot,
-    implementationPlan,
-  });
-
-  return runDualReviewPrompt({
+  return runReviewPrompt({
     worktreeRoot,
     prompt,
-    pythonQualityPrompt,
     timeout,
   });
 }

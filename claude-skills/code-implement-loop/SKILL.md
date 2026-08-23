@@ -32,30 +32,27 @@ These rules apply to **both initial implementation and review-fix rounds**.
 
 Use this exact handling after the uncommitted change review execution returns. Its inputs are:
 
-- `review_result`: the JSON string returned by the current review
+- `review_result`: the validated aggregate result returned by the reviewer script
 - `review_plan_context`: the implementation-plan context for the current review
 - `current_round`: the current review round number, starting at 1
 - `max_rounds`: 3 for uncommitted change review
 
-### Parse Reviewer Output
+### Consume Reviewer Result
 
-1. Parse `review_result` as strict JSON with no markdown fences or extra prose.
-2. The JSON must have:
-   - `status`: `approved`, `revise`, or `blocked`
-   - `findings`: actionable findings to fix, if any; each finding must follow the shared review schema, including concrete `evidence`
-   - `overall_explanation`: short status explanation
-3. If `review_result` is not valid JSON or does not include these fields, stop and report blocked status with the raw output summary.
+1. Treat `review_result` as the validated aggregate result from the reviewer script.
+2. If the reviewer command fails or its result cannot be consumed, stop and report blocked status with the available error output.
+3. Otherwise, use its `status`, `findings`, and `overall_explanation` directly.
 
 ### Filter Reviewer Findings
 
-Before applying loop control, filter the parsed findings against `review_plan_context`:
+Before applying loop control, filter `review_result.findings` against `review_plan_context`:
 
 1. Discard every finding below P2. These findings are never actionable.
 2. For each P2 finding, regardless of reviewer, retain it only when its evidence shows that it is directly related to the plan context. A P2 finding is directly related when it identifies a defect introduced or modified by a planned implementation, missing behavior or verification explicitly required by a plan, a regression directly caused by a planned change, or a concrete and meaningful quality problem introduced or modified by a planned implementation. Quality problems may include naming, typing, imports, dependencies, module structure, data flow, error handling, test structure, fixtures, or mocks; they do not need to be runtime defects.
 3. Treat pre-existing issues in unchanged behavior, adjacent cleanup, broader recommendations, and follow-up work outside the plan context as unrelated. Ignore these P2-or-lower comments: do not fix, record, publish, or use them to determine review status.
 4. Do not discard a P0 or P1 finding.
 5. If `status="revise"` becomes empty only because this filter removed findings, normalize the result to `status="approved"` before applying loop control. A reviewer result that originally returned `status="revise"` with no findings remains blocked as described below.
-6. Replace `review_result` with strict JSON containing the retained `findings`, normalized `status`, and an `overall_explanation` that describes only the remaining findings and status. Use `review_result` afterward.
+6. Update `review_result` with the retained `findings`, normalized `status`, and an `overall_explanation` that describes only the remaining findings and status. Use the updated result afterward.
 
 ### Review/Fix Loop Control
 

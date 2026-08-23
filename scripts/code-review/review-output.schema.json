@@ -18,6 +18,11 @@
             "type": "string",
             "description": "Non-empty evidence for the finding."
           },
+          "category": {
+            "type": "string",
+            "enum": ["correctness", "quality"],
+            "description": "Finding category: correctness for behavior risks or quality for concrete implementation-quality problems."
+          },
           "priority": {
             "type": "integer",
             "enum": [0, 1, 2],
@@ -54,6 +59,7 @@
           "title",
           "body",
           "evidence",
+          "category",
           "priority",
           "code_location"
         ],

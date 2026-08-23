@@ -22,54 +22,30 @@ Do not return the review as assistant text.
 Do not call submit_review with other tools in the same tool batch.`;
 const reviewLog = createLogger({ tag: TAG, logFile: LOG_FILE });
 
-export function renderCorrectnessReviewPrompt({
+export function renderCodeReviewPrompt({
   reviewScope,
   reviewContext,
   gatherInstructions,
 }) {
-  return `# Correctness Reviewer Prompt
+  return `# Comprehensive Code Reviewer Prompt
 
-You are the correctness specialist reviewing ${reviewScope}.
+You are reviewing ${reviewScope}. Complete both required review sections: correctness and code quality.
 
-Your job is to find bugs introduced by the reviewed change. Return only issues that the original author would likely want to fix once they know about them.
+Return all concrete issues that the original author would likely want to fix once they know about them. Set each finding's \`category\` to \`correctness\` or \`quality\` based on the section that produced it.
 
 If more specific instructions appear elsewhere, follow those over this file.
-
-## What Counts As A Bug
-
-Flag an issue only when all of these are true:
-
-1. It meaningfully affects correctness, performance, security, or maintainability.
-2. It is discrete and actionable.
-3. Fixing it does not require a higher rigor bar than the rest of the codebase.
-4. It was introduced by the reviewed change relative to the baseline described below.
-5. The original author would likely fix it if notified.
-6. It does not depend on unstated assumptions about intent.
-7. You can identify the concrete code path or scenario that is affected.
-8. It is not obviously an intentional product or design choice.
-
-It is not enough to speculate that the change may disrupt another part of the codebase. Identify the other code path, caller, state transition, or runtime scenario that is concretely affected.
-
-If no issue clearly meets that bar, return no findings.
 
 ## Review Scope
 
 - Review the full change described below each time the review runs.
 - Do not narrow review scope to only previously flagged hunks.
 - Compare the change against the provided author-intent sources.
-- Focus on correctness, regressions, security, compatibility, performance, and tests.
-- Do not block on pure style, formatting, typos, documentation, or other nits.
+- Complete both review sections defined below.
 - Do not include P3, nit, or freeform suggestions in findings.
 
 ## Review Context
 
 ${reviewContext}
-
-## Implementation Discipline Checks
-
-Read the \`# Implementation Discipline\` section from \`$HOME/dotfiles/claude-global.md\`.
-
-Review the change against these disciplines. For any obvious violation introduced by the change, flag a P2 finding.
 
 ## How To Gather Review Inputs
 
@@ -87,17 +63,83 @@ The scout summary must cover:
 - author-intent-vs-diff consistency
 - pre-existing or out-of-scope issues that should not be reported
 
-Use the scout summary to guide review. Explicitly compare the available author-intent sources and the actual diff. Flag semantic mismatches only when they create a P0-P2 bug, such as hidden public API changes, removed flags, unannounced behavior changes, broken downstream consumer contracts, or missing rollout or test coverage for a changed contract.
+## Correctness Review
 
-## Required Review Lenses
+Set \`category\` to \`correctness\` for every finding from this section.
 
-Review the change through every lens that applies to the changed files:
+### What Counts As A Correctness Finding
+
+Report a correctness finding only when all of these are true:
+
+1. It meaningfully affects behavior, performance, security, or compatibility.
+2. It is discrete and actionable.
+3. It was introduced by the reviewed change relative to the baseline.
+4. The original author would likely fix it if notified.
+5. It does not depend on an unstated assumption about intent.
+6. You can identify the affected code path, caller, state transition, or runtime scenario.
+7. It is not obviously an intentional product or design choice.
+
+It is not enough to speculate that the change may disrupt another part of the codebase. Identify the concrete scenario that is affected.
+
+Do not report requests for extra validation, fallback behavior, cleanup, telemetry, or compatibility handling unless the author-intent sources or existing surrounding patterns require them.
+
+Use the internal scout summary to compare the author-intent sources with the actual diff. Flag semantic mismatches only when they create a P0-P2 correctness issue, such as hidden public API changes, removed flags, unannounced behavior changes, broken downstream consumer contracts, or missing rollout or test coverage for a changed contract.
+
+### Correctness Checklist
+
+Review the change for:
 
 - functional correctness and regressions
-- structure, contracts, and cross-module coupling
-- language-specific issues, especially Python typing, import, and test patterns when Python files change
-- tests, fixtures, mocks, generated files, and build metadata
+- security, compatibility, and performance
+- contracts and cross-module behavior
+- missing or incorrect tests for changed behavior
 - config, schema, API, auth, security, tenant, operational, retry, or observability behavior when touched
+
+### Correctness Concerns To Omit
+
+- "This should be more defensive" is not a finding when existing callers, types, schemas, or surrounding code guarantee the value is valid.
+- "This could break with malformed input" is not a finding when that input cannot reach the code path without bypassing an existing parser, validator, authorization check, or documented caller contract.
+- "This should add validation, fallback, cleanup, telemetry, or compatibility handling" is not a finding unless author intent or existing surrounding patterns require it.
+
+## Code-Quality Review
+
+Set \`category\` to \`quality\` for every finding from this section.
+
+### What Counts As A Quality Finding
+
+Report a quality finding only when all of these are true:
+
+1. It creates a concrete maintainability, readability, test-design, typing, import, dependency, error-handling, or module-structure problem.
+2. It is discrete and actionable.
+3. It was introduced by the reviewed change relative to the baseline.
+4. The original author would likely fix it if notified.
+5. It is supported by the changed code and surrounding repository patterns, not a personal preference or an unstated future need.
+6. Fixing it does not require a higher quality bar than the rest of the codebase.
+
+### Required Quality Guidance
+
+Read the \`# Implementation Discipline\` section from \`$HOME/dotfiles/claude-global.md\` and apply it to the changed code.
+
+If Python files changed, also read \`$HOME/dotfiles/python-implementation-guide.md\` and apply it to those files.
+
+### Quality Checklist
+
+Review the change for every concrete implementation-quality problem that applies:
+
+- imports, dependencies, typing, and data shapes at changed boundaries
+- function and module cohesion, ownership, and placement
+- avoidable abstractions, hidden mutation, and unnecessarily indirect data flow
+- error handling and logging at boundaries that can actually fail
+- misleading names that obscure a changed contract or behavior
+- duplicated implementation, fixtures, mocks, or tests that create a concrete maintenance risk
+- test structure, parametrization, fixture scope, mock boundaries, generated files, and build metadata
+- consistency with established patterns in the surrounding package
+
+### Quality Concerns To Omit
+
+- "This message, name, comment, or log could be clearer" is not a finding unless it obscures a changed contract or creates a concrete maintenance cost.
+- "This could be simpler, faster, or more idiomatic" is not a finding unless the change creates a measurable regression or a concrete maintenance problem.
+- Do not report formatting, minor wording, documentation-only concerns, speculative extensibility, optional cleanup, or personal style preferences.
 
 ## Finding Rules
 
@@ -114,8 +156,8 @@ Before drafting any finding title, body, evidence, or suggestion, read the \`## 
 For each finding:
 
 1. Make the title start with a priority tag, for example \`[P1] Wrong cache key for tenant lookup\`.
-2. Make the body brief, factual, and specific about why this is a bug.
-3. Explain the scenario, input, or environment required for the bug to happen when relevant.
+2. Make the body brief, factual, and specific about why this is a problem.
+3. Explain the scenario, input, or environment required for the problem to happen when relevant.
 4. Keep the body to one paragraph.
 5. Put mandatory supporting detail in \`evidence\`: exact file, function, line, config, test, or external source actually inspected, plus any necessary inference.
 6. Do not let \`evidence\` merely restate the finding.
@@ -132,23 +174,9 @@ For each finding:
 
 - \`P0\` / \`priority: 0\`: release-blocking or universally severe issue that does not depend on assumptions about inputs or environment
 - \`P1\` / \`priority: 1\`: urgent issue that should be fixed in the next cycle
-- \`P2\` / \`priority: 2\`: normal bug to fix eventually
+- \`P2\` / \`priority: 2\`: normal issue to fix eventually
 
-If priority is unclear or lower than P2, omit the finding.
-
-### Examples Of Lower-Severity Concerns To Omit
-
-Only P0, P1, and P2 bugs count as findings. Do not return lower-severity concerns at all.
-
-Do not report examples like these:
-
-- "This should be more defensive" is not a finding when the existing callers, types, schema, or surrounding code already guarantee the value is valid.
-- "This could break with malformed input" is not a finding when that input cannot reach this code path without bypassing an existing parser, validator, authorization check, or documented caller contract.
-- "This message, name, comment, or log could be clearer" is not a finding when the issue does not change runtime behavior.
-- "This could be simpler, faster, or more idiomatic" is not a finding unless the change introduced a measurable regression or a concrete maintainability bug.
-- "This should add validation, fallback, cleanup, telemetry, or compatibility handling" is not a finding unless the author-intent sources or existing surrounding patterns require it.
-
-These concerns must not appear in \`findings\`.
+Both correctness and quality findings may use P0, P1, or P2. If priority is unclear or lower than P2, omit the finding.
 
 ## Self-Challenge Before Output
 
@@ -157,8 +185,9 @@ Before returning JSON, challenge every candidate finding:
 - Keep it only if the evidence proves the issue is introduced by the reviewed change relative to its baseline.
 - Drop it if it is speculative, pre-existing, intentional, sub-P2, or based on a missing unstated requirement.
 - Merge duplicates that describe the same root cause.
+- Confirm the category matches the review section that identified the issue.
 - Demote severity when the scenario is narrower than first assumed.
-- Confirm the changed-line anchor is the best available location for the bug.
+- Confirm the changed-line anchor is the best available location for the problem.
 
 ## Output Format
 
@@ -172,6 +201,7 @@ The JSON must match this schema exactly:
       "title": "<≤ 80 chars, imperative>",
       "body": "<valid Markdown explaining why this is a problem>",
       "evidence": "<specific code, config, test, or source evidence supporting the finding>",
+      "category": "<correctness or quality>",
       "priority": <int 0-2>,
       "code_location": {
         "absolute_file_path": "<file path>",
@@ -187,125 +217,10 @@ Additional output rules:
 - \`code_location.absolute_file_path\` is required.
 - \`code_location.line_range.start\` and \`code_location.line_range.end\` are required.
 - \`evidence\` is required for every finding and must describe the concrete source you inspected, not just repeat the body.
+- \`category\` is required for every finding.
 - The \`code_location\` range should overlap the diff.
 - Do not wrap the JSON in markdown fences or extra prose.
 - Do not generate a PR fix.
-`;
-}
-
-export function renderPythonQualityReviewPrompt({
-  reviewScope,
-  reviewContext,
-  gatherInstructions,
-}) {
-  return `# Python Quality Reviewer Prompt
-
-You are the Python quality specialist reviewing ${reviewScope}.
-
-Review only Python files changed by this change. If no Python files changed, return no findings. The correctness reviewers cover general bugs; focus on concrete Python implementation-quality problems that the original author would likely fix once identified.
-
-If more specific instructions appear elsewhere, follow those over this file.
-
-## Review Context
-
-${reviewContext}
-
-## How To Gather Review Inputs
-
-${gatherInstructions}
-
-## Required Guidance
-
-Read these files before reviewing and apply them to the changed Python code:
-
-- \`$HOME/dotfiles/python-implementation-guide.md\`
-- the \`# Implementation Discipline\` section of \`$HOME/dotfiles/claude-global.md\`
-- repository-local reviewer or contributor guidance that applies to the changed files
-
-## What Counts As A Finding
-
-Report an issue only when all of these are true:
-
-1. It was introduced by the reviewed change.
-2. It is discrete and actionable.
-3. It creates a concrete Python maintainability, readability, test-design, typing, import, dependency, error-handling, or module-structure problem.
-4. The original author would likely fix it if notified.
-5. It is supported by the changed code and surrounding repository patterns, not by an unstated preference.
-6. Fixing it does not require a higher quality bar than the rest of the codebase.
-
-Do not report formatting, minor wording, documentation-only concerns, speculative future extensibility, or personal style preferences. If no issue clearly meets the bar, return no findings.
-
-## Required Review Lenses
-
-Review every applicable changed Python file for:
-
-- imports, dependency use, and unnecessary dependencies
-- type annotations and data shapes at changed boundaries
-- function and module cohesion, ownership, and placement
-- avoidable abstractions, hidden mutation, and unnecessarily indirect data flow
-- error handling and logging at boundaries that can actually fail
-- misleading names that obscure a changed contract or behavior
-- duplicated implementation, fixtures, mocks, or tests that create a concrete maintenance risk
-- test behavior, parametrization, fixture scope, mock boundaries, and edge-case coverage
-- consistency with established patterns in the surrounding Python package
-
-## Finding Rules
-
-- Findings must target a changed Python file and a line changed by the reviewed diff.
-- Use one finding per distinct issue.
-- Keep line ranges as short as possible and normally under 5-10 lines.
-- Do not stop at the first valid finding.
-- Put concrete support in \`evidence\`, including the inspected code, test, guide, or established repository pattern.
-- Do not let \`evidence\` merely repeat the finding.
-
-## Finding Importance And Priority
-
-Return only Python quality issues that you judge important or meaningful enough for the author to address. Omit minor preferences, optional cleanups, and low-value suggestions.
-
-Mark every returned finding as \`P2\` with \`priority: 2\`. Do not emit P0 or P1 findings.
-
-## Comment Rules
-
-Before drafting a finding, read the \`## Writing Style\` section from \`$HOME/dotfiles/claude-global.md\`.
-
-For each finding:
-
-1. Start the title with its priority tag, such as \`[P2] Consolidate duplicated fixtures\`.
-2. Keep the body brief, factual, and specific about the concrete maintenance cost.
-3. Keep the body to one paragraph.
-4. Do not include praise, filler, or a generated fix.
-
-## Self-Challenge Before Output
-
-Before returning JSON:
-
-- Drop speculative, pre-existing, intentional, preference-only, minor, or low-value concerns.
-- Confirm the issue is specific to Python quality and is not merely a duplicate of a general correctness concern.
-- Merge findings that describe the same root cause.
-- Confirm each location is the best changed-line anchor.
-- Confirm every retained finding uses \`priority: 2\` and a \`[P2]\` title.
-
-## Output Format
-
-Return strict JSON only. Do not include markdown fences or extra prose.
-
-The JSON must match this schema exactly:
-
-{
-  "findings": [
-    {
-      "title": "<≤ 80 chars, starts with [P2]>",
-      "body": "<one-paragraph Markdown explanation>",
-      "evidence": "<specific inspected evidence>",
-      "priority": 2,
-      "code_location": {
-        "absolute_file_path": "<absolute Python file path>",
-        "line_range": {"start": <int>, "end": <int>}
-      }
-    }
-  ],
-  "overall_explanation": "<1-3 sentence explanation>"
-}
 `;
 }
 
@@ -508,6 +423,7 @@ export function validateReviewOutput(value) {
           "title",
           "body",
           "evidence",
+          "category",
           "priority",
           "code_location",
         ])
@@ -527,6 +443,9 @@ export function validateReviewOutput(value) {
         finding.evidence.length === 0
       ) {
         errors.push(`${prefix}.evidence must be a non-empty string`);
+      }
+      if (!["correctness", "quality"].includes(finding.category)) {
+        errors.push(`${prefix}.category must be correctness or quality`);
       }
       if (!("priority" in finding)) {
         errors.push(`${prefix}.priority is required`);
@@ -900,10 +819,9 @@ export function aggregateReviews(results) {
   };
 }
 
-export async function runDualReviewPrompt({
+export async function runReviewPrompt({
   worktreeRoot,
   prompt,
-  pythonQualityPrompt,
   timeout = DEFAULT_REVIEW_TIMEOUT_MS,
   piReviewRunner = runPiReview,
 }) {
@@ -913,8 +831,7 @@ export async function runDualReviewPrompt({
   const reviews = CODE_REVIEWER_CONFIGS.map((config) =>
     runReviewerOnce({
       reviewer: config.reviewer,
-      prompt:
-        config.promptKind === "pythonQuality" ? pythonQualityPrompt : prompt,
+      prompt,
       runReview: (reviewPrompt) =>
         piReviewRunner({
           ...config,

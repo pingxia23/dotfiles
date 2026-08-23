@@ -7,9 +7,8 @@ import {
   assertZero,
   createLogger,
   getText,
-  renderCorrectnessReviewPrompt,
-  renderPythonQualityReviewPrompt,
-  runDualReviewPrompt,
+  renderCodeReviewPrompt,
+  runReviewPrompt,
   runSync,
 } from "./review_runner_utils.mjs";
 import { CODE_REVIEWER_CONFIGS } from "../reviewer_config.mjs";
@@ -86,7 +85,7 @@ export function parseArgs(argv) {
 }
 
 export function renderPrReviewerPrompt(args) {
-  return renderCorrectnessReviewPrompt({
+  return renderCodeReviewPrompt({
     reviewScope:
       `the full local branch change at ${args.headSha} plus current uncommitted changes against ${args.reviewBase}`,
     reviewContext: `- Worktree root: ${args.worktreeRoot}
@@ -126,34 +125,6 @@ ${args.changedFiles}`,
 4. Review \`git diff --binary ${args.reviewBase}\` plus synthetic patches for sorted untracked non-ignored files.
 5. Include committed branch changes, staged changes, unstaged tracked changes, and untracked non-ignored files.
 6. Inspect current working-tree contents for changed paths when needed to understand behavior.`,
-  });
-}
-
-export function renderPythonQualityPrompt(args) {
-  return renderPythonQualityReviewPrompt({
-    reviewScope:
-      `the full local branch change at ${args.headSha} plus current uncommitted changes against ${args.reviewBase}`,
-    reviewContext: `- Worktree root: ${args.worktreeRoot}
-- Repository: ${args.repo}
-- PR: ${args.prUrl}
-- PR number: ${args.prNumber}
-- PR title: ${args.prTitle}
-- Target base ref: ${args.baseRef}
-- Review base commit: ${args.reviewBase}
-- Local head commit: ${args.headSha}
-- Local branch: ${args.headRef}
-
-PR body:
-${args.prBody}
-
-Changed files:
-${args.changedFiles}`,
-    gatherInstructions: `1. \`cd "${args.worktreeRoot}"\`.
-2. Treat the local checkout as the source of truth.
-3. Review \`git diff --binary ${args.reviewBase}\` plus synthetic patches for sorted untracked non-ignored files.
-4. If the changed-files list contains no \`.py\` files, return no findings immediately.
-5. Inspect the current contents and surrounding package patterns for every changed Python file.
-6. Use the PR title and body to understand intent, but report only Python quality issues introduced by the full local diff.`,
   });
 }
 
@@ -346,24 +317,9 @@ export async function runDualPrBranchReview({
     changedFiles: metadata.changed_files,
     implementationPlanHistoryFile,
   });
-  const pythonQualityPrompt = renderPythonQualityPrompt({
-    worktreeRoot,
-    repo: metadata.repo,
-    prNumber: metadata.pr_number,
-    prUrl: metadata.pr_url,
-    prTitle: metadata.pr_title,
-    prBody: metadata.pr_body,
-    baseRef: metadata.base_ref,
-    headRef: metadata.head_ref,
-    headSha: metadata.head_sha,
-    reviewBase: metadata.review_base,
-    changedFiles: metadata.changed_files,
-  });
-
-  const aggregate = await runDualReviewPrompt({
+  const aggregate = await runReviewPrompt({
     worktreeRoot,
     prompt,
-    pythonQualityPrompt,
     timeout,
   });
 
