@@ -8,39 +8,38 @@
         "properties": {
           "title": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 80
+            "description": "Non-empty finding title"
           },
           "body": {
             "type": "string",
-            "minLength": 1
+            "description": "Non-empty finding body."
           },
           "evidence": {
             "type": "string",
-            "minLength": 1
+            "description": "Non-empty evidence for the finding."
           },
           "priority": {
             "type": "integer",
-            "minimum": 0,
-            "maximum": 2
+            "enum": [0, 1, 2],
+            "description": "Finding priority: 0 for P0, 1 for P1, or 2 for P2."
           },
           "code_location": {
             "type": "object",
             "properties": {
               "absolute_file_path": {
                 "type": "string",
-                "minLength": 1
+                "description": "Non-empty absolute file path."
               },
               "line_range": {
                 "type": "object",
                 "properties": {
                   "start": {
                     "type": "integer",
-                    "minimum": 1
+                    "description": "One-based start line; must be at least 1."
                   },
                   "end": {
                     "type": "integer",
-                    "minimum": 1
+                    "description": "One-based end line; must be at least the start line."
                   }
                 },
                 "required": ["start", "end"],
@@ -63,7 +62,7 @@
     },
     "overall_explanation": {
       "type": "string",
-      "minLength": 1
+      "description": "Non-empty overall review explanation."
     }
   },
   "required": ["findings", "overall_explanation"],

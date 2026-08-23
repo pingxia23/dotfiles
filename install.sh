@@ -95,6 +95,30 @@ install_nodejs() {
   fi
 }
 
+# Install Pi coding agent through the Datadog golden configuration
+install_pi() {
+  if command_exists pi; then
+    echo "Pi coding agent is already installed"
+    return 0
+  fi
+
+  if ! command_exists dogbrew; then
+    echo "dogbrew is required to install the Pi golden configuration"
+    return 1
+  fi
+
+  echo "Installing Pi coding agent..."
+  dogbrew install pi-setup
+  pi-setup
+
+  if ! command_exists pi; then
+    echo "Pi installation completed, but the pi command is not available"
+    return 1
+  fi
+
+  echo "Pi coding agent installed successfully"
+}
+
 # Install or update the standalone Codex CLI
 install_codex() {
   if [[ "$OSTYPE" == "darwin"* ]] || [[ "$OSTYPE" == "linux-gnu"* ]]; then
@@ -437,6 +461,9 @@ fi
 
 # Install Node.js 22+ if needed
 install_nodejs
+
+# Install Pi coding agent
+install_pi
 
 # Install Codex CLI
 install_codex

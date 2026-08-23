@@ -13,8 +13,8 @@ export const REVIEWER_MODELS = Object.freeze({
     thinking: "medium",
   }),
   claude: Object.freeze({
-    provider: "ai-gw-anthropic-1m",
-    model: "anthropic/claude-opus-4-6",
+    provider: "anthropic",
+    model: "claude-opus-4-6",
     thinking: "medium",
   }),
 });
