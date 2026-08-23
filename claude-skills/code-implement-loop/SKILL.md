@@ -32,16 +32,17 @@ These rules apply to **both initial implementation and review-fix rounds**.
 
 Use this exact handling after the uncommitted change review execution returns. Its inputs are:
 
-- `review_result`: the validated aggregate result returned by the reviewer script
+- `review_result`: the serialized aggregate JSON returned by the reviewer script
 - `review_plan_context`: the implementation-plan context for the current review
 - `current_round`: the current review round number, starting at 1
 - `max_rounds`: 3 for uncommitted change review
 
-### Consume Reviewer Result
+### Decode Reviewer Result
 
-1. Treat `review_result` as the validated aggregate result from the reviewer script.
-2. If the reviewer command fails or its result cannot be consumed, stop and report blocked status with the available error output.
-3. Otherwise, use its `status`, `findings`, and `overall_explanation` directly.
+1. Decode `review_result` from JSON text into an aggregate result.
+2. Do not revalidate individual reviews or findings; the reviewer script owns reviewer-output parsing, schema validation, normalization, and aggregation.
+3. If the reviewer command fails or the aggregate JSON cannot be decoded, stop and report blocked status with the available error output.
+4. Otherwise, use the decoded `status`, `findings`, and `overall_explanation` directly.
 
 ### Filter Reviewer Findings
 
