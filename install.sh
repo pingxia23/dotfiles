@@ -556,6 +556,12 @@ else
   echo "  pi-settings.json not found in dotfiles directory"
 fi
 
+if [ -f "$DOTFILES_DIR/pi-models.json" ]; then
+  create_symlink "$DOTFILES_DIR/pi-models.json" "$HOME/.pi/agent/models.json"
+else
+  echo "  pi-models.json not found in dotfiles directory"
+fi
+
 if [ -f "$DOTFILES_DIR/pi-mcp.json" ]; then
   create_symlink "$DOTFILES_DIR/pi-mcp.json" "$HOME/.pi/agent/mcp.json"
 else

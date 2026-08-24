@@ -1,6 +1,6 @@
 {
-  "defaultProvider": "anthropic",
-  "defaultModel": "claude-opus-4-6",
+  "defaultProvider": "ai-gw-anthropic-1m",
+  "defaultModel": "anthropic/claude-opus-4-6",
   "defaultThinkingLevel": "medium",
   "extensions": [
     "~/dotfiles/pi-extensions/slack-notify.mjs"

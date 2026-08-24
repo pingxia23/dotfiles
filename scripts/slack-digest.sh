@@ -129,7 +129,8 @@ STEP 2 — READ SLACK
   - latest: "${LATEST}"
   - limit: 100
 - Paginate until you have all messages.
-- For every message that has thread replies (reply_count > 0), use the configured Slack plugin's thread-reading tool with that message ts as message_ts to get full thread context.
+- Discard every message with reply_count <= 3. Do not read its linked sources or include it in the digest.
+- For every remaining message (reply_count > 3), use the configured Slack plugin's thread-reading tool with that message ts as message_ts to get full thread context.
 - Important: some messages that appear as top-level channel messages are actually "also sent to channel" replies. Always inspect the thread and attribute the discussion to the original parent topic.
 - Merge thread replies into the parent discussion. Never list thread replies as separate digest items.
 

@@ -124,7 +124,7 @@ Reasoning:
 Plan:
 <for reply_only, provide the substantive reply text without an AI disclosure>
 
-<for implementation_needed, describe the concrete code, test, docs, or config changes needed. Prefer pseudocode over prose.>
+<for implementation_needed, describe the required changes and include pseudocode. Pseudocode is mandatory, even when the implementation is straightforward.>
 
 <for future-work comments, identify where the TODO comment should be added and what it should say.>
 ```
