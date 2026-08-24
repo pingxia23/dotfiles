@@ -1,6 +1,6 @@
 ---
 name: full-branch-review
-description: "Run one preflighted, structured review of the current GitHub PR's full local branch diff, including committed, staged, unstaged, and untracked changes; discover the current branch's committed implementation-plan history; by default upsert the raw review result as a top-level PR comment, or suppress that step with `--skip-pr-comment`. Use when asked to review a full PR branch, publish a branch review to a PR, or provide a machine-readable full-branch review result to a caller such as `code-implement-loop`."
+description: "Run one preflighted, structured review of the current GitHub PR's full local branch diff, including committed, staged, unstaged, and untracked changes; use committed implementation-plan history when available; by default upsert the raw review result as a top-level PR comment, or suppress that step with `--skip-pr-comment`. Use when asked to review a full PR branch, publish a branch review to a PR, or provide a machine-readable full-branch review result to a caller such as `code-implement-loop`."
 ---
 
 # Full Branch Review
@@ -16,7 +16,7 @@ A caller such as `code-implement-loop` may invoke this skill with `--skip-pr-com
 
 ## Input Contract
 
-Infer the repository, branch, PR, and implementation-plan history from the current checkout.
+Infer the repository, branch, PR, and optional implementation-plan history from the current checkout.
 
 Accept only one optional flag:
 
@@ -68,48 +68,54 @@ head_sha="$(jq -r '.headRefOid' <<<"$pr_meta_json")"
 
 Require a non-empty `pr_url`. Require `branch == head_ref` and `git rev-parse HEAD == head_sha`. Return `BLOCKED` with the exact mismatch otherwise.
 
-Discover the current branch's committed implementation-plan history:
+Discover the current branch's committed implementation-plan history when it is available:
 
 ```bash
-if ! committed_plan_history_file="$(
+committed_plan_history_file="$(
   node "$HOME/dotfiles/claude-skills/code-implement-loop/scripts/implementation_plan_history.mjs" \
     committed-history-path \
     --worktree-root "$worktree_root" \
     --branch "$branch"
-)"; then
-  echo "BLOCKED: failed to resolve committed implementation plan history"
-  exit 1
-fi
+)" || committed_plan_history_file=""
 
 if [[ ! -f "$committed_plan_history_file" || ! -s "$committed_plan_history_file" ]]; then
-  echo "BLOCKED: committed implementation plan history is not a non-empty regular file"
-  exit 1
+  committed_plan_history_file=""
 fi
 ```
 
-Pass this discovered path directly to the reviewer. Do not copy, rewrite, or delete the file.
+An unavailable or empty history is not a blocker. Continue the review using the PR title and body as the author-intent source.
+
+When the history is available, pass its discovered path directly to the reviewer. Do not copy, rewrite, or delete the file.
 
 ## 2. Run One Full-Branch Review
 
 Run the existing shared reviewer:
 
 ```bash
+reviewer_args=(
+  --worktree-root "$worktree_root"
+  --repo "$repo"
+  --branch "$branch"
+  --pr-number "$pr_number"
+  --pr-url "$pr_url"
+  --base-ref "$base_ref"
+  --gh-function "$gh_function"
+)
+if [[ -n "$committed_plan_history_file" ]]; then
+  reviewer_args+=(
+    --implementation-plan-history-file "$committed_plan_history_file"
+  )
+fi
+
 full_review_result="$(
   node "$HOME/dotfiles/scripts/code-review/run_dual_pr_branch_review.mjs" \
-    --worktree-root "$worktree_root" \
-    --repo "$repo" \
-    --branch "$branch" \
-    --pr-number "$pr_number" \
-    --pr-url "$pr_url" \
-    --base-ref "$base_ref" \
-    --implementation-plan-history-file "$committed_plan_history_file" \
-    --gh-function "$gh_function"
+    "${reviewer_args[@]}"
 )"
 ```
 
 Do not hand-edit `full_review_result`.
 
-The reviewer keeps its existing prompt and behavior. It fetches `origin/$base_ref`, revalidates the local branch and PR head, computes the merge base, and reviews the full local branch diff plus staged, unstaged, and untracked non-ignored changes. It passes the plan-history path only to the correctness reviewers.
+The reviewer fetches `origin/$base_ref`, revalidates the local branch and PR head, computes the merge base, and reviews the full local branch diff plus staged, unstaged, and untracked non-ignored changes. It uses the plan-history path when the file remains available. If the file disappears before a reviewer reads it, the reviewer continues with the PR title and body.
 
 Parse the result as strict JSON and require:
 
