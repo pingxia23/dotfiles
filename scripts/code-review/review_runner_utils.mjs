@@ -15,11 +15,6 @@ const LOG_FILE = path.join(SCRIPT_DIR, "review-runner-utils.log");
 export const DEFAULT_REVIEW_TIMEOUT_MS = CODE_REVIEW_TIMEOUT_MS;
 
 const REVIEWERS = CODE_REVIEWER_CONFIGS.map(({ reviewer }) => reviewer);
-const PI_REVIEW_SUBMISSION_INSTRUCTIONS = `## Pi Review Submission
-
-Your final action must be one submit_review tool call.
-Do not return the review as assistant text.
-Do not call submit_review with other tools in the same tool batch.`;
 const reviewLog = createLogger({ tag: TAG, logFile: LOG_FILE });
 
 export function renderCodeReviewPrompt({
@@ -191,7 +186,7 @@ Before returning JSON, challenge every candidate finding:
 
 ## Output Format
 
-Return strict JSON only. Do not include markdown fences or extra prose.
+Call \`submit_review\` with strict JSON matching the schema below.
 
 The JSON must match this schema exactly:
 
@@ -221,6 +216,10 @@ Additional output rules:
 - The \`code_location\` range should overlap the diff.
 - Do not wrap the JSON in markdown fences or extra prose.
 - Do not generate a PR fix.
+- Call \`submit_review\` exactly once.
+- The \`submit_review\` tool call must be your final action.
+- Do not return the review as assistant text.
+- Do not call \`submit_review\` with other tools in the same tool batch.
 `;
 }
 
@@ -657,7 +656,7 @@ export async function runPiReview({
   try {
     fs.writeFileSync(
       promptPath,
-      `${prompt}\n\n${PI_REVIEW_SUBMISSION_INSTRUCTIONS}\n`,
+      `${prompt}\n`,
       "utf8",
     );
     result = await spawnWithTimeout(

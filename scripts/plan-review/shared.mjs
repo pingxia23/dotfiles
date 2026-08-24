@@ -9,11 +9,6 @@ import {
 } from "../reviewer_config.mjs";
 
 export const DEFAULT_REVIEW_TIMEOUT_MS = PLAN_REVIEW_TIMEOUT_MS;
-const PI_PLAN_REVIEW_SUBMISSION_INSTRUCTIONS = `## Pi Plan Review Submission
-
-Your final action must be one submit_plan_review tool call.
-Do not return the plan review as assistant text.
-Do not call submit_plan_review with other tools in the same tool batch.`;
 
 export function getText(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -303,7 +298,7 @@ export async function reviewPlanWithPi({
   try {
     fs.writeFileSync(
       promptPath,
-      `${prompt}\n\n${PI_PLAN_REVIEW_SUBMISSION_INSTRUCTIONS}\n`,
+      `${prompt}\n`,
       "utf8",
     );
     piResult = await spawnWithTimeout(
@@ -509,6 +504,8 @@ Do not invent files, lines, code paths, incidents, attack chains, or runtime beh
 ${reviewSchema}
 </output_schema>
 
-Return exactly one JSON object matching output_schema.
-Do not include markdown fences or any prose before or after the JSON object.`;
+Call submit_plan_review exactly once with one JSON object matching output_schema.
+The submit_plan_review tool call must be your final action.
+Do not return the plan review as assistant text.
+Do not call submit_plan_review with other tools in the same tool batch.`;
 }

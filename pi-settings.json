@@ -1,7 +1,7 @@
 {
-  "defaultProvider": "ai-gw-baseten",
-  "defaultModel": "baseten/zai-org/GLM-5.2",
-  "defaultThinkingLevel": "high",
+  "defaultProvider": "anthropic",
+  "defaultModel": "claude-opus-4-6",
+  "defaultThinkingLevel": "medium",
   "extensions": [
     "~/dotfiles/pi-extensions/slack-notify.mjs"
   ],
