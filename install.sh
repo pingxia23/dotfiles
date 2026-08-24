@@ -544,6 +544,12 @@ fi
 
 # Setup Pi configuration (symlinked)
 echo "Setting up Pi configuration..."
+if [ -f "$DOTFILES_DIR/claude-global.md" ]; then
+  create_symlink "$DOTFILES_DIR/claude-global.md" "$HOME/.pi/agent/AGENTS.md"
+else
+  echo "  claude-global.md not found in dotfiles directory"
+fi
+
 if [ -f "$DOTFILES_DIR/pi-settings.json" ]; then
   create_symlink "$DOTFILES_DIR/pi-settings.json" "$HOME/.pi/agent/settings.json"
 else
