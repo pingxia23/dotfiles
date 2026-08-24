@@ -75,6 +75,7 @@ export function spawnWithTimeout(command, args, options = {}) {
 
     const child = spawn(command, args, {
       cwd: options.cwd,
+      env: options.env,
       stdio: ["ignore", "pipe", "pipe"],
     });
     child.stdout.setEncoding("utf8");
@@ -320,7 +321,11 @@ export async function reviewPlanWithPi({
         sessionId,
         `@${promptPath}`,
       ],
-      { cwd, timeout },
+      {
+        cwd,
+        timeout,
+        env: { ...process.env, PI_CLIENT_SESSION_ID: sessionId },
+      },
     );
   } finally {
     fs.rmSync(promptDirectory, { force: true, recursive: true });
