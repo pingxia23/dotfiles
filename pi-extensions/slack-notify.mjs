@@ -7,17 +7,37 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 const FALLBACK_MESSAGE = "Pi turn completed.";
 const MAX_ATTEMPTS = 3;
+const MAX_SECTION_TEXT_LENGTH = 3_000;
 const REQUEST_TIMEOUT_MS = 10_000;
 const RETRY_DELAY_MS = 1_000;
+const TRUNCATION_NOTICE = "\n\n_Output truncated to fit Slack._";
 
-function getAssistantText(message) {
+function getAssistantOutput(message) {
   if (message?.role !== "assistant" || !Array.isArray(message.content)) {
     return "";
   }
 
-  return message.content
+  const text = message.content
     .filter((block) => block?.type === "text" && typeof block.text === "string")
     .map((block) => block.text.trim())
+    .filter(Boolean)
+    .join("\n\n");
+
+  if (text) {
+    return text;
+  }
+
+  // Structured runners can finish with a terminal tool call and no text.
+  return message.content
+    .filter((block) => block?.type === "toolCall" && block.arguments != null)
+    .map((block) => {
+      const output =
+        typeof block.arguments === "string"
+          ? block.arguments.trim()
+          : JSON.stringify(block.arguments, null, 2);
+      const name = typeof block.name === "string" ? `*${block.name}*\n` : "";
+      return output ? `${name}\`\`\`\n${output}\n\`\`\`` : "";
+    })
     .filter(Boolean)
     .join("\n\n");
 }
@@ -52,7 +72,18 @@ async function safeWriteLog(log, message) {
   }
 }
 
-function buildPayload({ message, branch, cwd, sessionId, leafId }) {
+function fitSectionText(message) {
+  if (message.length <= MAX_SECTION_TEXT_LENGTH) {
+    return message;
+  }
+
+  return `${message.slice(
+    0,
+    MAX_SECTION_TEXT_LENGTH - TRUNCATION_NOTICE.length,
+  )}${TRUNCATION_NOTICE}`;
+}
+
+function buildPayload({ message, branch, cwd, sessionId, model }) {
   return {
     blocks: [
       {
@@ -65,14 +96,14 @@ function buildPayload({ message, branch, cwd, sessionId, leafId }) {
       },
       {
         type: "section",
-        text: { type: "mrkdwn", text: message },
+        text: { type: "mrkdwn", text: fitSectionText(message) },
       },
       {
         type: "context",
         elements: [
           { type: "mrkdwn", text: `*Dir:* ${cwd}` },
           { type: "mrkdwn", text: `*Session:* ${sessionId}` },
-          { type: "mrkdwn", text: `*Leaf:* ${leafId}` },
+          { type: "mrkdwn", text: `*Model:* ${model}` },
         ],
       },
     ],
@@ -127,7 +158,8 @@ export function createSlackNotifyExtension({
     }
 
     let hasAssistantMessage = false;
-    let latestAssistantText = "";
+    let latestAssistantOutput = "";
+    let latestModel = "";
 
     pi.on("message_end", (event) => {
       if (event.message?.role !== "assistant") {
@@ -135,7 +167,9 @@ export function createSlackNotifyExtension({
       }
 
       hasAssistantMessage = true;
-      latestAssistantText = getAssistantText(event.message);
+      latestAssistantOutput = getAssistantOutput(event.message);
+      latestModel =
+        typeof event.message.model === "string" ? event.message.model : "";
     });
 
     pi.on("agent_settled", async (_event, ctx) => {
@@ -143,9 +177,11 @@ export function createSlackNotifyExtension({
         return;
       }
 
-      const message = latestAssistantText || FALLBACK_MESSAGE;
+      const message = latestAssistantOutput || FALLBACK_MESSAGE;
+      const model = latestModel || ctx.model?.id || "N/A";
       hasAssistantMessage = false;
-      latestAssistantText = "";
+      latestAssistantOutput = "";
+      latestModel = "";
 
       try {
         const branch = await branchResolver(ctx.cwd);
@@ -154,7 +190,7 @@ export function createSlackNotifyExtension({
           branch,
           cwd: ctx.cwd,
           sessionId: ctx.sessionManager.getSessionId() || "N/A",
-          leafId: ctx.sessionManager.getLeafId() || "N/A",
+          model,
         });
 
         await postPayload({ fetchImpl, sleep, webhookUrl, payload });
