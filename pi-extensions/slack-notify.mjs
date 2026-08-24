@@ -7,30 +7,27 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 const FALLBACK_MESSAGE = "Pi turn completed.";
 const MAX_ATTEMPTS = 3;
+const MAX_SECTION_BLOCKS = 48;
 const MAX_SECTION_TEXT_LENGTH = 3_000;
 const REQUEST_TIMEOUT_MS = 10_000;
 const RETRY_DELAY_MS = 1_000;
 const TRUNCATION_NOTICE = "\n\n_Output truncated to fit Slack._";
 
-function getAssistantOutput(message) {
+export function getAssistantOutput(message) {
   if (message?.role !== "assistant" || !Array.isArray(message.content)) {
     return "";
   }
 
-  const text = message.content
-    .filter((block) => block?.type === "text" && typeof block.text === "string")
-    .map((block) => block.text.trim())
-    .filter(Boolean)
-    .join("\n\n");
-
-  if (text) {
-    return text;
-  }
-
-  // Structured runners can finish with a terminal tool call and no text.
   return message.content
-    .filter((block) => block?.type === "toolCall" && block.arguments != null)
     .map((block) => {
+      if (block?.type === "text" && typeof block.text === "string") {
+        return block.text.trim();
+      }
+
+      if (block?.type !== "toolCall" || block.arguments == null) {
+        return "";
+      }
+
       const output =
         typeof block.arguments === "string"
           ? block.arguments.trim()
@@ -72,18 +69,42 @@ async function safeWriteLog(log, message) {
   }
 }
 
-function fitSectionText(message) {
-  if (message.length <= MAX_SECTION_TEXT_LENGTH) {
-    return message;
+export function splitSectionText(message) {
+  const characters = Array.from(message);
+  const sections = [];
+
+  for (
+    let offset = 0;
+    offset < characters.length && sections.length < MAX_SECTION_BLOCKS;
+    offset += MAX_SECTION_TEXT_LENGTH
+  ) {
+    const isLastSection = sections.length === MAX_SECTION_BLOCKS - 1;
+    const hasMoreText =
+      characters.length - offset > MAX_SECTION_TEXT_LENGTH;
+
+    if (isLastSection && hasMoreText) {
+      const contentLength =
+        MAX_SECTION_TEXT_LENGTH - Array.from(TRUNCATION_NOTICE).length;
+      sections.push(
+        `${characters.slice(offset, offset + contentLength).join("")}${TRUNCATION_NOTICE}`,
+      );
+      break;
+    }
+
+    sections.push(
+      characters.slice(offset, offset + MAX_SECTION_TEXT_LENGTH).join(""),
+    );
   }
 
-  return `${message.slice(
-    0,
-    MAX_SECTION_TEXT_LENGTH - TRUNCATION_NOTICE.length,
-  )}${TRUNCATION_NOTICE}`;
+  return sections;
 }
 
 function buildPayload({ message, branch, cwd, sessionId, model }) {
+  const sections = splitSectionText(message).map((text) => ({
+    type: "section",
+    text: { type: "mrkdwn", text },
+  }));
+
   return {
     blocks: [
       {
@@ -94,10 +115,7 @@ function buildPayload({ message, branch, cwd, sessionId, model }) {
           emoji: true,
         },
       },
-      {
-        type: "section",
-        text: { type: "mrkdwn", text: fitSectionText(message) },
-      },
+      ...sections,
       {
         type: "context",
         elements: [
