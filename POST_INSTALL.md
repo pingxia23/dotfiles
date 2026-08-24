@@ -197,40 +197,62 @@ git config --global --add url."ssh://git@datadog.github.com/DataDog/".insteadOf 
 
 `ping-xia_ddog` is an Enterprise Managed User and cannot be added as a
 collaborator to the personal `pingxia23/dotfiles` repository. Keep commit
-signing on `~/.ssh/workspace_git`, but use a separate personal GitHub
-authentication key only for the `~/dotfiles` checkout.
+signing on `~/.ssh/workspace_git`, but use the personal `pingxia23` GitHub login
+for pushes from the `~/dotfiles` checkout.
 
-This assumes the matching public key has already been added to the `pingxia23`
-GitHub account as an authentication key named `workspace-dotfiles-auth`.
+Use HTTPS for this repository. This prevents Git from reusing a workspace SSH
+connection that was authenticated as `ping-xia_ddog`. The credential helper
+calls `gh-personal`, which always selects the `pingxia23` login without changing
+the active `gh` account for other terminals.
 
-The dotfiles repository SSH key is stored in 1Password. Find it by searching
-1Password for `dotfiles repo ssh key`, `workspace-dotfiles-auth`, or
-`pingxia23-dotfiles`. Do not commit the key material to this repository.
+First, store the GitHub credentials on the new machine. This script skips an
+account when its stored credential is already valid:
 
-The matching private key must exist in the workspace at:
-
-```text
-~/.ssh/pingxia23_dotfiles
+```bash
+~/dotfiles/bin/workspace_agent_auth
 ```
 
-Configure only the dotfiles repository to use that key for SSH transport:
+Confirm that the personal credential identifies the correct account:
+
+```bash
+~/dotfiles/bin/gh-personal api user --jq .login
+```
+
+Expected output:
+
+```text
+pingxia23
+```
+
+Configure only the dotfiles repository:
 
 ```bash
 cd ~/dotfiles
-git config core.sshCommand "ssh -i ~/.ssh/pingxia23_dotfiles -o IdentitiesOnly=yes"
-git remote set-url origin git@github.com:pingxia23/dotfiles.git
+git remote set-url origin https://pingxia23@github.com/pingxia23/dotfiles.git
+git config --local --unset-all core.sshCommand || true
+git config --local --unset-all credential.helper || true
+git config --local --add credential.helper ""
+git config --local --add credential.helper "!$(pwd)/bin/gh-personal auth git-credential"
 ```
 
-Validate that GitHub sees the key as the personal `pingxia23` account:
+The `pingxia23@` part of the URL is intentional. It prevents the global Git URL
+rules from changing this repository back to SSH.
+
+These settings are stored in `~/dotfiles/.git/config`. They remain in effect
+after terminal reconnects and machine restarts. Do not repeat this setup for
+normal pushes from this checkout.
+
+Validate the configuration without uploading commits:
 
 ```bash
-ssh -T -i ~/.ssh/pingxia23_dotfiles -o IdentitiesOnly=yes git@github.com
+GIT_TERMINAL_PROMPT=0 git push --dry-run
 ```
 
-Expected result:
+The output must identify the personal repository and must not contain
+`ping-xia_ddog`:
 
 ```text
-Hi pingxia23! You've successfully authenticated, but GitHub does not provide shell access.
+To https://github.com/pingxia23/dotfiles.git
 ```
 
 Then push normally from `~/dotfiles`:
