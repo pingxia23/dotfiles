@@ -151,8 +151,8 @@
           "input": [
             "text"
           ],
-          "contextWindow": 128000,
-          "maxTokens": 16384,
+          "contextWindow": 1050000,
+          "maxTokens": 128000,
           "thinkingLevelMap": {
             "minimal": "low",
             "off": "none",

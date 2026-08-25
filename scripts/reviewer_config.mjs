@@ -2,13 +2,13 @@ import { fileURLToPath } from "node:url";
 
 export const REVIEWER_MODELS = Object.freeze({
   gpt: Object.freeze({
-    provider: "openai",
-    model: "gpt-5.5",
+    provider: "ai-gw-openai",
+    model: "openai/gpt-5.5",
     thinking: "medium",
     serviceTier: "fast",
   }),
   gemini: Object.freeze({
-    provider: "google",
+    provider: "ai-gw-google",
     model: "gemini-3.7-flash",
     thinking: "medium",
   }),
