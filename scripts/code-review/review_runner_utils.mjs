@@ -26,9 +26,11 @@ export function renderCodeReviewPrompt({
 
 You are reviewing ${reviewScope}. Complete both required review sections: correctness and code quality.
 
-Return all concrete issues that the original author would likely want to fix once they know about them. Set each finding's \`category\` to \`correctness\` or \`quality\` based on the section that produced it.
+Return all concrete issues that the original author would likely want to fix once they know about them. 
 
-If more specific instructions appear elsewhere, follow those over this file.
+## Hard Output Rule
+
+Always call \`submit_review\` alone as the final action to submit the final output, including when there are no findings.
 
 ## Review Scope
 
@@ -192,42 +194,14 @@ Before returning JSON, challenge every candidate finding:
 - Demote severity when the scenario is narrower than first assumed.
 - Confirm the changed-line anchor is the best available location for the problem.
 
-## Output Format
-
-Call \`submit_review\` with strict JSON matching the schema below.
-
-The JSON must match this schema exactly:
-
-{
-  "findings": [
-    {
-      "title": "<≤ 80 chars, imperative>",
-      "body": "<valid Markdown explaining why this is a problem>",
-      "evidence": "<specific code, config, test, or source evidence supporting the finding>",
-      "category": "<correctness or quality>",
-      "priority": <int 0-2>,
-      "code_location": {
-        "absolute_file_path": "<file path>",
-        "line_range": {"start": <int>, "end": <int>}
-      }
-    }
-  ],
-  "overall_explanation": "<1-3 sentence explanation of the findings or why none remain>"
-}
-
-Additional output rules:
+## Finding Output Rules
 
 - \`code_location.absolute_file_path\` is required.
 - \`code_location.line_range.start\` and \`code_location.line_range.end\` are required.
 - \`evidence\` is required for every finding and must describe the concrete source you inspected, not just repeat the body.
 - \`category\` is required for every finding.
 - The \`code_location\` range should overlap the diff.
-- Do not wrap the JSON in markdown fences or extra prose.
 - Do not generate a PR fix.
-- Call \`submit_review\` exactly once.
-- The \`submit_review\` tool call must be your final action.
-- Do not return the review as assistant text.
-- Do not call \`submit_review\` with other tools in the same tool batch.
 `;
 }
 

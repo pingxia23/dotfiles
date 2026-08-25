@@ -179,14 +179,14 @@ function buildPrompt({
   recentUserInputs,
   planContent,
   latestTurnContext,
-  reviewSchema,
 }) {
   const recentUserInputsText =
     recentUserInputs.length > 0
       ? recentUserInputs.map((text, index) => `${index + 1}. ${text}`).join("\n\n")
       : "No prior user inputs found.";
 
-  return `
+  return `${buildReviewInstructions()}
+
 Review this implementation plan before it's presented for user approval.
 The latest user request, recent user inputs, plan content, and the latest-turn context are provided
 below, all extracted from the transcript. Use them as primary context.
@@ -211,9 +211,7 @@ ${latestTurnContext}
 </latest_turn_context>
 
 The full transcript is also available at ${transcriptPath}. To inspect deeper context, search for ${turnId}
-and review nearby transcript lines.
-
-${buildReviewInstructions(reviewSchema)}`;
+and review nearby transcript lines.`;
 }
 
 function buildRevisionPrompt(comments) {
@@ -273,8 +271,7 @@ if (!latestTurnContext) {
   allow("skip empty latest turn context");
 }
 
-const reviewSchema = loadReviewSchema(REVIEW_SCHEMA_PATH);
-if (!reviewSchema) {
+if (!loadReviewSchema(REVIEW_SCHEMA_PATH)) {
   allow(`failed to load review schema from ${REVIEW_SCHEMA_PATH}`);
 }
 
@@ -285,7 +282,6 @@ const prompt = buildPrompt({
   recentUserInputs,
   planContent,
   latestTurnContext,
-  reviewSchema,
 });
 const cwd =
   typeof input.cwd === "string" && fs.existsSync(input.cwd)

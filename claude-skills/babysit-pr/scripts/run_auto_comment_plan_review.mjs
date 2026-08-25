@@ -51,8 +51,10 @@ function parseArgs(argv) {
   return args;
 }
 
-export function buildPrompt({ prUrl, plan, reviewSchema }) {
-  return `<task>
+export function buildPrompt({ prUrl, plan }) {
+  return `${buildReviewInstructions()}
+
+<task>
 Review this automatic PR comment address plan before implementation.
 
 PR: ${prUrl}
@@ -69,9 +71,7 @@ Verify that the plan:
 
 The babysit-pr workflow will discard reply_only sections without replying and will send only
 implementation_needed sections to code-implement-loop.
-</task>
-
-${buildReviewInstructions(reviewSchema)}`;
+</task>`;
 }
 
 export function summarizeReviewerResults(reviewerResults) {
@@ -116,8 +116,7 @@ async function main() {
     throw new Error("comment address plan is required on stdin");
   }
 
-  const reviewSchema = loadReviewSchema(REVIEW_SCHEMA_PATH);
-  if (!reviewSchema) {
+  if (!loadReviewSchema(REVIEW_SCHEMA_PATH)) {
     throw new Error(`failed to load review schema: ${REVIEW_SCHEMA_PATH}`);
   }
 
@@ -128,12 +127,10 @@ async function main() {
   const prompt = buildPrompt({
     prUrl: args.prUrl,
     plan,
-    reviewSchema,
   });
   const reviewerResults = await runPlanReviewers({
     prompt,
     cwd: args.worktreeRoot,
-    reviewSchema,
     log,
   });
 

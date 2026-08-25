@@ -447,8 +447,12 @@ export async function runPlanReviewers({
   return reviewerResults;
 }
 
-export function buildReviewInstructions(reviewSchema) {
-  return `<review_policy>
+export function buildReviewInstructions() {
+  return `<hard_output_rule>
+Always call submit_plan_review alone as the final action to submit the final output, including when the plan is approved and there are no findings.
+</hard_output_rule>
+
+<review_policy>
   Default to skepticism. Actively try to disprove the change by searching for broken invariants, missing guards, unhandled error paths, race conditions, invalid assumptions, and cases where the proposal stops being correct under stress, retries, partial failure, or unexpected input.
 
   Set verdict to "approve" only when all of the following are true:
@@ -503,14 +507,5 @@ export function buildReviewInstructions(reviewSchema) {
 Ground every comment in repository files or tool outputs you inspected.
 Verify file paths exist and code patterns match before flagging an issue.
 Do not invent files, lines, code paths, incidents, attack chains, or runtime behavior you cannot support. If a conclusion depends on an inference, state that explicitly in the finding body and keep the confidence honest.
-</grounding_rules>
-
-<output_schema>
-${reviewSchema}
-</output_schema>
-
-Call submit_plan_review exactly once with one JSON object matching output_schema.
-The submit_plan_review tool call must be your final action.
-Do not return the plan review as assistant text.
-Do not call submit_plan_review with other tools in the same tool batch.`;
+</grounding_rules>`;
 }
