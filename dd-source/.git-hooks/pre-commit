@@ -216,6 +216,24 @@ get_assistant_changed_coding_files() {
     }
 }
 
+get_bits_agent_worker_changed_files() {
+    get_my_branch_files | {
+        local files=""
+        while IFS= read -r file; do
+            if [[ "$file" != domains/chatbot/apps/apis/bits_agent_worker/* ]]; then
+                continue
+            fi
+
+            if [[ "$file" == *.md || "$file" == *.tf ]]; then
+                continue
+            fi
+
+            files+=" $file"
+        done
+        echo "$files" | xargs
+    }
+}
+
 get_terraform_lint_targets() {
     get_my_branch_files | {
         local targets=""
@@ -447,6 +465,45 @@ if [[ -n "$assistant_changed_files" ]]; then
     fi
 else
     info "  🕵 No branch-local files in domains/assistant to test"
+fi
+
+# --------------------------- Bits Agent Worker Tests --------------------------- #
+warn "🔍 Running tests in domains/chatbot/apps/apis/bits_agent_worker..."
+bits_agent_worker_changed_files=$(get_bits_agent_worker_changed_files)
+if [[ -n "$bits_agent_worker_changed_files" ]]; then
+    bits_agent_worker_test_targets="//domains/chatbot/apps/apis/bits_agent_worker/...:all"
+    bits_agent_worker_test_timeout=600
+
+    info "  🔎 Finding ty targets in domains/chatbot/apps/apis/bits_agent_worker"
+    if bits_agent_worker_ty_targets=$(run_bzl_locked query 'filter("[.]ty$", //domains/chatbot/apps/apis/bits_agent_worker/...)'); then
+        echo "$bits_agent_worker_ty_targets"
+    else
+        error "  ❌ Could not find bits_agent_worker ty targets!"
+        exit 1
+    fi
+
+    info "  🏗️ Running: bzl build --config=ty <bits_agent_worker ty targets>"
+    if run_bzl_locked build --config=ty $bits_agent_worker_ty_targets; then
+        success "  ✅ bits_agent_worker ty checks passed"
+    else
+        error "  ❌ bits_agent_worker ty checks failed!"
+        error "  Run: bzl build --config=ty $bits_agent_worker_ty_targets"
+        exit 1
+    fi
+
+    info "  🧪 Running Bits Agent Worker tests with ${bits_agent_worker_test_timeout}s timeout"
+    if run_bzl_locked test \
+        --build_tests_only \
+        --test_timeout="$bits_agent_worker_test_timeout" \
+        "$bits_agent_worker_test_targets"; then
+        success "  ✅ bits_agent_worker tests passed"
+    else
+        error "  ❌ bits_agent_worker tests failed!"
+        error "  Run: bzl test --build_tests_only --test_timeout=$bits_agent_worker_test_timeout $bits_agent_worker_test_targets"
+        exit 1
+    fi
+else
+    info "  🕵 No branch-local files in domains/chatbot/apps/apis/bits_agent_worker to test"
 fi
 
 
