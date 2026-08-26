@@ -345,11 +345,6 @@ export function assertZero(result, label) {
   }
 }
 
-function hasOnlyKeys(value, allowedKeys) {
-  const allowed = new Set(allowedKeys);
-  return Object.keys(value).every((key) => allowed.has(key));
-}
-
 function isActionablePriority(priority) {
   return Number.isInteger(priority) && priority >= 0 && priority <= 2;
 }
@@ -380,126 +375,6 @@ function normalizeReviewResult(result) {
     : result;
 }
 
-export function validateReviewOutput(value) {
-  const errors = [];
-
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return { valid: false, errors: ["review must be an object"] };
-  }
-
-  if (!hasOnlyKeys(value, ["findings", "overall_explanation"])) {
-    errors.push("review contains additional properties");
-  }
-
-  if (!Array.isArray(value.findings)) {
-    errors.push("findings must be an array");
-  } else {
-    value.findings.forEach((finding, index) => {
-      const prefix = `findings[${index}]`;
-      if (!finding || typeof finding !== "object" || Array.isArray(finding)) {
-        errors.push(`${prefix} must be an object`);
-        return;
-      }
-      if (
-        !hasOnlyKeys(finding, [
-          "title",
-          "body",
-          "evidence",
-          "category",
-          "priority",
-          "code_location",
-        ])
-      ) {
-        errors.push(`${prefix} contains additional properties`);
-      }
-      if (typeof finding.title !== "string" || finding.title.length === 0) {
-        errors.push(`${prefix}.title must be a non-empty string`);
-      } else if (finding.title.length > 80) {
-        errors.push(`${prefix}.title must be at most 80 characters`);
-      }
-      if (typeof finding.body !== "string" || finding.body.length === 0) {
-        errors.push(`${prefix}.body must be a non-empty string`);
-      }
-      if (
-        typeof finding.evidence !== "string" ||
-        finding.evidence.length === 0
-      ) {
-        errors.push(`${prefix}.evidence must be a non-empty string`);
-      }
-      if (!["correctness", "quality"].includes(finding.category)) {
-        errors.push(`${prefix}.category must be correctness or quality`);
-      }
-      if (!("priority" in finding)) {
-        errors.push(`${prefix}.priority is required`);
-      } else if (
-        !Number.isInteger(finding.priority) ||
-        finding.priority < 0 ||
-        finding.priority > 2
-      ) {
-        errors.push(`${prefix}.priority must be an integer from 0 to 2`);
-      }
-
-      const location = finding.code_location;
-      if (!location || typeof location !== "object" || Array.isArray(location)) {
-        errors.push(`${prefix}.code_location must be an object`);
-        return;
-      }
-      if (!hasOnlyKeys(location, ["absolute_file_path", "line_range"])) {
-        errors.push(`${prefix}.code_location contains additional properties`);
-      }
-      if (
-        typeof location.absolute_file_path !== "string" ||
-        location.absolute_file_path.length === 0
-      ) {
-        errors.push(
-          `${prefix}.code_location.absolute_file_path must be a non-empty string`,
-        );
-      }
-
-      const lineRange = location.line_range;
-      if (!lineRange || typeof lineRange !== "object" || Array.isArray(lineRange)) {
-        errors.push(`${prefix}.code_location.line_range must be an object`);
-        return;
-      }
-      if (!hasOnlyKeys(lineRange, ["start", "end"])) {
-        errors.push(`${prefix}.code_location.line_range contains additional properties`);
-      }
-      if (!Number.isInteger(lineRange.start) || lineRange.start < 1) {
-        errors.push(`${prefix}.code_location.line_range.start must be an integer >= 1`);
-      }
-      if (!Number.isInteger(lineRange.end) || lineRange.end < 1) {
-        errors.push(`${prefix}.code_location.line_range.end must be an integer >= 1`);
-      } else if (
-        Number.isInteger(lineRange.start) &&
-        lineRange.start >= 1 &&
-        lineRange.end < lineRange.start
-      ) {
-        errors.push(
-          `${prefix}.code_location.line_range.end must be >= line_range.start`,
-        );
-      }
-    });
-  }
-
-  if (
-    typeof value.overall_explanation !== "string" ||
-    value.overall_explanation.length === 0
-  ) {
-    errors.push("overall_explanation must be a non-empty string");
-  }
-
-  return { valid: errors.length === 0, errors };
-}
-
-function parseReviewObject(value) {
-  const validation = validateReviewOutput(value);
-  if (!validation.valid) {
-    return { review: null, errors: validation.errors };
-  }
-
-  return { review: normalizeReview(value), errors: [] };
-}
-
 export function parsePiReviewOutput(output) {
   const events = [];
   for (const [index, rawLine] of output.split(/\r?\n/).entries()) {
@@ -524,34 +399,36 @@ export function parsePiReviewOutput(output) {
     }
   }
 
-  const submissions = events.filter(
+  const submissionAttempts = events.filter(
     (event) =>
       event.type === "tool_execution_end" &&
       event.toolName === "submit_review",
   );
-  if (submissions.length === 0) {
+  if (submissionAttempts.length === 0) {
     return {
       review: null,
       errors: ["missing submit_review tool result"],
+    };
+  }
+  const submissions = submissionAttempts.filter(
+    (submission) => submission.isError === false,
+  );
+  if (submissions.length === 0) {
+    return {
+      review: null,
+      errors: ["submit_review tool call failed"],
     };
   }
   if (submissions.length !== 1) {
     return {
       review: null,
       errors: [
-        `expected one submit_review tool result, found ${submissions.length}`,
+        `expected one successful submit_review tool result, found ${submissions.length}`,
       ],
     };
   }
 
   const submission = submissions[0];
-  if (submission.isError !== false) {
-    return {
-      review: null,
-      errors: ["submit_review tool call failed"],
-    };
-  }
-
   const submissionIndex = events.indexOf(submission);
   const finalAssistantMessageIndex = events.findLastIndex(
     (event, index) =>
@@ -599,15 +476,12 @@ export function parsePiReviewOutput(output) {
     };
   }
 
-  const parsed = parseReviewObject(submission.result?.details);
-  if (!parsed.review) {
-    return {
-      review: null,
-      errors: parsed.errors.map((error) => `submit_review.${error}`),
-    };
-  }
-
-  return parsed;
+  // Pi validates successful tool arguments against review-output.schema.json
+  // before it calls the submit_review implementation.
+  return {
+    review: normalizeReview(submission.result.details),
+    errors: [],
+  };
 }
 
 export async function runPiReview({

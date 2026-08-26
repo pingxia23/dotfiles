@@ -128,34 +128,6 @@ export function spawnWithTimeout(command, args, options = {}) {
   });
 }
 
-function hasOnlyKeys(value, allowedKeys) {
-  const allowed = new Set(allowedKeys);
-  return Object.keys(value).every((key) => allowed.has(key));
-}
-
-export function validatePlanReviewOutput(value) {
-  const errors = [];
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return { valid: false, errors: ["plan review must be an object"] };
-  }
-  if (!hasOnlyKeys(value, ["verdict", "comments"])) {
-    errors.push("plan review contains additional properties");
-  }
-  if (!["approve", "revise"].includes(value.verdict)) {
-    errors.push('verdict must be "approve" or "revise"');
-  }
-  if (!Array.isArray(value.comments)) {
-    errors.push("comments must be an array");
-  } else {
-    value.comments.forEach((comment, index) => {
-      if (typeof comment !== "string") {
-        errors.push(`comments[${index}] must be a string`);
-      }
-    });
-  }
-  return { valid: errors.length === 0, errors };
-}
-
 export function parsePiReviewOutput(output) {
   const events = [];
   for (const [index, rawLine] of output.split(/\r?\n/).entries()) {
@@ -180,34 +152,36 @@ export function parsePiReviewOutput(output) {
     }
   }
 
-  const submissions = events.filter(
+  const submissionAttempts = events.filter(
     (event) =>
       event.type === "tool_execution_end" &&
       event.toolName === "submit_plan_review",
   );
-  if (submissions.length === 0) {
+  if (submissionAttempts.length === 0) {
     return {
       review: null,
       errors: ["missing submit_plan_review tool result"],
+    };
+  }
+  const submissions = submissionAttempts.filter(
+    (submission) => submission.isError === false,
+  );
+  if (submissions.length === 0) {
+    return {
+      review: null,
+      errors: ["submit_plan_review tool call failed"],
     };
   }
   if (submissions.length !== 1) {
     return {
       review: null,
       errors: [
-        `expected one submit_plan_review tool result, found ${submissions.length}`,
+        `expected one successful submit_plan_review tool result, found ${submissions.length}`,
       ],
     };
   }
 
   const submission = submissions[0];
-  if (submission.isError !== false) {
-    return {
-      review: null,
-      errors: ["submit_plan_review tool call failed"],
-    };
-  }
-
   const submissionIndex = events.indexOf(submission);
   const finalAssistantMessageIndex = events.findLastIndex(
     (event, index) =>
@@ -255,18 +229,9 @@ export function parsePiReviewOutput(output) {
     };
   }
 
-  const review = submission.result?.details;
-  const validation = validatePlanReviewOutput(review);
-  if (!validation.valid) {
-    return {
-      review: null,
-      errors: validation.errors.map(
-        (error) => `submit_plan_review.${error}`,
-      ),
-    };
-  }
-
-  return { review, errors: [] };
+  // Pi validates successful tool arguments against
+  // plan-review-output.schema.json before it calls the tool implementation.
+  return { review: submission.result.details, errors: [] };
 }
 
 export async function reviewPlanWithPi({
