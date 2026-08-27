@@ -5,7 +5,7 @@ description: Turn technical or educational videos, YouTube links, recordings, ca
 
 # Video Learning Notes
 
-Create a text-first study guide that helps the reader learn the material without replaying the entire video. Front-load the study path, key concepts, and mental model; place the detailed, source-ordered drill-down afterward.
+Create a text-first guide that lets the reader understand the material without watching the entire video. Begin with key takeaways that form a standalone summary. Then provide the study path, key concepts, mental model, and detailed source-ordered notes.
 
 ## Workflow
 
@@ -46,8 +46,17 @@ Use this order unless the user specifies another structure:
 
 Source: <linked title, creator, duration, publication date when known>
 
+## Key takeaways
+<State the central thesis in a short paragraph. Follow with concise, logically ordered key-idea bullets. End with a broader takeaway that connects the ideas. Make this section sufficient for a reader who skips the video and the remaining notes.>
+
 ## Study path
-<A short pass-by-pass plan: what to read/watch, the goal, and a checkpoint>
+### Step <number> — <learning goal>
+Material: <timestamp range or note sections>
+
+You will learn:
+
+- <important idea, relationship, or tradeoff>
+- <important idea, relationship, or tradeoff>
 
 ## Key concepts
 <A compact table: Concept | Meaning | Why it matters>
@@ -58,28 +67,36 @@ Source: <linked title, creator, duration, publication date when known>
 ## Detailed notes
 ### <timestamp or range> — <learning unit>
 <Takeaway first, then explanation, example, connections, and tradeoffs>
-
-## Practical takeaways
-<Decisions, checklist, or application guidance>
-
-## Self-check
-<Questions or short exercises that test recall and application>
-
-## Resources
-<Creator-linked source files and any clearly labeled supplemental sources>
 ```
 
-Keep the front section scannable. The study path, key concepts, and mental model should orient the reader; reserve most explanation for the detailed notes.
+Keep the front section scannable. The key takeaways must work as a complete text alternative. The study path, key concepts, and mental model should then orient readers who want to study the material in more depth; reserve most explanation for the detailed notes.
 
 ## Section guidance
 
+### Key takeaways
+
+Write this section as a complete text alternative, not a teaser or table of contents.
+
+- State the central thesis first.
+- Use short bold labels for the key-idea bullets.
+- Explain what each idea means and why it matters in one to three sentences.
+- Order ideas by their logical relationship: thesis, mechanisms, applications, constraints, and implications. Do not mechanically mirror every chapter.
+- Define unfamiliar terminology inline.
+- Preserve important qualifications, disagreements, and uncertainty. Attribute forecasts and opinions to the speaker.
+- End with a paragraph beginning “The broader takeaway:” that connects the ideas into one conclusion.
+- Do not require the reader to consult the detailed notes to understand the main argument.
+
+For a long interview, roughly eight to fifteen bullets is usually enough. Use fewer for simpler material.
+
 ### Study path
 
-Create two to five passes based on the material, not arbitrary time slices. For each pass, include:
+Create two to five steps based on the material, not arbitrary time slices. For each step, include:
 
+- a short heading that states the learning goal,
 - the relevant timestamp range or note sections,
-- the learning goal,
-- a concrete checkpoint such as “explain X without notes” or “implement Y.”
+- a `You will learn:` list with the important ideas, relationships, and tradeoffs covered in that step.
+
+Use bullet lists instead of a table. Keep each bullet focused on one learning outcome. Do not include checkpoints, exercises, or tests in the study path.
 
 Place this section before all detailed notes.
 
@@ -104,17 +121,11 @@ Organize by learning units rather than transcript fragments. For each unit:
 
 Use the user's language unless requested otherwise. Preserve code, identifiers, formulas, and established technical terminology exactly.
 
-### Practical takeaways and self-check
-
-Translate the lecture into actions appropriate to the subject: an implementation checklist for engineering, practice sequence for a course, or decision rules for a conceptual talk.
-
-Write self-check questions that test explanation, comparison, application, and failure analysis—not trivia. Include answers only when requested or when a compact answer key improves the guide.
-
 ## Evidence and attribution
 
 - Make the video the primary source and link it at the top.
 - Link important sections to exact timestamps when possible.
-- Include creator-provided notebooks, repositories, slides, papers, or exercises in Resources.
+- Link creator-provided notebooks, repositories, slides, papers, or exercises where they support a note.
 - Label outside research as supplemental; do not blend it into the speaker's claims.
 - Paraphrase copyrighted material. Do not reconstruct a near-verbatim transcript.
 - Attribute opinions and uncertain claims to the speaker instead of presenting them as settled fact.
@@ -129,7 +140,13 @@ Keep raw captions, downloaded media, and intermediate files outside the delivera
 
 Before finishing, verify that:
 
+- the key takeaways appear immediately after the source and work as a standalone summary,
+- it states the central thesis and ends with a broader takeaway,
+- it is sufficient for a reader who does not watch the video or read the remaining notes,
+- its bullets explain why each idea matters rather than only naming topics,
+- forecasts and opinions remain clearly attributed to the speaker,
 - the study path and key concepts appear before the detailed notes,
+- each study-path step uses a short `You will learn:` bullet list rather than a dense table,
 - a new reader can identify what the video teaches and why it matters from the front section,
 - the detailed sections follow a clear dependency order,
 - timestamps and links resolve to the claimed material,
