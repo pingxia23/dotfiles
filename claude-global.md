@@ -45,6 +45,7 @@ Before finalizing, read the response as an engineer who has not seen the codebas
 
   Do not add this disclosure to a pull request description that the user reviewed before submission.
 - Do not rename the current branch or force-push unless explicitly asked.
+- Never specify a destination branch or explicit refspec in a `git push` command. Always rely on the repository's Git configuration to select the push destination.
 - Use normal `git commit`; never use low-level git plumbing. Use `--no-verify` only when explicitly asked.
 - Always create commits through the normal `git commit` path. Never create commits with low-level plumbing such as `git commit-tree`, `git hash-object`, `git update-ref`, or manual `.git` metadata edits.
 
