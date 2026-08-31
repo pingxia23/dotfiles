@@ -108,6 +108,12 @@ trust_level = "trusted"
 [projects."/home/bits"]
 trust_level = "trusted"
 
+[projects."/Users/ping.xia/Documents/ChatGPT/Digests"]
+trust_level = "trusted"
+
+[projects."/Users/ping.xia/Documents/Codex"]
+trust_level = "trusted"
+
 
 [marketplaces.openai-bundled]
 source_type = "local"
