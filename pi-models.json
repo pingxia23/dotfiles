@@ -1,137 +1,9 @@
 {
   "providers": {
-    "ai-gw-anthropic-1m": {
-      "baseUrl": "https://ai-gateway.us1.ddbuild.io",
-      "api": "anthropic-messages",
-      "authHeader": true,
-      "apiKey": "!sh -c \"ddtool auth token rapid-ai-platform --datacenter us1.ddbuild.io 2\u003e/dev/null | grep -E '^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$' | head -1\"",
-      "headers": {
-        "anthropic-beta": "context-1m-2025-08-07",
-        "org-id": "2",
-        "provider": "anthropic",
-        "source": "pi",
-        "x-dd-tag-client_session_id": "$PI_CLIENT_SESSION_ID",
-        "x-dd-tag-dd.team": "team-appliedai",
-        "x-dd-tag-dd.user_email": "ping.xia@datadoghq.com",
-        "x-dd-tag-ml_app": "pi",
-        "x-dd-tag-ml_app_id": "aidevx.pi",
-        "x-llmo-force-redaction": "true"
-      },
-      "models": [
-        {
-          "id": "anthropic/claude-opus-4-6",
-          "name": "Claude Opus 4.6 (Anthropic) (1M)",
-          "api": "anthropic-messages",
-          "reasoning": true,
-          "input": [
-            "text",
-            "image"
-          ],
-          "contextWindow": 1000000,
-          "maxTokens": 65536
-        }
-      ]
-    },
-    "ai-gw-baseten": {
-      "baseUrl": "https://ai-gateway.us1.ddbuild.io/v1",
-      "api": "openai-responses",
-      "apiKey": "!sh -c \"ddtool auth token rapid-ai-platform --datacenter us1.ddbuild.io 2\u003e/dev/null | grep -E '^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$' | head -1\"",
-      "headers": {
-        "org-id": "2",
-        "source": "pi",
-        "x-dd-tag-client_session_id": "$PI_CLIENT_SESSION_ID",
-        "x-dd-tag-dd.team": "team-appliedai",
-        "x-dd-tag-dd.user_email": "ping.xia@datadoghq.com",
-        "x-dd-tag-ml_app": "pi",
-        "x-dd-tag-ml_app_id": "aidevx.pi",
-        "x-llmo-force-redaction": "true"
-      },
-      "models": [
-        {
-          "id": "baseten/zai-org/GLM-5.2",
-          "name": "GLM 5.2 (Baseten)",
-          "api": "openai-responses",
-          "reasoning": true,
-          "input": [
-            "text"
-          ],
-          "contextWindow": 1048576,
-          "maxTokens": 131072,
-          "thinkingLevelMap": {
-            "high": "high",
-            "low": null,
-            "max": "max",
-            "medium": null,
-            "minimal": null,
-            "off": "none",
-            "xhigh": null
-          },
-          "compat": {
-            "supportsDeveloperRole": false
-          }
-        },
-        {
-          "id": "baseten/deepseek-ai/DeepSeek-V4-Flash-0731",
-          "name": "DeepSeek V4 Flash 0731 (Baseten)",
-          "api": "openai-responses",
-          "reasoning": true,
-          "input": [
-            "text"
-          ],
-          "contextWindow": 900000,
-          "maxTokens": 262144,
-          "thinkingLevelMap": {
-            "high": "high",
-            "low": "low",
-            "max": "max",
-            "medium": null,
-            "minimal": null,
-            "off": null,
-            "xhigh": null
-          },
-          "compat": {
-            "supportsDeveloperRole": false
-          }
-        }
-      ]
-    },
-    "ai-gw-google": {
-      "baseUrl": "https://ai-gateway.us1.ddbuild.io/v1beta",
-      "api": "google-generative-ai",
-      "authHeader": true,
-      "apiKey": "!sh -c \"ddtool auth token rapid-ai-platform --datacenter us1.ddbuild.io 2\u003e/dev/null | grep -E '^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$' | head -1\"",
-      "headers": {
-        "org-id": "2",
-        "source": "pi",
-        "x-dd-tag-client_session_id": "$PI_CLIENT_SESSION_ID",
-        "x-dd-tag-dd.team": "team-appliedai",
-        "x-dd-tag-dd.user_email": "ping.xia@datadoghq.com",
-        "x-dd-tag-ml_app": "pi",
-        "x-dd-tag-ml_app_id": "aidevx.pi",
-        "x-llmo-force-redaction": "true"
-      },
-      "models": [
-        {
-          "id": "gemini-3.7-flash",
-          "name": "Gemini 3.7 Flash",
-          "api": "google-generative-ai",
-          "reasoning": true,
-          "input": [
-            "text",
-            "image"
-          ],
-          "contextWindow": 1048576,
-          "maxTokens": 65536,
-          "thinkingLevelMap": {
-            "off": null
-          }
-        }
-      ]
-    },
     "ai-gw-openai": {
       "baseUrl": "https://ai-gateway.us1.ddbuild.io/v1",
       "api": "openai-responses",
-      "apiKey": "!sh -c \"ddtool auth token rapid-ai-platform --datacenter us1.ddbuild.io 2\u003e/dev/null | grep -E '^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$' | head -1\"",
+      "apiKey": "!sh -c \"ddtool auth token rapid-ai-platform --datacenter us1.ddbuild.io 2>/dev/null | grep -E '^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$' | head -1\"",
       "headers": {
         "org-id": "2",
         "source": "pi",
@@ -149,14 +21,174 @@
           "api": "openai-responses",
           "reasoning": true,
           "input": [
-            "text"
+            "text",
+            "image"
           ],
-          "contextWindow": 1050000,
+          "contextWindow": 400000,
           "maxTokens": 128000,
           "thinkingLevelMap": {
-            "minimal": "low",
             "off": "none",
+            "minimal": "low",
             "xhigh": "xhigh"
+          }
+        }
+      ]
+    },
+    "ai-gw-google": {
+      "baseUrl": "https://ai-gateway.us1.ddbuild.io/v1beta",
+      "api": "google-generative-ai",
+      "authHeader": true,
+      "apiKey": "!sh -c \"ddtool auth token rapid-ai-platform --datacenter us1.ddbuild.io 2>/dev/null | grep -E '^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$' | head -1\"",
+      "headers": {
+        "org-id": "2",
+        "source": "pi",
+        "x-dd-tag-client_session_id": "$PI_CLIENT_SESSION_ID",
+        "x-dd-tag-dd.team": "team-appliedai",
+        "x-dd-tag-dd.user_email": "ping.xia@datadoghq.com",
+        "x-dd-tag-ml_app": "pi",
+        "x-dd-tag-ml_app_id": "aidevx.pi",
+        "x-llmo-force-redaction": "true"
+      },
+      "models": [
+        {
+          "id": "gemini-3.7-flash",
+          "name": "Gemini 3.7 Flash (Google)",
+          "api": "google-generative-ai",
+          "reasoning": true,
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 1048576,
+          "maxTokens": 65536,
+          "thinkingLevelMap": {
+            "off": null
+          }
+        }
+      ]
+    },
+    "ai-gw-anthropic-200k": {
+      "baseUrl": "https://ai-gateway.us1.ddbuild.io",
+      "api": "anthropic-messages",
+      "apiKey": "!sh -c \"ddtool auth token rapid-ai-platform --datacenter us1.ddbuild.io 2>/dev/null | grep -E '^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$' | head -1\"",
+      "headers": {
+        "source": "pi",
+        "org-id": "2",
+        "x-llmo-force-redaction": "true",
+        "x-dd-tag-ml_app": "pi",
+        "x-dd-tag-ml_app_id": "aidevx.pi",
+        "x-dd-tag-client_session_id": "$PI_CLIENT_SESSION_ID",
+        "x-dd-tag-dd.user_email": "ping.xia@datadoghq.com",
+        "x-dd-tag-dd.team": "team-appliedai",
+        "provider": "anthropic"
+      },
+      "authHeader": true,
+      "models": [
+        {
+          "id": "anthropic/claude-opus-4-6",
+          "name": "Claude Opus 4.6 (AI Gateway, 200k)",
+          "api": "anthropic-messages",
+          "reasoning": true,
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 200000,
+          "maxTokens": 16384
+        }
+      ]
+    },
+    "ai-gw-anthropic-1m": {
+      "baseUrl": "https://ai-gateway.us1.ddbuild.io",
+      "api": "anthropic-messages",
+      "authHeader": true,
+      "apiKey": "!sh -c \"ddtool auth token rapid-ai-platform --datacenter us1.ddbuild.io 2>/dev/null | grep -E '^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$' | head -1\"",
+      "headers": {
+        "anthropic-beta": "context-1m-2025-08-07",
+        "org-id": "2",
+        "provider": "anthropic",
+        "source": "pi",
+        "x-dd-tag-client_session_id": "$PI_CLIENT_SESSION_ID",
+        "x-dd-tag-dd.team": "team-appliedai",
+        "x-dd-tag-dd.user_email": "ping.xia@datadoghq.com",
+        "x-dd-tag-ml_app": "pi",
+        "x-dd-tag-ml_app_id": "aidevx.pi",
+        "x-llmo-force-redaction": "true"
+      },
+      "models": [
+        {
+          "id": "anthropic/claude-opus-4-6",
+          "name": "Claude Opus 4.6 (AI Gateway, 1M)",
+          "api": "anthropic-messages",
+          "reasoning": true,
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 1000000,
+          "maxTokens": 16384
+        }
+      ]
+    },
+    "ai-gw-baseten": {
+      "baseUrl": "https://ai-gateway.us1.ddbuild.io/v1",
+      "api": "openai-responses",
+      "apiKey": "!sh -c \"ddtool auth token rapid-ai-platform --datacenter us1.ddbuild.io 2>/dev/null | grep -E '^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$' | head -1\"",
+      "headers": {
+        "org-id": "2",
+        "source": "pi",
+        "x-dd-tag-client_session_id": "$PI_CLIENT_SESSION_ID",
+        "x-dd-tag-dd.team": "team-appliedai",
+        "x-dd-tag-dd.user_email": "ping.xia@datadoghq.com",
+        "x-dd-tag-ml_app": "pi",
+        "x-dd-tag-ml_app_id": "aidevx.pi",
+        "x-llmo-force-redaction": "true"
+      },
+      "models": [
+        {
+          "id": "baseten/zai-org/GLM-5.3",
+          "name": "GLM 5.3 (Baseten)",
+          "api": "openai-completions",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "contextWindow": 1048576,
+          "maxTokens": 131072,
+          "compat": {
+            "supportsDeveloperRole": false
+          },
+          "thinkingLevelMap": {
+            "off": "none",
+            "minimal": null,
+            "low": "low",
+            "medium": null,
+            "high": "high",
+            "xhigh": null,
+            "max": "max"
+          }
+        },
+        {
+          "id": "baseten/deepseek-ai/DeepSeek-V4-Flash-0731",
+          "name": "DeepSeek V4 Flash 0731 (Baseten)",
+          "api": "openai-completions",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "contextWindow": 900000,
+          "maxTokens": 262144,
+          "thinkingLevelMap": {
+            "off": "none",
+            "minimal": "minimal",
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": "xhigh",
+            "max": null
+          },
+          "compat": {
+            "supportsDeveloperRole": false
           }
         }
       ]
