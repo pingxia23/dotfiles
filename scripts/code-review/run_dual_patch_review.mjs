@@ -42,23 +42,23 @@ export function renderReviewerPrompt(args) {
   return renderCodeReviewPrompt({
     reviewScope: "the full current local uncommitted patch set",
     reviewContext: `- Worktree root: ${args.worktreeRoot}
-- Diff baseline: local \`HEAD\`
+- Comparison version: local \`HEAD\`
 - Reviewed change: tracked and untracked local changes relative to \`HEAD\`
 
 Resolved implementation plan for this run:
 ${args.implementationPlan}`,
     gatherInstructions: `1. \`cd "${args.worktreeRoot}"\`.
-2. Build the patch set relative to \`HEAD\`:
+2. Build the diff relative to \`HEAD\`:
    - tracked changes: \`git diff --binary HEAD\`
    - untracked non-ignored files: \`git ls-files --others --exclude-standard | LC_ALL=C sort\`
-   - for each untracked non-ignored file, append a synthetic new-file patch via \`git diff --no-index --binary -- /dev/null "$path" || true\`
-   - append untracked-file patches in stable sorted path order
-   - keep them in normal patch form with \`--- /dev/null\` and \`+++ b/<path>\`
-   - do not replace untracked-file patches with raw file blobs
+   - for each untracked file that Git does not ignore, append a new-file diff with \`git diff --no-index --binary -- /dev/null "$path" || true\`
+   - append these new-file diffs in stable sorted path order
+   - keep the normal diff form with \`--- /dev/null\` and \`+++ b/<path>\`
+   - do not replace these diffs with plain file contents
 3. Build the changed-files list:
    - tracked paths from \`git diff --name-status HEAD\`
    - append each untracked non-ignored file as \`A<TAB><path>\` in the same stable sorted order
-4. For each changed path, inspect the current working-tree contents.
+4. For each changed file, inspect its current contents.
    - truncate to the first 400 lines per file when reading context
    - for tracked deletions, treat the file as \`<deleted from working tree; no current file contents>\``,
   });

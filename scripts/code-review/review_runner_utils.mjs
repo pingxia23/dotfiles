@@ -111,6 +111,7 @@ Review the change for:
 Set \`category\` to \`quality\` for every finding from this section.
 
 ### What Counts As A Quality Finding
+Report only concrete code-quality problems. Do not require a higher standard than the surrounding code.
 
 Report a quality finding only when all of these are true:
 
@@ -126,6 +127,10 @@ Report a quality finding only when all of these are true:
 Read the \`# Implementation Discipline\` section from \`$HOME/dotfiles/claude-global.md\` and apply it to the changed code.
 
 If Python files changed, also read \`$HOME/dotfiles/python-implementation-guide.md\` and apply it to those files.
+
+### Minimal-Change Check
+
+For each changed file and area, ask whether it is needed to implement, test, build, or connect the intended behavior. Report unrelated code restructuring, general-purpose code that is not needed, unused configuration, or other unnecessary code only when it makes the code harder to understand or change. Identify the unnecessary code and explain why removing it preserves the intended behavior. Do not report an issue only because a smaller implementation is possible.
 
 ### Quality Checklist
 
