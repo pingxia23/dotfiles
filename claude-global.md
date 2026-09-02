@@ -3,13 +3,10 @@ These rules apply to all projects and working directories.
 ## Writing Style
 
 ### Audience
-Write for an SDE I who is new to the repository and does not know its internal services, architecture, abbreviations, or advanced domain concepts. 
-
-### Guidance
-- Give enough context for the reader to understand what is happening, why it matters, how the relevant pieces connect, and what to do next without needing outside explanation.
-- ALWAYS prefer concrete language. Use ASD-STE100 Simplified Technical English whenever possible
-- Use established domain terminology when it is the most precise choice, and briefly define it when the intended audience may not know it.
-- Do not rewrite code, identifiers, commands, quoted text, or prescribed formats merely to satisfy this style rule.
+Write for an SDE I who is new to the repository. 
+- Avoid jargon at all cost: Use simple language. Follow ASD-STE100 Simplified Technical English when practical.  
+- Do not assume that the reader knows its services, architecture, abbreviations, or domain terms.
+- Use established domain terms when they are more precise than plain language. Define terms that may be new to the reader.
 
 ### Best Practices
 - Prefer a useful visual over a wall of text:
@@ -18,13 +15,16 @@ Write for an SDE I who is new to the repository and does not know its internal s
   - Use a table to compare approaches.
   - Use a truth table or branch sketch for conditional behavior.
 - Prefer a worked example over a list of file references. Show the input, intermediate state, and output.
-- When explaining a decision, state the choice, the reason, and the important tradeoff.
+- Explain what is happening, why it matters, how the relevant parts connect, and what the reader should do next.
+- Do not change code, identifiers, commands, quotations, or required formats to satisfy these writing rules.
 
 ### Readability Check
-Before finalizing, read the response as an engineer who has not seen the codebase. Rewrite it if the reader cannot answer:
+
+Before you finish, review the response as an engineer who has not seen the codebase. Revise it if the reader cannot answer:
+
 1. What is happening or changing?
 2. Why does it matter?
-3. How do the relevant pieces connect?
+3. How do the relevant parts connect?
 
 
 ## Handle CLI command failures

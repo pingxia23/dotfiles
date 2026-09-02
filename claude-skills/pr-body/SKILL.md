@@ -1,6 +1,6 @@
 ---
 name: pr-body
-description: "Create or update the managed GitHub PR body for a PR URL. Use when a workflow needs to initialize or refresh the managed Context and Approach sections on an existing PR."
+description: "Create or update the managed GitHub PR body for a PR URL. Use when a workflow needs to initialize or refresh the managed TL;DR, Context, and Approach sections on an existing PR."
 ---
 
 # PR Body
@@ -50,7 +50,7 @@ Update the managed body by splicing new generated content into the existing body
 1. If the existing PR body is empty, initialize the base text to the hidden marker followed by a blank line.
 2. Otherwise, keep the original body as the base text. Do not regenerate the whole body from scratch.
 3. Locate level-2 section headings with lines that start with `## `.
-4. Generate new content only for the managed `## Context` and `## Approach` sections, using the PR title, managed body, commit list, changed files, and full PR diff.
+4. Generate new content only for the managed `## TL;DR`, `## Context`, and `## Approach` sections, using the PR title, managed body, commit list, changed files, and full PR diff.
    - Before drafting these sections, read the `## Writing Style` section from your memory file and apply it to the generated prose.
    - Assume the reviewer understands software engineering fundamentals but has no prior knowledge of the repository or its internal terminology.
    - Write for a reviewer who is deciding what to inspect first.
@@ -58,14 +58,29 @@ Update the managed body by splicing new generated content into the existing body
    - Do not compress multiple subsystems into one long sentence.
    - Do not enumerate every touched file, test, or mechanical edit.
    - If the PR spans multiple subsystems, use short bullets grouped by review boundary.
-5. Upsert the `## Context` section:
+5. Upsert the `## TL;DR` section:
+   - If a line exactly matching `## TL;DR` exists, replace that full section. The section starts at `## TL;DR` and ends immediately before the next `## ` heading, or at end of body.
+   - If it does not exist, create a new `## TL;DR` section after the marker and any immediately following blank lines.
+6. Upsert the `## Context` section:
    - If a line exactly matching `## Context` exists, replace that full section. The section starts at `## Context` and ends immediately before the next `## ` heading, or at end of body.
    - Otherwise, if a line exactly matching the legacy heading `## Problem` exists, replace that full section with `## Context` and its generated content.
-   - If neither heading exists, create a new `## Context` section after the marker and any immediately following blank lines.
-6. Upsert the `## Approach` section:
+   - If neither heading exists, create a new `## Context` section immediately after the `## TL;DR` section.
+7. Upsert the `## Approach` section:
    - If a line exactly matching `## Approach` exists, replace that full section. The section starts at `## Approach` and ends immediately before the next `## ` heading, or at end of body.
    - If it does not exist, create a new `## Approach` section immediately after the `## Context` section.
-7. The `## Context` section must be concise and reviewer-digestible:
+8. The `## TL;DR` section must give the reviewer a fast, plain-language summary:
+
+   ```markdown
+   ## TL;DR
+
+   <observable behavior change and why it matters>
+   ```
+
+   Requirements:
+   - State the main behavior change and its value in no more than three sentences.
+   - Name an important scope boundary when it prevents the reviewer from assuming the PR does more than it does.
+   - Do not include implementation details, review guidance, or a list of changed files.
+9. The `## Context` section must be concise and reviewer-digestible:
 
    ```markdown
    ## Context
@@ -80,7 +95,7 @@ Update the managed body by splicing new generated content into the existing body
    - Do not use solution-led sentences such as "This PR adds," "This PR moves," or "This PR introduces."
    - Use no more than five sentences in total.
    - Avoid umbrella phrases like "end-to-end path" unless the following text names the concrete boundaries.
-8. The `## Approach` section must be concise, reviewer-digestible, and organized into two subsections:
+10. The `## Approach` section must be concise, reviewer-digestible, and organized into a walkthrough followed by folded implementation decisions:
 
    ```markdown
    ## Approach
@@ -89,13 +104,16 @@ Update the managed body by splicing new generated content into the existing body
 
    <plain-language walkthrough of the PR at a high level>
 
-   ### Key Implementation Decisions
+   <details>
+   <summary><strong>Key Implementation Decisions</strong></summary>
 
    <chosen implementation decisions>
+   </details>
    ```
 
    Requirements for the whole `## Approach` section:
-   - Always include both `### What this PR does` and `### Key Implementation Decisions`.
+   - Always include both `### What this PR does` and the `Key Implementation Decisions` `<details>` block.
+   - Leave the `<details>` tag without the `open` attribute so GitHub folds the decisions by default.
    - Keep implementation detail high-level enough that a reviewer can choose where to dive into the diff.
    - Mention tests only when they clarify behavior coverage or reviewer risk.
 
@@ -114,14 +132,14 @@ Update the managed body by splicing new generated content into the existing body
      - `#### D<n>: <decision name>`
      - `**Chosen:** <what this PR does>.`
    - Use small diagrams or pseudocode for contracts, validation paths, state transitions, and persistence behavior when they make the decision easier to review.
-9. Apply the readability check before updating the PR:
-   - Read only the generated Context and Approach as an engineer who is new to the repository.
+11. Apply the readability check before updating the PR:
+   - Read only the generated TL;DR, Context, and Approach as an engineer who is new to the repository.
    - Confirm the reader can explain what happens today, why it is a problem, what behavior changes, and which parts need careful review.
    - Confirm every internal term needed to understand the change is defined before it is used.
    - Confirm each paragraph has one main purpose and does not stack unrelated subsystems or unfamiliar terms.
    - Rewrite the sections if any check fails.
-10. Leave every byte outside those two managed sections unchanged. Do not edit, reorder, remove, or regenerate any other section or content.
-11. Then update the PR body with:
+12. Leave every byte outside those three managed sections unchanged. Do not edit, reorder, remove, or regenerate any other section or content.
+13. Then update the PR body with:
 
 ```bash
 gh pr edit --repo "$repo" "$pr_url" --body-file "<body-file>"
@@ -136,6 +154,10 @@ gh pr edit --repo "$repo" "$pr_url" --body-file "<body-file>"
 For a PR that changes a request flow, prefer this shape over a dense paragraph:
 
 ```markdown
+## TL;DR
+
+Moves background-task completion inference into the conversation API so it can use saved task history and keep user-visible prompt construction in one place.
+
 ## Context
 
 The worker currently builds an LLM "background task completed" prompt itself before calling the conversation API. That makes the worker own user-visible prompt wording and leaves the API without a clear place to use persisted task history when producing the final assistant response.
@@ -168,7 +190,8 @@ worker -> POST /internal/assistant/v1/conversation/{id}/process-task
           body: { "task_id": "assistant-task.123" }
 ```
 
-### Key Implementation Decisions
+<details>
+<summary><strong>Key Implementation Decisions</strong></summary>
 
 #### D1: Worker reports task identity; API owns completion inference
 
@@ -181,4 +204,6 @@ worker -> POST /internal/assistant/v1/conversation/{id}/process-task
 #### D3: Completion trigger is visible to the LLM but not persisted as user content
 
 **Chosen:** Keep the final assistant response written through the API path while avoiding persistence of the synthetic "background task completed" trigger as a user message.
+
+</details>
 ```
