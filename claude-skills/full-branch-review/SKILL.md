@@ -5,7 +5,7 @@ description: "Run one preflighted, structured review of the current GitHub PR's 
 
 # Full Branch Review
 
-Run exactly one full-branch review. Do not fix findings, commit, push, rerun the review, or request `@codex review`.
+Run exactly one full-branch review. Do not fix findings, commit, push, or rerun the review.
 
 The review and publication are separate steps:
 

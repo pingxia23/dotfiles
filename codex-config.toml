@@ -194,7 +194,7 @@ trusted_hash = "sha256:5fcff6cbca89be762be16f81b898baeff0ad79746f20190bbbc6408b1
 trusted_hash = "sha256:649193980053a380255523cb329d72d43581fadf346676057aa4caccb813dd76"
 
 [hooks.state."/Users/ping.xia/.codex/hooks.json:user_prompt_submit:0:0"]
-trusted_hash = "sha256:f4d7869182e6ee6f4c1c25d2a751a39544a813d8a7303b33bf6dcd27d6d49c57"
+trusted_hash = "sha256:b6e41908e20c93a3e48fb62589a52d8bcf217a7b07adf7128ee7a2ff9d58d235"
 
 [hooks.state."/home/bits/.codex/hooks.json:user_prompt_submit:0:0"]
 trusted_hash = "sha256:b6e41908e20c93a3e48fb62589a52d8bcf217a7b07adf7128ee7a2ff9d58d235"

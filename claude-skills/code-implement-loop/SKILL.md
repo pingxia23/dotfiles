@@ -7,7 +7,7 @@ description: "Implement an approved plan through a deterministic review loop. Se
 
 ## Overview
 
-Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> branch-scoped plan recording -> TODO breakdown -> implementation (uncommitted) -> uncommitted change review/fix loop -> conditional `commit-smart` when `in_dd_scope=true` -> Codex review request -> optional full-branch review through `full-branch-review`.
+Implement a task in a deterministic sequence: plan intake (`.md` file or direct user instructions) -> branch-scoped plan recording -> TODO breakdown -> implementation (uncommitted) -> uncommitted change review/fix loop -> conditional `commit-smart` when `in_dd_scope=true` -> optional full-branch review through `full-branch-review`.
 
 ## Hard Rules
 
@@ -210,35 +210,15 @@ Rules:
 - If finalizing the pending plan fails, report blocked status and do not start full branch review because the current plan would be missing from its intent context.
 - Outside dd scope, do not invoke `commit-smart`, do not create or update a PR, and report success once the reviewed patch is complete.
 
-### 7) Request Codex review
+### 7) Run Full Branch Review In DD Scope
 
-Run this step when `skip_full_branch_review=true`. The flag controls only Step 8.
-
-Post `@codex review` as a top-level PR comment:
-
-```bash
-repo_owner="${repo%%/*}"
-if [[ "$repo_owner" == "ddoghq" ]]; then
-  gh_function="gh-ddog"
-else
-  gh_function="gh-personal"
-fi
-zsh -ic 'source "$HOME/dotfiles/zshrc"; "$@"' \
-  code-review-gh "$gh_function" pr comment --repo "$repo" "$pr_url" \
-    --body "@codex review"
-```
-
-If the comment fails to post, carry the failure into the final status but continue to Step 8.
-
-### 8) Run Full Branch Review In DD Scope
-
-If `skip_full_branch_review=true`, do not invoke `full-branch-review`. Continue directly to Step 9.
+If `skip_full_branch_review=true`, do not invoke `full-branch-review`. Continue directly to Step 8.
 
 Otherwise, invoke the `full-branch-review` skill without `--skip-pr-comment` and wait for it to finish.
 
-Always continue to Step 9 after it returns. If the skill invocation fails or reports blocked status, save its exact error summary in `full_branch_review_error` for the final status. Do not retry or otherwise act on its result in this workflow.
+Always continue to Step 8 after it returns. If the skill invocation fails or reports blocked status, save its exact error summary in `full_branch_review_error` for the final status. Do not retry or otherwise act on its result in this workflow.
 
-### 9) Return final status
+### 8) Return final status
 
 Success format:
 
@@ -246,7 +226,6 @@ Success format:
 - In dd scope with `skip_full_branch_review=true`: `SUCCESS: Implementation complete, uncommitted change review completed, full branch review skipped | PR: {url}`
 - Outside dd scope: `SUCCESS: Implementation complete, uncommitted change review completed | PR: none`
 - If the uncommitted change review continued after 3 rounds without approval, append: `| Uncommitted change findings: {summary} | Attempts: {summary}`
-- If the Codex review comment failed to post in Step 7, append: `| Warning: failed to request Codex review: {exact error summary}`
 - If `full_branch_review_error` is non-empty, append: `| Warning: full branch review failed: {exact error summary}`
 
 Blocked format:

@@ -1,4 +1,4 @@
 interface:
   display_name: "Code Implement Loop"
-  short_description: "Implement, review, commit, and request review"
-  default_prompt: "Use $code-implement-loop to implement the provided plan, run its review flow, commit the changes, request Codex review, and run full-branch review unless the skip flag is supplied."
+  short_description: "Implement, review, commit, and run branch review"
+  default_prompt: "Use $code-implement-loop to implement the provided plan, run its review flow, commit the changes, and run full-branch review unless the skip flag is supplied."
