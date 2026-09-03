@@ -95,6 +95,30 @@ Omit sections that add no value for a small ADR, but keep `Context`, `Key Assump
 - Do not add a decision log by default. Use `Decisions` for rationale and `Key Assumptions / Agreements` for user preferences and accepted constraints.
 - References: list the strongest code/doc sources.
 
+8. Review and revise the ADR.
+- After saving the draft, set `adr_path` to the new ADR's absolute path and run the ADR plan-review script from the repository root:
+
+```bash
+adr_review_result="$(
+  node "$HOME/dotfiles/claude-skills/adr/scripts/run_adr_plan_review.mjs" \
+    --worktree-root "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" \
+    --adr-path "$adr_path"
+)"
+```
+
+- Parse `adr_review_result` as strict JSON with:
+  - `status`: `approved`, `revise`, or `blocked`.
+  - `comments`: concrete review feedback.
+  - `overall_explanation`: review summary.
+  - `reviewers`: reviewer status map.
+- Run at most two review rounds:
+  1. If `status` is `approved`, finish with the current ADR.
+  2. If `status` is `revise`, verify each comment against repository evidence, then edit the new ADR to address every valid comment. Do not expand the user's scope or change an explicit agreement only because a reviewer suggests a different design.
+  3. After the first revision, run the script once more.
+  4. If the second review requests revision, address its valid comments once, then stop. Do not request a third review.
+- If the JSON is invalid or `status` is `blocked`, keep the draft, stop the review loop, and tell the user that automatic review did not complete. Include `overall_explanation` when available. Do not claim that the ADR was approved.
+- In the final response, state whether the review approved the ADR, caused revisions, or could not complete.
+
 ## Output Contract
 
 Use this template by default:
