@@ -33,12 +33,6 @@ url = "https://mcp.datad0g.com/v1/mcp"
 [mcp_servers.datadog_staging.http_headers]
 X-Datadog-MCP-Toolsets = "core,llmobs,ddsql,apm,kubernetes,synthetics"
 
-[mcp_servers.computer-use]
-command = "./Codex Computer Use.app/Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient"
-args = ["mcp"]
-cwd = "."
-enabled = false
-
 [mcp_servers.openaiDeveloperDocs]
 url = "https://developers.openai.com/mcp"
 
@@ -46,7 +40,6 @@ url = "https://developers.openai.com/mcp"
 args = []
 command = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl"
 startup_timeout_sec = 120
-enabled = false
 
 [mcp_servers.node_repl.env]
 NODE_REPL_NATIVE_PIPE_CONNECT_TIMEOUT_MS = "1000"
@@ -55,13 +48,12 @@ NODE_REPL_NODE_PATH = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resourc
 NODE_REPL_TRUSTED_CODE_PATHS = "/Users/ping.xia/.codex:/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/cua_node/lib/node_modules"
 CODEX_HOME = "/Users/ping.xia/.codex"
 BROWSER_USE_AVAILABLE_BACKENDS = "chrome,iab"
-BROWSER_USE_TINYSKY_ENABLED = "0"
-NODE_REPL_INSTRUCTIONS_USE_CASE_BROWSER = "Control the in-app browser in conjunction with the Browser Plugin."
-NODE_REPL_INSTRUCTIONS_USE_CASE_CHROME = "Control the Chrome browser in conjunction with the Chrome Plugin. Prefer this method of controlling Chrome over alternatives (such as Computer Use) unless the user explicitly mentions an alternative."
-NODE_REPL_INSTRUCTIONS_USE_CASE_COMPUTER_USE = "Control desktop apps on macOS through Computer Use."
+BROWSER_USE_TINYSKY_ENABLED = "1"
+NODE_REPL_INSTRUCTIONS_USE_CASE_BROWSER = ""
+NODE_REPL_INSTRUCTIONS_USE_CASE_CHROME = ""
 BROWSER_USE_CODEX_APP_BUILD_FLAVOR = "prod"
-BROWSER_USE_CODEX_APP_VERSION = "26.818.41509"
-NODE_REPL_TRUSTED_SERVICES = '{"browser":"/Users/ping.xia/.codex/plugins/cache/openai-bundled/browser/26.818.41509/scripts/browser-service.mjs","sky":"@oai/sky/service"}'
+BROWSER_USE_CODEX_APP_VERSION = "26.901.20858"
+NODE_REPL_TRUSTED_SERVICES = '{"browser":"/Users/ping.xia/.codex/plugins/cache/openai-bundled/browser/26.901.20858/scripts/browser-service.mjs"}'
 CODEX_CLI_PATH = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/codex"
 
 [tui]
@@ -114,7 +106,6 @@ trust_level = "trusted"
 [projects."/Users/ping.xia/Documents/Codex"]
 trust_level = "trusted"
 
-
 [marketplaces.openai-bundled]
 source_type = "local"
 source = "/Users/ping.xia/.codex/.tmp/bundled-marketplaces/openai-bundled"
@@ -158,6 +149,9 @@ enabled = false
 enabled = false
 
 [plugins."codex-app-tools@openai-bundled"]
+enabled = true
+
+[plugins."unified-computer-use@openai-bundled"]
 enabled = true
 
 [memories]

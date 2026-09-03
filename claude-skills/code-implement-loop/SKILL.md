@@ -60,6 +60,7 @@ Before applying loop control, filter `review_result.findings` against `review_pl
 - If `status="approved"`, stop the current review loop and continue with the next workflow step.
 - If `status="blocked"`, propagate that status without proceeding to commit.
 - If `status="revise"` and `findings` is empty, stop and report blocked status with the aggregate output because there is no actionable finding to fix.
+- If `status="revise"` and every retained finding has `category="quality"`, fix those items, rerun targeted verification, then stop the current review loop and continue to the next workflow step. Do not run the reviewer script again.
 - If `status="revise"` has findings and `current_round < max_rounds`, fix those items only, prioritize by `priority` ascending (`0` -> `3`; unknown priority after known priorities), rerun targeted verification, and continue to the next review round.
 - If `status="revise"` has findings and `current_round >= max_rounds`, record the current findings and attempted fixes, stop the current review loop, continue to the next workflow step without blocking, and include the recorded findings and attempts in the final status.
 - Only retained P0-P2 findings are actionable. Sub-P2 comments, unrelated P2 comments, nits, praise, and broad suggestions must be omitted from `findings` and must not force `status="revise"`.
@@ -184,7 +185,7 @@ Apply **Shared Review Result Handling** with:
 
 ### 6) Commit After Uncommitted Change Review
 
-After the uncommitted change review loop returns approval, or reaches 3 rounds with `status="revise"` and actionable findings:
+Check `in_dd_scope`
 
 - If `in_dd_scope=false`, stop after reporting success and leave the reviewed changes uncommitted in the worktree.
 - Otherwise, immediately invoke `commit-smart` to commit and push changes.
