@@ -61,6 +61,7 @@ Our codebase uses `bzl` to build and test packages.
 - Never run multiple `bzl` commands in parallel (lockfile conflicts)
 - Always print `bzl` output 
 - Stop and notify user whenever bzl command waits for OIDC device auth
+- Never use `rapid test`. Use `bzl test` instead.
 
 # Implementation Discipline
 Implement only the approved plan. Before making any change, ask: is this required to complete the approved scope? If not, leave it out.
