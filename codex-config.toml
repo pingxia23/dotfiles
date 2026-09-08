@@ -59,7 +59,7 @@ CODEX_CLI_PATH = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/co
 [tui]
 theme = "catppuccin-macchiato"
 alternate_screen = "never"
-status_line = ["model-with-reasoning", "current-dir", "context-remaining"]
+status_line = ["model-with-reasoning", "current-dir", "context-remaining", "fast-mode"]
 status_line_use_colors = true
 terminal_title = ["activity", "project-name", "git-branch"]
 
@@ -199,7 +199,7 @@ enabled = false
 enabled = false
 
 [apps.connector_5f3c8c41a1e54ad7a76272c89e2554fa]
-enabled = false
+enabled = true
 
 [apps.connector_6a0529e9cfcc81909a0212e07b04b875]
 enabled = false
