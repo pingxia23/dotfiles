@@ -60,6 +60,7 @@ Our codebase uses `bzl` to build and test packages.
 - Always run `bzl run //:gazelle` after modifying import statements.
 - Never run multiple `bzl` commands in parallel (lockfile conflicts)
 - Always print `bzl` output 
+- When running `ddtool auth login`, always use OIDC device mode (`--mode device`), even if a browser is available.
 - Stop and notify user whenever bzl command waits for OIDC device auth
 - Never use `rapid test`. Use `bzl test` instead.
 
