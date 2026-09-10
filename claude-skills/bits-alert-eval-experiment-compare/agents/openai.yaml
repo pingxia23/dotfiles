@@ -1,0 +1,12 @@
+interface:
+  display_name: "Bits Alert Eval Experiment Compare"
+  short_description: "Compare Bits Alert evaluation experiments"
+  default_prompt: "Use $bits-alert-eval-experiment-compare to compare baseline <ID> with treatment <ID>."
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "datadog"
+      description: "Datadog MCP server for LLM experiment events and traces"
+      transport: "streamable_http"
+      url: "https://mcp.datadoghq.com/v1/mcp"
