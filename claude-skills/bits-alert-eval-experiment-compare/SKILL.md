@@ -1,11 +1,21 @@
 ---
 name: bits-alert-eval-experiment-compare
-description: Compare baseline and treatment experiments for the Datadog LLM Observability project bits-alert-eval-sdk across judge quality, tokens, trace timing, tools, and turns. Reject experiments from every other project during pre-flight.
+description: Compare treatment and baseline experiments from a Datadog experiment comparison URL for the LLM Observability project bits-alert-eval-sdk across judge quality, tokens, trace timing, tools, and turns. Reject experiments from every other project during pre-flight.
 ---
 
 # Bits Alert Eval Experiment Compare
 
-The first experiment ID is the baseline. The second is the treatment.
+## Input
+
+Accept one Datadog experiment comparison URL and set these immutable values:
+
+```text
+treatment_experiment_id = UUID in the /llm/experiments/<UUID> path
+base_experiment_id      = UUID in the compareTargetExperimentId query parameter
+```
+
+Copy both UUIDs unchanged. Query parameter order does not change these assignments.
+Use only `base_experiment_id` and `treatment_experiment_id` when referring to the input experiment IDs in the rest of this workflow.
 
 Use only the Datadog MCP server through `mcp__datadog__*` tools. This is a read-only workflow.
 
@@ -13,21 +23,21 @@ Use only the Datadog MCP server through `mcp__datadog__*` tools. This is a read-
 
 Run every check below before bulk event or trace retrieval:
 
-1. Confirm that exactly two valid experiment UUIDs are present. Copy them unchanged into immutable `baseline_experiment_id` and `treatment_experiment_id` values. The first is the baseline and the second is the treatment.
-2. Call `get_llmobs_experiment_summary` for both IDs. Both experiments must exist and be readable.
-3. For each experiment, call `list_llmobs_experiment_events(limit: 20)`, then inspect full events with `get_llmobs_experiment_event` until one non-error event with a non-empty agent trace link is found.
-4. Read `project_name` and `project_id` from the full event. If needed, confirm the project with `get_llmobs_project`.
-5. Require `project_name == "bits-alert-eval-sdk"` for both experiments. Also require both project IDs to match.
-6. Require both experiments to use the same non-empty dataset ID.
-7. Require `deepjudge_score` and `deepjudge_immediate_cause_found` in both summaries.
-8. Require a shared pairing key: `dataset_record_canonical_id + run_iteration`, or `scenario_uuid + run_iteration` only when the canonical ID is unavailable.
-9. Resolve each seed event's `output.links.agent_llmobs_trace_url` to one root agent span with `search_llmobs_spans`.
+1. Confirm that the input is one valid Datadog experiment comparison URL and that `base_experiment_id` and `treatment_experiment_id` are valid UUIDs.
+2. Call `get_llmobs_experiment_summary` for `base_experiment_id` and `treatment_experiment_id`. Both values must identify readable experiments.
+3. For each of `base_experiment_id` and `treatment_experiment_id`, call `list_llmobs_experiment_events(limit: 20)`, then inspect full events with `get_llmobs_experiment_event` until one non-error event with a non-empty agent trace link is found.
+4. For `base_experiment_id` and `treatment_experiment_id`, read `project_name` and `project_id` from the full event. If needed, confirm each project with `get_llmobs_project`.
+5. Require `project_name == "bits-alert-eval-sdk"` for `base_experiment_id` and `treatment_experiment_id`. Also require their project IDs to match.
+6. Require `base_experiment_id` and `treatment_experiment_id` to use the same non-empty dataset ID.
+7. Require `deepjudge_score` and `deepjudge_immediate_cause_found` in the summaries for `base_experiment_id` and `treatment_experiment_id`.
+8. Require events from `base_experiment_id` and `treatment_experiment_id` to have a shared pairing key: `dataset_record_canonical_id + run_iteration`, or `scenario_uuid + run_iteration` only when the canonical ID is unavailable.
+9. Resolve the seed event from `base_experiment_id` and the seed event from `treatment_experiment_id` to one root agent span each by using `output.links.agent_llmobs_trace_url` with `search_llmobs_spans`.
 
 If any check fails, stop before bulk analysis. Return only:
 
 ```text
 Pre-flight failed
-Experiment: <baseline or treatment ID>
+Experiment: <base_experiment_id or treatment_experiment_id>
 Check: <failed check>
 Observed: <actual value>
 Required: <required value>
@@ -37,9 +47,9 @@ Never run this skill on experiments outside `bits-alert-eval-sdk`.
 
 ## Get the data
 
-1. Call `get_llmobs_experiment_summary` for both experiments.
+1. Call `get_llmobs_experiment_summary` for `base_experiment_id` and `treatment_experiment_id`.
 2. Page through every `list_llmobs_experiment_events` result. Each result is one scenario run result. Create one `scenario_run_record` per unique result ID. Put `deepjudge_score`, `deepjudge_immediate_cause_found`, pairing fields, and the agent-trace link on that same record. Do not use duplicated summary counts.
-3. Match baseline and treatment events by `dataset_record_canonical_id + run_iteration`. Use `scenario_uuid + run_iteration` only when the canonical ID is unavailable.
+3. Match events from `base_experiment_id` and `treatment_experiment_id` by `dataset_record_canonical_id + run_iteration`. Use `scenario_uuid + run_iteration` only when the canonical ID is unavailable.
 4. For each scenario run result, read `output.links.agent_llmobs_trace_url`. Do not use the scenario run result's own trace ID; it is usually the evaluator wrapper.
 5. Decode the link's `query`, `start`, and `end`, then call `search_llmobs_spans` to resolve the root agent span. Match the returned `session_id`, `investigation_id`, or `source_url` to the link.
 6. Call `get_llmobs_trace(include_tree: true)` for each resolved agent trace. Walk the full tree because global child-span search can omit retained spans.
@@ -184,8 +194,8 @@ Every turn has equal weight. Do not group by turn number. Do not produce separat
 
 Run these assertions immediately before writing the response:
 
-1. The baseline ID in the Experiments table and its link path exactly equal baseline_experiment_id.
-2. The treatment ID in the Experiments table and its link path exactly equal treatment_experiment_id.
+1. The baseline ID in the Experiments table and its link path exactly equal `base_experiment_id`.
+2. The treatment ID in the Experiments table and its link path exactly equal `treatment_experiment_id`.
 3. The two roles have not been swapped.
 4. Both displayed project names equal bits-alert-eval-sdk and both project IDs match.
 5. scenario_run_records contains every paginated unique scenario run result exactly once.
@@ -217,10 +227,10 @@ Always show the exact experiments before any metrics:
 
 | Role | Experiment | Project | Dataset | Scenario run records | Agent traces resolved |
 |---|---|---|---|---:|---:|
-| Baseline | [`<full baseline ID>`](https://app.datadoghq.com/llm/experiments/<full baseline ID>) | `bits-alert-eval-sdk` | `<dataset ID>` | | |
-| Treatment | [`<full treatment ID>`](https://app.datadoghq.com/llm/experiments/<full treatment ID>) | `bits-alert-eval-sdk` | `<dataset ID>` | | |
+| Baseline | [`<base_experiment_id>`](https://app.datadoghq.com/llm/experiments/<base_experiment_id>) | `bits-alert-eval-sdk` | `<dataset ID>` | | |
+| Treatment | [`<treatment_experiment_id>`](https://app.datadoghq.com/llm/experiments/<treatment_experiment_id>) | `bits-alert-eval-sdk` | `<dataset ID>` | | |
 
-Do not shorten, swap, or reconstruct the IDs from trace metadata. Use the two input experiment IDs exactly as provided.
+Do not shorten, swap, or reconstruct the IDs from trace metadata. Use `base_experiment_id` and `treatment_experiment_id` exactly as set from the input URL.
 
 ### Primary comparison
 

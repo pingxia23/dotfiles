@@ -1,7 +1,7 @@
 interface:
   display_name: "Bits Alert Eval Experiment Compare"
   short_description: "Compare Bits Alert evaluation experiments"
-  default_prompt: "Use $bits-alert-eval-experiment-compare to compare baseline <ID> with treatment <ID>."
+  default_prompt: "Use $bits-alert-eval-experiment-compare to compare the treatment and baseline from this Datadog experiment comparison URL: <URL>."
 
 dependencies:
   tools:
