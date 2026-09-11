@@ -162,6 +162,7 @@ followUpQueueMode = "queue"
 dock-icon-preference = "codex-system"
 codeFontSize = 14
 sansFontSize = 16
+conversationDetailMode = "STEPS_COMMANDS"
 
 [hooks.state]
 
