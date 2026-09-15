@@ -10,6 +10,7 @@ percent change  = (treatment - baseline) / baseline * 100
 ```
 
 Show a leading `+` or `-` on both changes. For Judge immediate cause, show absolute change in percentage points (`pp`) and calculate percent change from the underlying percentages. When baseline is zero, show percent change as `N/A`.
+When either arm lacks a trace-derived or per-turn value, show the value and both changes as `N/A`. This must not suppress experiment-summary rows.
 
 ## Experiments
 
@@ -24,7 +25,7 @@ Display every exact unique `bits_run_id` found in that arm's full events. When a
 
 ## Primary comparison
 
-State the total scenario-run-record count for each arm, the matched count with both root traces resolved, and the matched fully measurable RCA-window count used for derived fields. Read these rows directly from the experiment summary: Judge mean score, Judge immediate cause, Mean cost, Mean cached input, Mean non-cached input (`cache_creation_input_tokens`), Mean output, and Mean total duration (`rca_duration_mins`). LLM time, residual tool time, tool-call count, turn count, and all per-turn rows remain trace-derived.
+State the total scenario-run-record count for each arm, the matched count with both root traces downloaded, and the matched fully measurable RCA-window count used for derived fields. Read these rows directly from the experiment summary: Judge mean score, Judge immediate cause, Mean cost, Mean cached input, Mean non-cached input (`cache_creation_input_tokens`), Mean output, and Mean total duration (`rca_duration_mins`). LLM time, residual tool time, tool-call count, turn count, and all per-turn rows remain trace-derived.
 
 | Metric | Baseline | Treatment | Absolute change | % change |
 |---|---:|---:|---:|---:|
@@ -51,7 +52,6 @@ State the number of ordinary turn records in each arm, then produce one table:
 | Mean LLM request time (s/turn) | | | | |
 | Mean tool-call time (s/turn) | | | | |
 | Mean tool-call count (calls/turn) | | | | |
-| Mean LLM request latency (s/request) | | | | |
 
 When event and agent-loop tool grouping are both unavailable, add:
 
@@ -59,7 +59,7 @@ When event and agent-loop tool grouping are both unavailable, add:
 
 ## Reference
 
-Link both resolved absolute experiment snapshot folders. State that each `results.json` contains that arm's audited aggregates and the common included pairing keys:
+Link both resolved absolute experiment snapshot folders. State that analysis was performed from the raw downloaded files:
 
 ```markdown
 ### Reference
@@ -68,5 +68,5 @@ Baseline data: [`<absolute baseline experiment folder>`](<absolute baseline expe
 
 Treatment data: [`<absolute treatment experiment folder>`](<absolute treatment experiment folder>)
 
-Each folder contains that experiment's compact scenario records, RCA-bounded trace records, collection audit, and `results.json` used for this report.
+Each folder contains the raw `summary.json`, `events.jsonl`, `traces.jsonl`, and `turns.jsonl` records used for this report. Aggregation and report generation were performed by the skill, not by the downloader.
 ```

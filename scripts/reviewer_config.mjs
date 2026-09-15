@@ -49,6 +49,7 @@ function piReviewerConfig({
 
 export const CODE_REVIEW_TIMEOUT_MS = 10 * 60 * 1000;
 export const PLAN_REVIEW_TIMEOUT_MS = 5 * 60 * 1000;
+export const REVIEWER_LAUNCH_SPACING_MS = 5 * 1000;
 
 export const CODE_REVIEWER_CONFIGS = Object.freeze([
   piReviewerConfig({

@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import {
   CODE_REVIEWER_CONFIGS,
   CODE_REVIEW_TIMEOUT_MS,
+  REVIEWER_LAUNCH_SPACING_MS,
 } from "../reviewer_config.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -612,6 +613,10 @@ export async function runReviewerOnce({
   return { reviewer, ...result };
 }
 
+function wait(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
 export function aggregateReviews(results) {
   const reviews = {};
   const unavailable = [];
@@ -689,23 +694,32 @@ export async function runReviewPrompt({
   prompt,
   timeout = DEFAULT_REVIEW_TIMEOUT_MS,
   piReviewRunner = runPiReview,
+  launchSpacingMs = REVIEWER_LAUNCH_SPACING_MS,
 }) {
   reviewLog(
-    `reviewers launched: ${REVIEWERS.join(", ")}`,
+    `launching reviewers with ${launchSpacingMs}ms spacing: ${REVIEWERS.join(
+      ", ",
+    )}`,
   );
-  const reviews = CODE_REVIEWER_CONFIGS.map((config) =>
-    runReviewerOnce({
-      reviewer: config.reviewer,
-      prompt,
-      runReview: (reviewPrompt) =>
-        piReviewRunner({
-          ...config,
-          prompt: reviewPrompt,
-          cwd: worktreeRoot,
-          timeout,
-        }),
-    }),
-  );
+  const reviews = [];
+  for (const [index, config] of CODE_REVIEWER_CONFIGS.entries()) {
+    if (index > 0) {
+      await wait(launchSpacingMs);
+    }
+    reviews.push(
+      runReviewerOnce({
+        reviewer: config.reviewer,
+        prompt,
+        runReview: (reviewPrompt) =>
+          piReviewRunner({
+            ...config,
+            prompt: reviewPrompt,
+            cwd: worktreeRoot,
+            timeout,
+          }),
+      }),
+    );
+  }
 
   const results = await Promise.all(reviews);
   const aggregate = aggregateReviews(results);

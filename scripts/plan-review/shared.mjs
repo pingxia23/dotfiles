@@ -6,6 +6,7 @@ import { spawn } from "node:child_process";
 import {
   PLAN_REVIEWER_CONFIGS,
   PLAN_REVIEW_TIMEOUT_MS,
+  REVIEWER_LAUNCH_SPACING_MS,
 } from "../reviewer_config.mjs";
 
 export const DEFAULT_REVIEW_TIMEOUT_MS = PLAN_REVIEW_TIMEOUT_MS;
@@ -352,6 +353,10 @@ export function runReviewer(reviewer, reviewPromise) {
     }));
 }
 
+function wait(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
 export function mergeReviewComments(reviews) {
   const comments = [];
   const seen = new Set();
@@ -385,18 +390,31 @@ export async function runPlanReviewers({
   cwd,
   log,
   piReviewRunner = reviewPlanWithPi,
+  launchSpacingMs = REVIEWER_LAUNCH_SPACING_MS,
 }) {
-  const reviews = PLAN_REVIEWER_CONFIGS.map((config) =>
-    runReviewer(
-      config.reviewer,
-      piReviewRunner({
-        ...config,
-        prompt,
-        cwd,
-        log,
-      }),
-    ),
+  const reviewerNames = PLAN_REVIEWER_CONFIGS.map(
+    ({ reviewer }) => reviewer,
+  ).join(", ");
+  log(
+    `launching reviewers with ${launchSpacingMs}ms spacing: ${reviewerNames}`,
   );
+  const reviews = [];
+  for (const [index, config] of PLAN_REVIEWER_CONFIGS.entries()) {
+    if (index > 0) {
+      await wait(launchSpacingMs);
+    }
+    reviews.push(
+      runReviewer(
+        config.reviewer,
+        piReviewRunner({
+          ...config,
+          prompt,
+          cwd,
+          log,
+        }),
+      ),
+    );
+  }
   const reviewerResults = await Promise.all(reviews);
 
   for (const { reviewer, review, reason } of reviewerResults) {
