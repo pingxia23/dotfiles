@@ -4,6 +4,7 @@ These rules apply to all projects and working directories.
 
 ### Audience
 Write for an SDE I who is new to the repository. 
+- Give direct Answer FIRST. Follow Pyramid communication style whenever practical.
 - Avoid jargon at all cost: Use simple language. Follow ASD-STE100 Simplified Technical English when practical.  
 - Do not assume that the reader knows its services, architecture, abbreviations, or domain terms.
 - Use established domain terms when they are more precise than plain language. Define terms that may be new to the reader.

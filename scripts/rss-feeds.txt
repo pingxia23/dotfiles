@@ -8,3 +8,4 @@ https://developers.openai.com/rss.xml
 https://raw.githubusercontent.com/taobojlen/anthropic-rss-feed/main/anthropic_engineering_rss.xml
 https://www.tobyord.com/writing?format=rss
 https://cursor.com/changelog/rss.xml
+https://research.meta.ai/
