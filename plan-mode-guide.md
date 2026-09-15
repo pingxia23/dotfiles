@@ -1,50 +1,55 @@
 # Plan Mode Guide
 
-Use this guide when writing a final proposed plan unless the change is trivial.
-The goal is to make the proposed plan easy to review and understand.
+Use this guide for a final proposed plan unless the change is trivial.
 
-Before drafting this plan, read the `## Writing Style` section from your memory file and apply it to the generated prose.
 
-```markdown
+**Before drafting the plan, read and apply the `## Writing Style` rules from the memory file. Apply those rules to every section of the plan, including pseudocode labels and validation steps.**
 
+Keep the five-section output structure below. Use short bullets, not long paragraphs. Do not repeat information across sections. Prefer pseudocode to prose for behavior, data flow, conditions, state changes, and error paths. Use an ASCII diagram only when it explains ownership or structure better than pseudocode.
+
+````markdown
 ## Problem
-- What is wrong or missing today.
-- User-visible outcome the plan should achieve.
+
+In one or two bullets, state:
+- what is wrong or missing; and
+- what outcome the user will see.
 
 ## Approach
-- Why this approach fits the current codebase.
-- Meaningful alternatives considered and why they are not used.
 
-For factual claims about existing behavior, caching, performance, safety, or why a change can be avoided, cite concrete repo evidence or Atlassian context. Do not use words like "likely", "probably", or "should be fine" as justification unless explicitly marked as assumptions or risks.
+Use one to three bullets to state the chosen approach and why it fits the current code. Mention an alternative only when it is a realistic option with an important tradeoff.
 
-Use this evidence shape when useful:
-- Evidence: `<specific code path, symbol, test, command output, or Atlassian reference>`
-- Conclusion: `<what the evidence proves, plus any remaining inference>`
+Support important claims about existing behavior, performance, caching, or safety with a code path, symbol, test, command result, or Atlassian reference. Clearly label any claim that is still an assumption.
 
 ## Implementation
-If the plan touches more than one file, layer, or call boundary, open this section with a single ASCII diagram or pseudocode block showing the overall before/after flow across those boundaries. Write the per-change bullets after it, referencing the diagram instead of re-narrating the call chain in prose.
 
-Group changes by subsystem or behavior, not file list.
+Use pseudocode as the main explanation whenever the change affects behavior. Show the start, important calls or data changes, conditions, error paths, and final result. Do not repeat the pseudocode in prose.
 
-Use this shape:
-- Change: `<what changes>`
-  Why: `<why needed>`
-  How: `<one or two lines; point back to the diagram for control flow, add pseudocode only for logic the diagram doesn't cover>`
+For example:
 
-Rules:
-- A multi-file or multi-layer plan without a leading diagram or pseudocode block is incomplete. Nested bullets describing changes across files are not a substitute, even if each bullet is accurate.
-- Mention file paths only when useful.
-- Do not describe the plan as a line-by-line diff.
-- Omit no-op `Change:` entries.
+```text
+receive input
+validate input
+if invalid:
+    return the existing error
+call the service
+store the result
+return the result to the user
+```
+
+After the pseudocode, list only the required changes. Use one short bullet per behavior or subsystem. State the change and its reason in the same bullet. Do not create a file-by-file inventory. Mention a file path only when it helps locate the code.
+
+For documentation or configuration changes with no control flow, use short bullets instead of forced pseudocode.
 
 ## Validation
-- List the specific commands and checks that will prove the change works.
-- Every plan must cover automated unit tests and make a best effort to cover developer end-to-end tests:
-  - Automated unit tests: name the exact test targets or commands and the behavior they verify.
-  - Developer staging test (whenever possible): Use the `rapid td` CLI for the staging test. Write: `Use the rapid td CLI to create a test drive and run the test.`
+
+List the exact commands and checks that prove the change works:
+- Automated unit tests: name the test targets or commands and the behavior they verify.
+- Developer staging test, when available: `Use the rapid td CLI to create a test drive and run the test.`
 
 ## Assumptions / Agreements
-- Agreement: `<explicit user preference or constraint>`.
-- Assumption: `<inference that still needs confirmation or evidence>`.
-- Non-goal: `<accepted scope boundary>`.
-```
+
+List only items that affect the implementation or scope:
+- Agreement: an explicit user choice or constraint.
+- Assumption: an unconfirmed fact that can change the plan.
+- Non-goal: an explicit scope boundary.
+````

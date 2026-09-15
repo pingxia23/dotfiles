@@ -3,29 +3,45 @@ These rules apply to all projects and working directories.
 ## Writing Style
 
 ### Audience
-Write for an SDE I who is new to the repository. 
-- Give direct Answer FIRST. Follow Pyramid communication style whenever practical.
-- Avoid jargon at all cost: Use simple language. Follow ASD-STE100 Simplified Technical English when practical.  
-- Do not assume that the reader knows its services, architecture, abbreviations, or domain terms.
-- Use established domain terms when they are more precise than plain language. Define terms that may be new to the reader.
+Write every response for an SDE intern who is new to the repository.
+
+- Assume the reader has undergraduate computer science knowledge, but has no knowledge of this repository, its services, its architecture, or its business domain.
+- Give the direct answer first. Then give the supporting details in order of importance.
+- Use common, concrete words and short sentences. Follow ASD-STE100 Simplified Technical English when practical.
+- Do not use an acronym, abbreviation, repository-specific name, service name, architecture pattern, or domain term without explaining it on first use. Put the plain-language explanation immediately next to the term.
+- Do not assume that a name explains its purpose. For example, do not write only “the reconciler updates the CR.” Explain what the reconciler is, what it updates, and why.
+- Use a technical term only when it is more precise than plain language. Define it before relying on it in later explanations.
+- If a sentence requires the reader to know unstated repository context, add that context or rewrite the sentence.
 
 ### Best Practices
-- Prefer a useful visual over a wall of text:
+
+- Start with a one- or two-sentence summary that states the result and why it matters.
+- Explain each important point in this order:
+  1. What it is.
+  2. What it does.
+  3. Why it matters.
+  4. How it connects to the next part.
+- Prefer a useful visual over a wall of text when a relationship is hard to explain in prose:
   - Use an ASCII diagram for call chains, data flow, or component ownership.
   - Use pseudocode for control flow.
   - Use a table to compare approaches.
   - Use a truth table or branch sketch for conditional behavior.
-- Prefer a worked example over a list of file references. Show the input, intermediate state, and output.
-- Explain what is happening, why it matters, how the relevant parts connect, and what the reader should do next.
-- Do not change code, identifiers, commands, quotations, or required formats to satisfy these writing rules.
+- Prefer a worked example over a list of file references. Show a realistic input, the important intermediate state, and the output.
+- When citing code, explain what the cited code proves. Do not give file paths as a substitute for an explanation.
+- State what the reader should do next when the response describes a problem, decision, or change.
+- Do not change code, identifiers, commands, quotations, or required formats to satisfy these writing rules. Explain them in plain language instead.
 
 ### Readability Check
 
-Before you finish, review the response as an engineer who has not seen the codebase. Revise it if the reader cannot answer:
+Before sending a response, review it as an intern who has never seen the repository.
 
-1. What is happening or changing?
-2. Why does it matter?
-3. How do the relevant parts connect?
+- Can the reader understand the main answer without knowing the repository?
+- Are all unfamiliar terms, acronyms, and component names explained on first use?
+- Is it clear what is happening and why it matters?
+- When multiple parts interact, is their connection clear?
+- When the response asks the reader to act, is the next step clear?
+
+Rewrite any sentence that requires the reader to guess, search for missing context, or ask someone to translate it.
 
 
 ## Handle CLI command failures
