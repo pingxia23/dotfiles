@@ -1,6 +1,6 @@
 ---
 name: full-branch-review
-description: "Run one preflighted, structured review of the current GitHub PR's full local branch diff, including committed, staged, unstaged, and untracked changes; use committed implementation-plan history when available; by default upsert the raw review result as a top-level PR comment, or suppress that step with `--skip-pr-comment`. Use when asked to review a full PR branch, publish a branch review to a PR, or provide a machine-readable full-branch review result to a caller such as `code-implement-loop`."
+description: "Run one preflighted, structured review of the current GitHub PR's full local branch diff, including committed, staged, unstaged, and untracked changes; use committed implementation-plan history when available; by default publish each finding as an inline PR review comment at its code location, or suppress publication with `--skip-pr-comment`. Use when asked to review a full PR branch, publish a branch review to a PR, or provide a machine-readable full-branch review result to a caller such as `code-implement-loop`."
 ---
 
 # Full Branch Review
@@ -10,7 +10,9 @@ Run exactly one full-branch review. Do not fix findings, commit, push, or rerun 
 The review and publication are separate steps:
 
 1. Produce the raw structured review result.
-2. Unless `--skip-pr-comment` is present, post that raw result to the PR.
+2. Unless `--skip-pr-comment` is present, publish each finding as a separate inline PR review comment at its reported code location.
+
+Never publish an aggregate or top-level PR comment for the review result. When the review has no findings, publish nothing.
 
 A caller such as `code-implement-loop` may invoke this skill with `--skip-pr-comment` and process the returned result itself.
 
@@ -20,7 +22,7 @@ Infer the repository, branch, PR, and optional implementation-plan history from 
 
 Accept only one optional flag:
 
-- `--skip-pr-comment`: return the raw review result without posting it to the PR.
+- `--skip-pr-comment`: return the raw review result without publishing inline comments to the PR.
 
 Do not accept an implementation-plan-history path from the caller.
 
@@ -125,69 +127,79 @@ Parse the result as strict JSON and require:
 
 Return `BLOCKED: full branch review returned invalid JSON` if the contract is invalid.
 
-## 3. Post The Raw Result
+## 3. Publish Findings As Inline Comments
 
 Skip this entire step when `--skip-pr-comment` is present.
 
-Render the raw result without filtering or rewriting its findings:
+If `findings` is empty, set `inline_comment_count=0` and `inline_review_url=""`, then continue to the return contract without calling GitHub.
+
+For non-empty findings, require every `code_location.absolute_file_path` to be inside `worktree_root` and every line range to be valid. A finding's location must identify lines shown on the right side of the current PR diff. Return `BLOCKED: full branch review finding cannot be published inline` with the invalid location if validation fails. Do not move the finding to another line and do not fall back to a top-level comment.
+
+Get the authenticated login so each inline comment follows the global pull request comment disclosure rule:
 
 ```bash
-review_marker='<!-- ping-xia-full-branch-review:v1 -->'
 review_owner_login="$(
   zsh -ic 'source "$HOME/dotfiles/zshrc"; "$@"' \
     full-branch-review-gh "$gh_function" api user --jq '.login'
 )"
-review_comment_body="$(
-  jq -r \
-    --arg marker "$review_marker" \
-    --arg worktree_root "$worktree_root" \
+```
+
+Build one GitHub review request whose `comments` array has one entry per finding. Omit the review-level `body`; each comment carries the finding itself. Use the finding's repository-relative path and right-side line range exactly as returned:
+
+```bash
+worktree_prefix="$worktree_root/"
+comment_disclosure="> _AI-generated comment (posted by an agent on behalf of @$review_owner_login)._"
+inline_review_payload="$(
+  jq -c \
+    --arg commit_id "$head_sha" \
+    --arg worktree_prefix "$worktree_prefix" \
+    --arg disclosure "$comment_disclosure" \
     '
-      [
-        $marker,
-        "",
-        "## Full Branch Review",
-        "",
-        "**Status:** \(.status)",
-        "",
-        .overall_explanation,
-        "",
-        "This is the raw review result. A caller such as `code-implement-loop` may process it separately.",
-        "",
-        (if (.findings | length) == 0 then
-          "No findings."
-        else
-          ([
-            .findings[] |
-            "### \(.reviewer) — \(.title)\n\n\(.body)\n\n**Evidence:** \(.evidence)\n\n**Location:** `\(.code_location.absolute_file_path | ltrimstr($worktree_root + "/")):\(.code_location.line_range.start)-\(.code_location.line_range.end)`"
-          ] | join("\n\n"))
-        end)
-      ] | join("\n")
+      {
+        commit_id: $commit_id,
+        event: "COMMENT",
+        comments: [
+          .findings[] |
+          .code_location.line_range as $range |
+          {
+            path: (.code_location.absolute_file_path | ltrimstr($worktree_prefix)),
+            line: $range.end,
+            side: "RIGHT",
+            body: ([$disclosure, "", "**\(.title)**", "", .body, "", "**Evidence:** \(.evidence)"] | join("\n"))
+          }
+          + if $range.start < $range.end then
+              {start_line: $range.start, start_side: "RIGHT"}
+            else
+              {}
+            end
+        ]
+      }
     ' <<<"$full_review_result"
 )"
 ```
 
-Upsert the marked top-level PR comment as a separate command:
+Submit the review once so GitHub either accepts the complete set of inline comments or rejects the request:
 
 ```bash
-review_comment_result="$(
-  node "$HOME/dotfiles/scripts/upsert_pr_comment.mjs" \
-    --pr-url "$pr_url" \
-    --marker "$review_marker" \
-    --body "$review_comment_body" \
-    --owner-login "$review_owner_login" \
-    --gh-function "$gh_function"
+inline_review_result="$(
+  zsh -ic 'source "$HOME/dotfiles/zshrc"; "$@"' \
+    full-branch-review-gh "$gh_function" api \
+      --method POST \
+      "repos/$repo/pulls/$pr_number/reviews" \
+      --input - <<<"$inline_review_payload"
 )"
-if ! review_comment_url="$(jq -er '.comment_url | select(length > 0)' <<<"$review_comment_result")"; then
-  echo "BLOCKED: full branch review result was not posted"
+inline_comment_count="$(jq -r '.findings | length' <<<"$full_review_result")"
+if ! inline_review_url="$(jq -er '.html_url | select(length > 0)' <<<"$inline_review_result")"; then
+  echo "BLOCKED: full branch review findings were not published inline"
   exit 1
 fi
 ```
 
-Wait for the command. If it fails or does not return a non-empty `comment_url`, return `BLOCKED: full branch review result was not posted` with the exact error. Do not rerun or process the review because publication failed.
+Wait for the command. If it fails or does not return a non-empty `html_url`, return `BLOCKED: full branch review findings were not published inline` with the exact error. Do not rerun the review, retry publication, move comments, or fall back to a top-level comment.
 
 ## Return Contract
 
 Always preserve `full_review_result` unchanged.
 
-- Without `--skip-pr-comment`, report the raw review status, PR URL, and posted comment URL.
-- With `--skip-pr-comment`, return the raw JSON result for the caller to process and state that the PR comment was skipped.
+- Without `--skip-pr-comment`, report the raw review status, PR URL, inline comment count, and inline review URL when findings were published.
+- With `--skip-pr-comment`, return the raw JSON result for the caller to process and state that inline comment publication was skipped.
