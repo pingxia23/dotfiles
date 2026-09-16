@@ -1,4 +1,4 @@
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 model_reasoning_effort = "high"
 model_supports_reasoning_summaries = true
 model_context_window = 800000
@@ -70,6 +70,7 @@ terminal_title = ["activity", "project-name", "git-branch"]
 [tui.model_availability_nux]
 "gpt-5.5" = 4
 "gpt-5.6-sol" = 4
+gpt-6-astra = 4
 
 [projects."/Users/ping.xia/dotfiles"]
 trust_level = "trusted"
