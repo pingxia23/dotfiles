@@ -1,6 +1,6 @@
 ---
 name: pr-body
-description: "Create or update the managed GitHub PR body for a PR URL. Use when a workflow needs to initialize or refresh the managed TL;DR, Context, and Approach sections on an existing PR."
+description: "Create or update the managed GitHub PR body for a PR URL. Use when a workflow needs to initialize or refresh the managed TL;DR, Problem, Approach, and Dev Test sections on an existing PR."
 ---
 
 # PR Body
@@ -50,7 +50,7 @@ Update the managed body by splicing new generated content into the existing body
 1. If the existing PR body is empty, initialize the base text to the hidden marker followed by a blank line.
 2. Otherwise, keep the original body as the base text. Do not regenerate the whole body from scratch.
 3. Locate level-2 section headings with lines that start with `## `.
-4. Generate new content only for the managed `## TL;DR`, `## Context`, and `## Approach` sections, using the PR title, managed body, commit list, changed files, and full PR diff.
+4. Generate new content only for the managed `## TL;DR`, `## Problem`, `## Approach`, and `## Dev Test` sections, using the PR title, managed body, commit list, changed files, full PR diff, and available records of completed development checks from the conversation or command output.
    - Before drafting these sections, read the `## Writing Style` section from your memory file and apply it to the generated prose.
    - Assume the reviewer understands software engineering fundamentals but has no prior knowledge of the repository or its internal terminology.
    - Write for a reviewer who is deciding what to inspect first.
@@ -61,13 +61,13 @@ Update the managed body by splicing new generated content into the existing body
 5. Upsert the `## TL;DR` section:
    - If a line exactly matching `## TL;DR` exists, replace that full section. The section starts at `## TL;DR` and ends immediately before the next `## ` heading, or at end of body.
    - If it does not exist, create a new `## TL;DR` section after the marker and any immediately following blank lines.
-6. Upsert the `## Context` section:
-   - If a line exactly matching `## Context` exists, replace that full section. The section starts at `## Context` and ends immediately before the next `## ` heading, or at end of body.
-   - Otherwise, if a line exactly matching the legacy heading `## Problem` exists, replace that full section with `## Context` and its generated content.
-   - If neither heading exists, create a new `## Context` section immediately after the `## TL;DR` section.
+6. Upsert the `## Problem` section:
+   - If a line exactly matching `## Problem` exists, replace that full section. The section starts at `## Problem` and ends immediately before the next `## ` heading, or at end of body.
+   - Otherwise, if a line exactly matching the legacy heading `## Context` exists, replace that full section with `## Problem` and its generated content.
+   - If neither heading exists, create a new `## Problem` section immediately after the `## TL;DR` section.
 7. Upsert the `## Approach` section:
    - If a line exactly matching `## Approach` exists, replace that full section. The section starts at `## Approach` and ends immediately before the next `## ` heading, or at end of body.
-   - If it does not exist, create a new `## Approach` section immediately after the `## Context` section.
+   - If it does not exist, create a new `## Approach` section immediately after the `## Problem` section.
 8. The `## TL;DR` section must give the reviewer a fast, plain-language summary:
 
    ```markdown
@@ -80,10 +80,10 @@ Update the managed body by splicing new generated content into the existing body
    - State the main behavior change and its value in no more than three sentences.
    - Name an important scope boundary when it prevents the reviewer from assuming the PR does more than it does.
    - Do not include implementation details, review guidance, or a list of changed files.
-9. The `## Context` section must be concise and reviewer-digestible:
+9. The `## Problem` section must be concise and reviewer-digestible:
 
    ```markdown
-   ## Context
+   ## Problem
 
    <why this change is needed>
    ```
@@ -132,20 +132,36 @@ Update the managed body by splicing new generated content into the existing body
      - `#### D<n>: <decision name>`
      - `**Chosen:** <what this PR does>.`
    - Use small diagrams or pseudocode for contracts, validation paths, state transitions, and persistence behavior when they make the decision easier to review.
-11. Apply the readability check before updating the PR:
-   - Read only the generated TL;DR, Context, and Approach as an engineer who is new to the repository.
+11. Upsert `## Dev Test` as the final section of the body:
+   - If a line exactly matching `## Dev Test` exists, replace that full section and move it to the end if needed. The section ends immediately before the next `## ` heading, or at end of body.
+   - Otherwise, append the section at the end of the body, separated by a blank line.
+
+   ```markdown
+   ## Dev Test
+
+   - <completed development check>: <observed result>
+   ```
+
+   Requirements:
+   - List all development checks actually performed beyond tests checked into the codebase, such as manual behavior checks, local experiments, one-off scripts, builds, lint checks, or type checks.
+   - For each check, state the command or procedure, what it checked, and the observed result, including failures or limitations.
+   - Preserve previously recorded checks when refreshing the body, unless newer evidence corrects them. Combine duplicate entries.
+   - Do not repeat tests checked into the codebase or infer that a check ran merely because test code exists.
+   - Do not list planned checks as completed or invent results. If no completed checks are recorded, write `No development checks beyond tests checked into the codebase are recorded.`
+12. Apply the readability check before updating the PR:
+   - Read only the generated TL;DR, Problem, Approach, and Dev Test as an engineer who is new to the repository.
    - Confirm the reader can explain what happens today, why it is a problem, what behavior changes, and which parts need careful review.
    - Confirm every internal term needed to understand the change is defined before it is used.
    - Confirm each paragraph has one main purpose and does not stack unrelated subsystems or unfamiliar terms.
    - Rewrite the sections if any check fails.
-12. Leave every byte outside those three managed sections unchanged. Do not edit, reorder, remove, or regenerate any other section or content.
-13. Then update the PR body with:
+13. Leave every byte outside those four managed sections (and the legacy `## Context` section when migrated) unchanged, except for the blank-line separator needed to append `## Dev Test`. Do not edit, reorder, remove, or regenerate any other section or content.
+14. Then update the PR body with:
 
 ```bash
 gh pr edit --repo "$repo" "$pr_url" --body-file "<body-file>"
 ```
 
-**Focus on the high-level context and approach**
+**Focus on the high-level problem and approach**
 
 - Skip mechanical details such as added unit tests, renamed variables, changed function arguments, or other implementation minutiae unless they are essential to understanding the design.
 - The goal is to state the problem clearly and lay out the high-level approach so reviewers can review the PR efficiently.
@@ -158,7 +174,7 @@ For a PR that changes a request flow, prefer this shape over a dense paragraph:
 
 Moves background-task completion inference into the conversation API so it can use saved task history and keep user-visible prompt construction in one place.
 
-## Context
+## Problem
 
 The worker currently builds an LLM "background task completed" prompt itself before calling the conversation API. That makes the worker own user-visible prompt wording and leaves the API without a clear place to use persisted task history when producing the final assistant response.
 
@@ -206,4 +222,8 @@ worker -> POST /internal/assistant/v1/conversation/{id}/process-task
 **Chosen:** Keep the final assistant response written through the API path while avoiding persistence of the synthetic "background task completed" trigger as a user message.
 
 </details>
+
+## Dev Test
+
+No development checks beyond tests checked into the codebase are recorded.
 ```
