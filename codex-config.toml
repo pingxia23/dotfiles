@@ -1,5 +1,5 @@
 model = "gpt-6-astra"
-model_reasoning_effort = "high"
+model_reasoning_effort = "medium"
 model_supports_reasoning_summaries = true
 model_context_window = 800000
 model_auto_compact_token_limit = 700000
