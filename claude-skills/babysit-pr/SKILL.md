@@ -1,6 +1,6 @@
 ---
 name: babysit-pr
-description: "Babysit the GitHub PR associated with the current branch: check and resolve merge conflicts, wait for DDCI orchestration to finish, loop on `dd-gitlab/*` CI checks until they pass, then automatically plan and implement unresolved actionable review comments after at most two plan-review rounds; rerun CI after comment-driven changes, classify concrete CI failures, merge the latest base when failures look external, use `code-implement-loop` without its full-branch review for PR-caused failures, and update the PR body at the end."
+description: "Babysit the GitHub PR associated with the current branch: check and resolve merge conflicts, automatically plan and implement unresolved actionable review comments after at most two plan-review rounds, then wait for DDCI orchestration to finish and loop on `dd-gitlab/*` CI checks until they pass; classify concrete CI failures, merge the latest base when failures look external, use `code-implement-loop` without its full-branch review for PR-caused failures, and update the PR body at the end."
 ---
 
 # Babysit PR
@@ -88,11 +88,68 @@ git merge --no-ff "origin/$base_ref"
 2. Resolve conflicts with the smallest change that restores the intended PR behavior.
 3. Run the minimum targeted verification needed for the conflict resolution.
 4. Invoke `commit-smart` immediately to create the merge commit and push it.
-5. After `commit-smart` completes, continue into the CI loop below.
+5. After `commit-smart` completes, continue to Phase 3 to process unresolved review comments.
 
-### Phase 3: Run `dd-gitlab/*` CI until green
+### Phase 3: Process unresolved review comments once
 
-Use this phase for both the initial CI run and the CI rerun after comment-driven changes. Run the following loop until every `dd-gitlab/*` check has passed.
+Run this phase once, after the mergeability check and any required merge-conflict resolution, before the Phase 4 CI loop.
+
+#### 3a) Create the comment address plan
+
+1. Invoke the `plan-pr-comments` skill exactly once to create the initial plan. Use `$HOME/dotfiles/claude-skills/plan-pr-comments/SKILL.md` with the validated `pr_url` and no `provided_comment_text`.
+2. After the planner returns, this skill owns `comments_to_address` and `comment_address_plan` for the rest of Phase 3. Do not invoke `plan-pr-comments` again or reload the comments. Handle every automated review and revision in subsection 3b within this skill.
+3. If the planner returns `NOOP: no comments to address`, record zero processed comments and continue to Phase 4.
+
+#### 3b) Review and revise the plan at most twice
+
+Use `comment_address_plan` from subsection 3a. Run at most two review rounds.
+
+For each round, invoke:
+
+```bash
+plan_review_result="$(
+  node "$HOME/dotfiles/claude-skills/babysit-pr/scripts/run_auto_comment_plan_review.mjs" \
+    --worktree-root "$worktree_root" \
+    --pr-url "$pr_url" \
+    <<<"$comment_address_plan"
+)"
+```
+
+Parse `plan_review_result` as strict JSON with:
+
+- `status`: `approved`, `revise`, or `blocked`
+- `comments`: concrete plan-review feedback
+- `overall_explanation`: review summary
+- `reviewers`: reviewer status map
+
+Apply this control flow:
+
+1. If the output is invalid or `status=="blocked"`, stop and return blocked status. Do not implement an unreviewed plan.
+2. If `status=="approved"`, stop the review loop and use the current `comment_address_plan`.
+3. If `status=="revise"`, revise only the plan to address every review comment while preserving a section for every original `comments_to_address` item.
+4. After round 1, review the revised plan once more.
+5. After round 2, apply its review comments to the plan once, then stop. Do not request a third review.
+
+The resulting plan is `reviewed_comment_address_plan`.
+
+#### 3c) Ignore reply-only items and implement actionable items
+
+1. Derive `implementation_plan` by copying only the complete sections whose decision is `implementation_needed` from `reviewed_comment_address_plan`, in their original order.
+2. Preserve each copied section verbatim, including its heading, raw comment, decision, reasoning, and plan.
+3. Ignore every `reply_only` section:
+   - do not post its proposed reply
+   - do not invoke `reply_to_review_thread.sh`
+   - do not resolve its review thread
+   - do not include it in `implementation_plan`
+4. Verify that `implementation_plan` contains no `reply_only` section. If the check fails, stop and return `BLOCKED: failed to build actionable comment implementation plan | PR: <url>`.
+5. If `implementation_plan` is empty, record the reply-only count and continue to Phase 4 without invoking `code-implement-loop`.
+6. If `implementation_plan` is non-empty, invoke `code-implement-loop --skip-full-branch-review` once using the filtered plan as its direct inline implementation input and preserve its complete output as `comment_implementation_result`.
+7. Do not block or stop based on `comment_implementation_result`, including blocked, failed, or invalid output. Record its status and exact error summary for Phase 6.
+8. Continue to Phase 4 so CI validates the current PR head.
+
+### Phase 4: Run `dd-gitlab/*` CI until green
+
+Run this phase after Phase 3, including when there were no actionable review comments. Run the following loop until every `dd-gitlab/*` check has passed, then continue to Phase 5. Do not rerun Phase 3.
 
 Each iteration includes these actions:
 
@@ -199,63 +256,6 @@ Fix the failing dd-gitlab CI jobs for PR https://github.com/DataDog/dd-source/pu
   Summary: //domains/assistant/apps/apis/assistant_api:py_default_test failed because test_background_worker.py::test_run_command_agent_populates_background_worker_payload raised TypeError: object MagicMock can't be used in 'await' expression
 
 ```
-
-### Phase 4: Process unresolved review comments once
-
-Run this phase once, after the initial Phase 3 CI run is green.
-
-#### 4a) Create the comment address plan
-
-1. Invoke the `plan-pr-comments` skill exactly once to create the initial plan. Use `$HOME/dotfiles/claude-skills/plan-pr-comments/SKILL.md` with the validated `pr_url` and no `provided_comment_text`.
-2. After the planner returns, this skill owns `comments_to_address` and `comment_address_plan` for the rest of Phase 4. Do not invoke `plan-pr-comments` again or reload the comments. Handle every automated review and revision in subsection 4b within this skill.
-3. If the planner returns `NOOP: no comments to address`, record zero processed comments and continue to Phase 5.
-
-#### 4b) Review and revise the plan at most twice
-
-Use `comment_address_plan` from subsection 4a. Run at most two review rounds.
-
-For each round, invoke:
-
-```bash
-plan_review_result="$(
-  node "$HOME/dotfiles/claude-skills/babysit-pr/scripts/run_auto_comment_plan_review.mjs" \
-    --worktree-root "$worktree_root" \
-    --pr-url "$pr_url" \
-    <<<"$comment_address_plan"
-)"
-```
-
-Parse `plan_review_result` as strict JSON with:
-
-- `status`: `approved`, `revise`, or `blocked`
-- `comments`: concrete plan-review feedback
-- `overall_explanation`: review summary
-- `reviewers`: reviewer status map
-
-Apply this control flow:
-
-1. If the output is invalid or `status=="blocked"`, stop and return blocked status. Do not implement an unreviewed plan.
-2. If `status=="approved"`, stop the review loop and use the current `comment_address_plan`.
-3. If `status=="revise"`, revise only the plan to address every review comment while preserving a section for every original `comments_to_address` item.
-4. After round 1, review the revised plan once more.
-5. After round 2, apply its review comments to the plan once, then stop. Do not request a third review.
-
-The resulting plan is `reviewed_comment_address_plan`.
-
-#### 4c) Ignore reply-only items and implement actionable items
-
-1. Derive `implementation_plan` by copying only the complete sections whose decision is `implementation_needed` from `reviewed_comment_address_plan`, in their original order.
-2. Preserve each copied section verbatim, including its heading, raw comment, decision, reasoning, and plan.
-3. Ignore every `reply_only` section:
-   - do not post its proposed reply
-   - do not invoke `reply_to_review_thread.sh`
-   - do not resolve its review thread
-   - do not include it in `implementation_plan`
-4. Verify that `implementation_plan` contains no `reply_only` section. If the check fails, stop and return `BLOCKED: failed to build actionable comment implementation plan | PR: <url>`.
-5. If `implementation_plan` is empty, record the reply-only count and continue to Phase 5 without invoking `code-implement-loop`.
-6. If `implementation_plan` is non-empty, invoke `code-implement-loop --skip-full-branch-review` once using the filtered plan as its direct inline implementation input and preserve its complete output as `comment_implementation_result`.
-7. Do not block or stop based on `comment_implementation_result`, including blocked, failed, or invalid output. Record its status and exact error summary for Phase 6.
-8. Rerun Phase 3 so CI validates the current PR head. When CI is green, continue to Phase 5. Do not rerun Phase 4.
 
 ### Phase 5: Update PR body
 
