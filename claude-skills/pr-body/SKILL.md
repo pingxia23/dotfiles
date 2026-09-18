@@ -49,8 +49,8 @@ Update the managed body by splicing new generated content into the existing body
 
 1. If the existing PR body is empty, initialize the base text to the hidden marker followed by a blank line.
 2. Otherwise, keep the original body as the base text. Do not regenerate the whole body from scratch.
-3. Locate level-2 section headings with lines that start with `## `.
-4. Generate new content only for the managed `## TL;DR`, `## Problem`, `## Approach`, and `## Dev Test` sections, using the PR title, managed body, commit list, changed files, full PR diff, and available records of completed development checks from the conversation or command output.
+3. Locate section headings that start with `## `. Each section ends at the next such heading or at the end of the body. When updating a managed section, replace its full content.
+4. Generate new content only for the managed `## TL;DR`, `## Problem`, `## Approach`, and `## Dev Test` sections, using the PR title, managed body, commit list, changed files, full PR diff, and available records of completed correctness checks performed independently of checked-in tests from the conversation or command output.
    - Before drafting these sections, read the `## Writing Style` section from your memory file and apply it to the generated prose.
    - Assume the reviewer understands software engineering fundamentals but has no prior knowledge of the repository or its internal terminology.
    - Write for a reviewer who is deciding what to inspect first.
@@ -132,22 +132,35 @@ Update the managed body by splicing new generated content into the existing body
      - `#### D<n>: <decision name>`
      - `**Chosen:** <what this PR does>.`
    - Use small diagrams or pseudocode for contracts, validation paths, state transitions, and persistence behavior when they make the decision easier to review.
-11. Upsert `## Dev Test` as the final section of the body:
-   - If a line exactly matching `## Dev Test` exists, replace that full section and move it to the end if needed. The section ends immediately before the next `## ` heading, or at end of body.
-   - Otherwise, append the section at the end of the body, separated by a blank line.
+11. Add or update `## Dev Test`. Keep it as the last section of the body.
+
+   **What counts as a dev test**
+
+   A dev test checks whether the changed behavior works as expected. It must use its own inputs and checks, without running or reusing tests stored in the codebase. Manual checks, local experiments, and one-off scripts can qualify.
+
+   Do not include:
+
+   - Tests stored in the codebase, including new tests, individual cases, reruns, or scripts that call those tests.
+   - Tooling checks: builds, code generation such as Gazelle, formatting, lint, type checks, `git diff --check`, or commit hooks.
+   - Environment checks such as `dd-doctor`, automated reviews, or checks of which files changed.
+
+   A command such as `bzl run` does not by itself show that behavior was tested.
+
+   **What to record**
+
+   Include only checks that actually ran. For each check, give the command or steps, input, expected behavior, and observed result. Include any failure or limit on what the check proves.
 
    ```markdown
    ## Dev Test
 
-   - <completed development check>: <observed result>
+   - <command or steps, with input>: expected <behavior>; observed <result>.
    ```
 
-   Requirements:
-   - List all development checks actually performed beyond tests checked into the codebase, such as manual behavior checks, local experiments, one-off scripts, builds, lint checks, or type checks.
-   - For each check, state the command or procedure, what it checked, and the observed result, including failures or limitations.
-   - Preserve previously recorded checks when refreshing the body, unless newer evidence corrects them. Combine duplicate entries.
-   - Do not repeat tests checked into the codebase or infer that a check ran merely because test code exists.
-   - Do not list planned checks as completed or invent results. If no completed checks are recorded, write `No development checks beyond tests checked into the codebase are recorded.`
+   Use execution records from the conversation or command output. Test code and descriptions of test coverage do not prove that a check ran. Do not invent results or report planned checks as completed.
+
+   Keep previous results only if they meet these rules. Remove other entries. Use newer evidence to correct results, and combine repeated checks into the latest supported result.
+
+   If no qualifying checks are recorded, write `No independent correctness checks outside the checked-in test suite are recorded.`
 12. Apply the readability check before updating the PR:
    - Read only the generated TL;DR, Problem, Approach, and Dev Test as an engineer who is new to the repository.
    - Confirm the reader can explain what happens today, why it is a problem, what behavior changes, and which parts need careful review.
@@ -225,5 +238,5 @@ worker -> POST /internal/assistant/v1/conversation/{id}/process-task
 
 ## Dev Test
 
-No development checks beyond tests checked into the codebase are recorded.
+No independent correctness checks outside the checked-in test suite are recorded.
 ```
