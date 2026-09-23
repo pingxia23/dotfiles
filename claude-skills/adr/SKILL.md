@@ -1,6 +1,6 @@
 ---
 name: adr
-description: Draft Architecture Decision Records and design ADRs. Use when the user asks to create an ADR, update an existing ADR, write a design record, restructure an ADR, document architecture decisions, or turn a technical design discussion into a readable Markdown decision document with context, approach, component pseudocode, decisions, consequences, and evidence. This skill always creates a new ADR; existing ADRs are references only.
+description: Draft Architecture Decision Records and design ADRs. Use when the user asks to create an ADR, update an existing ADR, write a design record, restructure an ADR, document architecture decisions, or turn a technical design discussion into a readable Markdown decision document with context, approach, component pseudocode, decisions, consequences, and evidence. Uncommitted drafts may be revised; changes to committed ADRs require a new ADR.
 ---
 
 # ADR
@@ -13,13 +13,15 @@ Write ADRs for reviewable design, not audit logs. The reader should understand t
 
 These are hard requirements. If a draft violates any of them, rewrite it before presenting or saving the ADR.
 
+- Use `Context` for the existing system, its behavior, and the problem that motivates the change. From `Approach` onward, every section must focus on the system after the proposed change and the changes needed to reach it.
+- From `Approach` onward, diagrams, pseudocode, and walkthroughs must describe the proposed system. Identify what will be added, changed, or removed; include unchanged behavior only when needed to understand the proposed flow. Keep comparisons with existing behavior brief, explicitly label them, and refer to `Context` for details. Apply this boundary to decisions, consequences, and reference annotations too, so readers can distinguish the proposal from what exists today.
 - Strongly bias toward pseudocode, example walkthroughs, and ASCII diagrams. For any non-trivial control flow, state transition, retry path, validation path, lifecycle, or data movement, use pseudocode or a concrete walkthrough as the primary explanation; prose should only support or summarize it.
 - When an ADR contains code blocks, add a short `## Pseudocode Note` near the top before the first code block. State that all code examples are pseudocode for control flow, ownership boundaries, and contracts, not exact implementation. Also label implementation-shaped code blocks with an in-block `# Pseudocode: ...` comment when useful.
 - Use concrete names from the codebase only after explaining the behavior they implement. Do not open a section with a file list or component catalog.
-- Ground every non-trivial claim in concrete code or docs. If evidence is missing, mark the statement as an assumption or risk.
-- Mark assumptions explicitly. Do not present guesses, inferred behavior, or unverified future implementation details as facts.
+- Ground non-trivial claims about existing behavior and constraints in concrete code or docs. Clearly identify proposed behavior as design intent; it does not need to exist in the code yet.
+- Mark unverified premises, inferred behavior, and uncertain feasibility as assumptions or risks. Do not label an explicit design choice as an assumption merely because it is not implemented yet.
 - Capture user-stated preferences, constraints, and accepted tradeoffs in `## Key Assumptions / Agreements` before `## Approach`. Treat these as design inputs, not optional commentary.
-- Always create a new ADR. Do not edit, revise, restructure, supersede in place, or append to an existing ADR. If the user asks to update or revise an ADR, create a new ADR that references the older ADR and explains the relationship.
+- Do not edit an ADR that has already been committed to git. To change a committed ADR, create a new ADR that references the older ADR and explains the relationship. An uncommitted draft may be revised in place, including during the review loop.
 - Do not add backward-compatibility scaffolding, migration logic, reserved fields, compatibility aliases, fallback behavior, or generalized extension points unless the section's assumptions/agreements or repo evidence explicitly require it.
 - Preserve worked examples when they clarify the design. Do not remove examples for brevity unless they are wrong or duplicated.
 
@@ -47,7 +49,7 @@ Omit sections that add no value for a small ADR, but keep `Context`, `Key Assump
 1. Establish Scope
 
 - Inspect the local ADR directory, ADR index, and existing naming/numbering convention before choosing a filename or ADR number.
-- If the request references an existing ADR, read the full ADR and use it as evidence/context for the new ADR.
+- If the request references an existing ADR, read it in full before deciding whether to revise the uncommitted draft or create a new ADR that references it.
 - Do not change code unless explicitly requested.
 - Do not edit any ADR that has already been committed to git.
 - If the relevant ADR has not been committed yet, it may be updated instead of creating a new ADR. Otherwise, always create a new ADR.
@@ -67,9 +69,9 @@ Omit sections that add no value for a small ADR, but keep `Context`, `Key Assump
 - If a future-proofing or compatibility change would contradict an explicit agreement, do not include it. Surface it as a risk or question instead.
 
 4. Write the high-level approach before decisions.
-- Before drafting the ADR, read the `## Writing Style` section from your memory file and apply it throughout the document.
-- Start with the problem and the end-to-end design walkthrough.
-- Use an ASCII flow diagram for the whole system when the ADR covers multiple components.
+- Apply the writing instructions supplied in the conversation and applicable `AGENTS.md` files. If an identified memory file supplies additional writing rules, read and apply them too. Write for an engineer new to the repository: explain unfamiliar terms and connect each component to its purpose.
+- Explain the existing system and problem in `Context`. Start `Approach` with the proposed end-to-end design and the changes required to implement it.
+- Use an ASCII flow diagram for the system after the change when the ADR covers multiple components.
 - Put component mechanics and pseudocode before the `Decisions` section.
 
 5. Add component design sections.
@@ -96,7 +98,8 @@ Omit sections that add no value for a small ADR, but keep `Context`, `Key Assump
 - References: list the strongest code/doc sources.
 
 8. Review and revise the ADR.
-- After saving the draft, set `adr_path` to the new ADR's absolute path and run the ADR plan-review script from the repository root:
+- Check every section from `Approach` onward for a clear focus on the proposed system and required changes. Move extended descriptions of existing behavior to `Context`; label any essential brief comparisons and ensure diagrams, pseudocode, and examples show the proposed behavior.
+- After saving the draft, set `adr_path` to the draft's absolute path and run the ADR plan-review script from the repository root. It uses the [shared reviewer configuration](../../scripts/reviewer_config.mjs) and requires Node.js plus the configured `pi` command-line tool and provider access. Reviewers inspect evidence and return feedback; they must not edit the draft or repository.
 
 ```bash
 adr_review_result="$(
@@ -104,18 +107,19 @@ adr_review_result="$(
     --worktree-root "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" \
     --adr-path "$adr_path"
 )"
+printf '%s\n' "$adr_review_result"
 ```
 
 - Parse `adr_review_result` as strict JSON with:
-  - `status`: `approved`, `revise`, or `blocked`.
+  - `status`: `approved` when at least one valid review exists and all valid reviews approve; `revise` when valid reviews contain actionable comments; `blocked` when no valid review is available or the script fails.
   - `comments`: concrete review feedback.
   - `overall_explanation`: review summary.
-  - `reviewers`: reviewer status map.
+  - `reviewers`: reviewer status map (`approved`, `revise`, or `unavailable`). Approval may have partial coverage; report any unavailable reviewers and their reasons from `overall_explanation`.
 - Run at most two review rounds:
   1. If `status` is `approved`, finish with the current ADR.
-  2. If `status` is `revise`, verify each comment against repository evidence, then edit the new ADR to address every valid comment. Do not expand the user's scope or change an explicit agreement only because a reviewer suggests a different design.
+  2. If `status` is `revise`, verify each comment against repository evidence and the proposed contracts, then edit the draft to address every valid comment. Do not expand the user's scope or change an explicit agreement only because a reviewer suggests a different design.
   3. After the first revision, run the script once more.
-  4. If the second review requests revision, address its valid comments once, then stop. Do not request a third review.
+  4. If the second review requests revision, address its valid comments once, then stop. Do not request a third review. State that the final edits were not reviewed again; do not claim approval of that final draft.
 - If the JSON is invalid or `status` is `blocked`, keep the draft, stop the review loop, and tell the user that automatic review did not complete. Include `overall_explanation` when available. Do not claim that the ADR was approved.
 - In the final response, state whether the review approved the ADR, caused revisions, or could not complete.
 
@@ -140,7 +144,7 @@ All code examples in this ADR are pseudocode. They show intended control flow, o
 
 ## Context
 
-Explain the problem and why it matters.
+Explain the existing system, the problem, and why the change matters. Keep detailed descriptions of existing behavior here.
 
 Include concise evidence:
 
@@ -156,9 +160,9 @@ Include concise evidence:
 
 ## Approach
 
-State the high-level approach in plain English.
+Describe the system after the proposed change in plain English. Identify what must be added, changed, or removed. This focus applies to every section below.
 
-Show the end-to-end flow:
+Show the proposed end-to-end flow:
 
 ```text
 caller
@@ -173,11 +177,11 @@ component B
   - responsibility
 ```
 
-State the core contract in one or two paragraphs.
+State the proposed core contract in one or two paragraphs.
 
 ## <Component A> Design
 
-Explain the component's role.
+Explain the component's role after the change and the changes required to implement it.
 
 ```python
 # Pseudocode: component A control flow.
@@ -193,7 +197,7 @@ Call out important validation, state, retries, side effects, and stop conditions
 
 ## <Component B> Design
 
-Explain the component's role.
+Explain the component's role after the change and the changes required to implement it.
 
 ```python
 # Pseudocode: component B workflow state and drain control flow.
@@ -220,7 +224,7 @@ class ComponentBWorkflow:
 
 **Rejected**: <alternative>, if relevant.
 
-Explain why the chosen design fits the current system. Reference component sections instead of repeating full mechanics.
+Explain why the chosen design meets the proposed system's needs and agreed constraints. Keep any necessary comparison with existing behavior brief and explicitly labeled. Reference component sections instead of repeating full mechanics.
 
 ### D2: <Decision>
 
@@ -231,6 +235,8 @@ Explain why the chosen design fits the current system. Reference component secti
 Explain tradeoffs and constraints.
 
 ## Consequences
+
+Describe the benefits, costs, and risks of the proposed system and the work required to reach it.
 
 ### Positive
 
