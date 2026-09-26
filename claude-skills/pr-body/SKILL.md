@@ -172,3 +172,24 @@ Update the managed body by splicing new generated content into the existing body
 ```bash
 gh pr edit --repo "$repo" "$pr_url" --body-file "<body-file>"
 ```
+
+## Examples
+
+### Simple PR
+
+For a small change, one sentence each for TL;DR and Problem and a few short Approach bullets can be enough. No walkthrough or decision subsections are needed here.
+
+```markdown
+## TL;DR
+
+Align the field descriptions for `submit_conclusion`, the conclusion submission tool, between Python and Go investigations.
+
+## Problem
+
+Python's `submit_conclusion` field descriptions differ from Go's.
+
+## Approach
+
+- Match field descriptions with Go.
+- Add checks for citation guidance and existing validation rules.
+```
