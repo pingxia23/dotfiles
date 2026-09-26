@@ -65,6 +65,7 @@ alternate_screen = "never"
 status_line = ["model-with-reasoning", "current-dir", "context-remaining", "fast-mode"]
 status_line_use_colors = true
 terminal_title = ["activity", "project-name", "git-branch"]
+screen_reader_detection_done = true
 
 [tui.model_availability_nux]
 "gpt-5.5" = 4

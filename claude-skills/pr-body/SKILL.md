@@ -1,6 +1,6 @@
 ---
 name: pr-body
-description: "Create or update the managed GitHub PR body for a PR URL. Use when a workflow needs to initialize or refresh the managed TL;DR, Problem, Approach, and Dev Test sections on an existing PR."
+description: "Create or update the managed GitHub PR body for a PR URL. Use when a workflow needs to initialize or refresh the managed TL;DR, Problem, Approach, and optional Dev Test sections on an existing PR."
 ---
 
 # PR Body
@@ -50,13 +50,14 @@ Update the managed body by splicing new generated content into the existing body
 1. If the existing PR body is empty, initialize the base text to the hidden marker followed by a blank line.
 2. Otherwise, keep the original body as the base text. Do not regenerate the whole body from scratch.
 3. Locate section headings that start with `## `. Each section ends at the next such heading or at the end of the body. When updating a managed section, replace its full content.
-4. Generate new content only for the managed `## TL;DR`, `## Problem`, `## Approach`, and `## Dev Test` sections, using the PR title, managed body, commit list, changed files, full PR diff, and available records of completed correctness checks performed independently of checked-in tests from the conversation or command output.
+4. Generate new content only for the managed `## TL;DR`, `## Problem`, `## Approach`, and optional `## Dev Test` sections, using the PR title, managed body, commit list, changed files, full PR diff, and available execution records for Rapid test drives (`rapid td` commands) or Hotdog deployments made with `hotdog-deploy` from the conversation or command output.
    - Before drafting these sections, read the `## Writing Style` section from your memory file and apply it to the generated prose.
    - Assume the reviewer understands software engineering fundamentals but has no prior knowledge of the repository or its internal terminology.
    - Write for a reviewer who is deciding what to inspect first.
    - Prefer concrete review areas over broad architecture phrasing.
    - Do not compress multiple subsystems into one long sentence.
    - Do not enumerate every touched file, test, or mechanical edit.
+   - Skip mechanical details such as added unit tests, renamed variables, or changed function arguments unless they are essential to understanding the design.
    - If the PR spans multiple subsystems, use short bullets grouped by review boundary.
 5. Upsert the `## TL;DR` section:
    - If a line exactly matching `## TL;DR` exists, replace that full section. The section starts at `## TL;DR` and ends immediately before the next `## ` heading, or at end of body.
@@ -132,111 +133,42 @@ Update the managed body by splicing new generated content into the existing body
      - `#### D<n>: <decision name>`
      - `**Chosen:** <what this PR does>.`
    - Use small diagrams or pseudocode for contracts, validation paths, state transitions, and persistence behavior when they make the decision easier to review.
-11. Add or update `## Dev Test`. Keep it as the last section of the body.
+11. Include `## Dev Test` only when execution records show that a Rapid test drive (`rapid td` commands) was run or a Hotdog deployment was made with `hotdog-deploy` for this PR. When included, keep it as the last section of the body.
 
    **What counts as a dev test**
 
-   A dev test checks whether the changed behavior works as expected. It must use its own inputs and checks, without running or reusing tests stored in the codebase. Manual checks, local experiments, and one-off scripts can qualify.
+   Only these actions qualify:
 
-   Do not include:
+   - A Rapid test drive run through `rapid td` commands.
+   - A Hotdog deployment made with `hotdog-deploy`, including any checks performed against that deployment.
 
-   - Tests stored in the codebase, including new tests, individual cases, reruns, or scripts that call those tests.
-   - Tooling checks: builds, code generation such as Gazelle, formatting, lint, type checks, `git diff --check`, or commit hooks.
-   - Environment checks such as `dd-doctor`, automated reviews, or checks of which files changed.
 
-   A command such as `bzl run` does not by itself show that behavior was tested.
 
    **What to record**
 
-   Include only checks that actually ran. For each check, give the command or steps, input, expected behavior, and observed result. Include any failure or limit on what the check proves.
+   Record direct links to telemetry from the qualifying dev test, such as an LLM Observability trace (a record of the language model's execution). Give each link a short label identifying the tested scenario and the type of telemetry. The section should contain telemetry links, not commands, deployment instructions, or expected-versus-observed result summaries.
 
    ```markdown
    ## Dev Test
 
-   - <command or steps, with input>: expected <behavior>; observed <result>.
+   - [<tested scenario> — LLM Observability trace](<actual telemetry URL from the dev test>)
    ```
 
-   Use execution records from the conversation or command output. Test code and descriptions of test coverage do not prove that a check ran. Do not invent results or report planned checks as completed.
+   Use telemetry URLs from the conversation, command output, or retrieved telemetry records. Each link must belong to the qualifying dev test. Do not invent URLs, link unrelated runs, or use a generic telemetry landing page.
 
-   Keep previous results only if they meet these rules. Remove other entries. Use newer evidence to correct results, and combine repeated checks into the latest supported result.
+   Keep previous telemetry links only if they meet these rules. Remove other entries and duplicate links.
 
-   If no qualifying checks are recorded, write `No independent correctness checks outside the checked-in test suite are recorded.`
+   If no qualifying actions are recorded, omit the entire `## Dev Test` section. Remove any existing managed `## Dev Test` section, including its heading and content. Do not add an empty section or a placeholder explaining that no dev test was run.
+   If a qualifying dev test ran but no telemetry link is available, omit the section until a link is available.
 12. Apply the readability check before updating the PR:
-   - Read only the generated TL;DR, Problem, Approach, and Dev Test as an engineer who is new to the repository.
+   - Read only the generated TL;DR, Problem, Approach, and Dev Test (when included) as an engineer who is new to the repository.
    - Confirm the reader can explain what happens today, why it is a problem, what behavior changes, and which parts need careful review.
    - Confirm every internal term needed to understand the change is defined before it is used.
    - Confirm each paragraph has one main purpose and does not stack unrelated subsystems or unfamiliar terms.
    - Rewrite the sections if any check fails.
-13. Leave every byte outside those four managed sections (and the legacy `## Context` section when migrated) unchanged, except for the blank-line separator needed to append `## Dev Test`. Do not edit, reorder, remove, or regenerate any other section or content.
+13. Leave every byte outside those managed sections (and the legacy `## Context` section when migrated) unchanged, except for the blank-line separator needed when appending `## Dev Test`. Do not edit, reorder, remove, or regenerate any other section or content.
 14. Then update the PR body with:
 
 ```bash
 gh pr edit --repo "$repo" "$pr_url" --body-file "<body-file>"
-```
-
-**Focus on the high-level problem and approach**
-
-- Skip mechanical details such as added unit tests, renamed variables, changed function arguments, or other implementation minutiae unless they are essential to understanding the design.
-- The goal is to state the problem clearly and lay out the high-level approach so reviewers can review the PR efficiently.
-- The output should help reviewers triage the diff. If the generated text reads like an abstract design summary, rewrite it around concrete review boundaries.
-
-For a PR that changes a request flow, prefer this shape over a dense paragraph:
-
-```markdown
-## TL;DR
-
-Moves background-task completion inference into the conversation API so it can use saved task history and keep user-visible prompt construction in one place.
-
-## Problem
-
-The worker currently builds an LLM "background task completed" prompt itself before calling the conversation API. That makes the worker own user-visible prompt wording and leaves the API without a clear place to use persisted task history when producing the final assistant response.
-
-## Approach
-
-### What this PR does
-
-Moves prompt construction and model inference from the worker into the conversation API. The worker now reports which task completed, and the API uses the saved task history to produce the final assistant response.
-
-Old shape, where the worker fabricates the user-visible prompt:
-
-```text
-worker -> POST /api/v2/assistant/conversation/{id}
-          body: {
-            data: {
-              attributes: {
-                message: "Background task ... completed ...",
-                profile: "background_worker",
-                client_tools: []
-              }
-            }
-          }
-```
-
-New shape, where the worker only names the task and the API builds the prompt:
-
-```text
-worker -> POST /internal/assistant/v1/conversation/{id}/process-task
-          body: { "task_id": "assistant-task.123" }
-```
-
-<details>
-<summary><strong>Key Implementation Decisions</strong></summary>
-
-#### D1: Worker reports task identity; API owns completion inference
-
-**Chosen:** Replace the public conversation message call with an internal `process-task` request that passes only the task id.
-
-#### D2: API validates persisted final task state before inference
-
-**Chosen:** Run completion inference only after the API confirms the task's final update is already persisted in conversation history.
-
-#### D3: Completion trigger is visible to the LLM but not persisted as user content
-
-**Chosen:** Keep the final assistant response written through the API path while avoiding persistence of the synthetic "background task completed" trigger as a user message.
-
-</details>
-
-## Dev Test
-
-No independent correctness checks outside the checked-in test suite are recorded.
 ```
