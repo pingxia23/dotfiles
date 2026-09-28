@@ -20,31 +20,31 @@ Return the digest here.
 
 ## Optional structured input
 
-Use this template when the material has multiple sources or specific presentation requirements. Only the source content is required; omit fields that do not apply. Field names are illustrative, not a required parser format.
+No wrapper or fixed format is required. Automated callers can use an object such as:
 
-```text
-Use $create-digest with this material.
-
-Scope: source name and issue/date or exact time window with timezone
-Known gaps or filters:
-Audience/interests:
-Ordering:
-Maximum items:
-Empty-result text:
-Output: rendered Markdown here, or an explicit local file path
-
-Item:
-  Original text:
-  Source ID or URL:
-  Title and author/submitter, with roles distinguished:
-  Publication timestamp:
-  Reply count and when measured:
-  Replies: ordered text with attribution and links when available
-  Linked evidence: document text or excerpts with source URLs
-  Secondhand summaries: labeled separately from original content
-  Known missing or truncated content:
-
-Repeat Item as needed.
+```json
+{
+  "material": "Article text, notes, or substantive excerpts."
+}
 ```
 
-For Slack material, an ordering preference can be `original-parent reply count descending`. For newsletter material, it can be `technical usefulness` or `the issue's supplied comment counts descending`. These preferences affect presentation without changing the input contract.
+`material` can also be an array or object containing structured source records. Keep source URLs, authors, dates, ordered replies, and original-versus-secondhand evidence with their respective records.
+
+Optional fields are preserved without filling in unknown facts:
+
+```json
+{
+  "material": [{ "title": "Example", "text": "Substantive source content" }],
+  "scope": "Supplied newsletter issue and date",
+  "coverage": { "gaps": ["Discussion could not be read"] },
+  "preferences": {
+    "max_items": 5,
+    "empty_result_text": "Nothing interesting this week.",
+    "audience": "Backend engineer building agent products",
+    "ordering": "technical usefulness",
+    "output": "rendered Markdown here"
+  }
+}
+```
+
+Field names are illustrative. Missing preferences use the skill's defaults. The assistant evaluates the supplied evidence and reports known gaps; an unreported collection failure cannot be detected from the input alone.

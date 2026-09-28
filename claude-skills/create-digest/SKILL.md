@@ -7,30 +7,15 @@ description: Select, group, order, and present a self-contained technical digest
 
 Turn supplied raw material into a selective technical learning digest. Readers should understand the important mechanisms, evidence, tradeoffs, and practical lessons without opening the source links.
 
-## Input contract
+## Input
 
-```text
-Raw material + optional preferences
-                 |
-       Group, select, and order
-                 |
-     Self-contained technical digest
-```
+Only source material is required. Accept pasted text, files, or structured records; do not ask the user to reformat them.
 
-The only required input is material to analyze. Accept pasted text, local files, or structured records without requiring a particular format or collection process. Direct user input and automatically prepared input use the same contract. Read all supplied candidate material before selecting topics.
+Read all supplied material before selecting topics. Keep any scope, coverage gaps, preferences, and source metadata associated with the relevant article or reply. Missing preferences use the skill's defaults; missing facts stay unknown.
 
-Work from the supplied content. Do not fetch missing messages or linked pages as part of this skill. A URL alone is a citation target, not evidence that its content was read. If essential evidence is missing, identify the missing content.
+Work only from supplied content; do not fetch missing sources. Titles or URLs alone do not support a deep dive. If some evidence is missing, explain the gap and use what remains. If nothing usable remains, report the missing material or collection failure instead of an empty successful digest. Article-only material needs no discussion or engagement threshold.
 
-Use the following optional context when available, keeping its association with the material intact:
-
-- **Scope:** source name, issue or exact time window with timezone when applicable, and known filters or coverage gaps.
-- **Source metadata:** identifiers or links, titles, authors, and associations between originals and replies. Preserve reply order and keep article authors and discussion submitters distinct.
-- **Linked evidence:** supplied document content or substantive excerpts, their source URLs, and any unavailable or truncated sources. Distinguish excerpts from secondhand summaries.
-- **Preferences:** reader background and work, audience or interests, desired depth, maximum item count, ordering rule, required empty-result text, partial-output policy, and output destination.
-
-Missing optional metadata should not prevent a digest or require clarification. Do not invent dates, authors, counts, or links. Respect explicit eligibility constraints; do not introduce Slack reply thresholds or require discussion comments for an article-only digest.
-
-For direct invocation examples and an optional input template, see [references/input-examples.md](references/input-examples.md).
+See [input examples](references/input-examples.md) if needed.
 
 ## 1. Group and select
 
