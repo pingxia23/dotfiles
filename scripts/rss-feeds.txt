@@ -5,6 +5,7 @@ https://lucumr.pocoo.org/feed.atom
 https://karpathy.bearblog.dev/feed/?type=rss
 https://openai.com/news/engineering/rss.xml
 https://developers.openai.com/rss.xml
+https://claude.dev/rss.xml
 https://raw.githubusercontent.com/taobojlen/anthropic-rss-feed/main/anthropic_engineering_rss.xml
 https://www.tobyord.com/writing?format=rss
 https://cursor.com/changelog/rss.xml
