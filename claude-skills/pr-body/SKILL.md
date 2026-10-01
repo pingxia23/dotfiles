@@ -7,189 +7,188 @@ description: "Create or update the managed GitHub PR body for a PR URL. Use when
 
 Create or update the managed body for an existing GitHub PR.
 
-## Input
-
-Required:
-- PR URL
-
 ## Workflow
 
-1. Infer `repo` from the PR URL or current git context.
-2. Load the PR:
+Input: a PR URL.
+
+1. Identify the repository from the URL and load the PR title, body, commits, and files:
 
    ```bash
    gh pr view --repo "$repo" "$pr_url" --json title,body,commits,files
    ```
 
-3. Inspect the full PR change:
+   Apply **Preserve existing content** below. Skip a non-empty body without the managed marker.
+
+2. Inspect the full change:
 
    ```bash
    gh pr diff --repo "$repo" "$pr_url"
    ```
 
-4. Apply the managed PR body rules below.
-5. Return one of:
-   - `UPDATED: PR body updated | PR: <url>`
-   - `SKIPPED: existing PR body is manually edited | PR: <url>`
-   - `BLOCKED: PR body update failed | PR: <url> | Error: <summary>`
+   Trace the affected scenario before and after the change. Inspect callers, surrounding code, and the base version when needed. Use the PR records and code as evidence; do not invent intermediate steps. Collect any qualifying development-test records for **Dev Test** below.
 
-## Managed PR Body Rules
+3. Read the `## Writing Style` section in your memory file. Draft the managed sections using **Body format**, then splice them into the original body using **Preserve existing content**.
+4. Read the draft as an engineer new to the repository. Check that the before and after flows cover the same scenario, explain unfamiliar terms, and show the failure and correction without repeated prose. Check that unrelated content is unchanged. Revise any part that fails these checks.
+5. Save the complete body to a file and publish it:
 
-Only update the PR body when either:
-- the existing PR body is empty
-- the existing PR body starts with the hidden marker:
+   ```bash
+   gh pr edit --repo "$repo" "$pr_url" --body-file "<body-file>"
+   ```
+
+Return one of:
+
+- `UPDATED: PR body updated | PR: <url>`
+- `SKIPPED: existing PR body is manually edited | PR: <url>`
+- `BLOCKED: PR body update failed | PR: <url> | Error: <summary>`
+
+## Body format
+
+Use this template for the body structure and the example below as the model for the finished writing. For a new body, use this section order. Omit the entire Dev Test section unless it qualifies under the rules below. Assume the reviewer knows software engineering but does not know the repository.
+
+````markdown
+<!-- ping-xia-pr-body:v1 -->
+
+## TL;DR
+
+<main behavior change and why it matters>
+
+## Problem
+
+<one or two sentences stating the current problem, its impact, and the triggering scenario or report>
+
+```text
+<current call path or user experience: trigger -> relevant steps -> failure -> outcome>
+```
+
+## Approach
+
+### What this PR does
+
+<one or two sentences stating the change and how it solves the problem>
+
+```text
+<corrected flow for the same scenario: trigger -> relevant steps -> correction -> outcome>
+```
+
+<details>
+<summary><strong>Key Implementation Decisions</strong></summary>
+
+**<decision name>**
+
+**Chosen:** <implementation choice and its effect or important constraint>
+
+</details>
+
+## Dev Test
+
+- [<tested scenario> — <telemetry type>](<actual telemetry URL>)
+````
+
+### TL;DR
+
+State the observable behavior change and its value in no more than three sentences. Include a scope boundary when needed to prevent a mistaken assumption. Leave out implementation details, review guidance, and file lists.
+
+### Problem and Approach flows
+
+Treat these as a matched pair. Introduce each flow in one or two sentences, then let the flow carry the explanation. A call path is the sequence of calls between functions or components; a user experience is the sequence of actions and outcomes seen by the user.
+
+- **Problem:** show the triggering input or action, the relevant steps, the failure or missing behavior, and its impact. Describe the current behavior; reserve the solution for Approach.
+- **Approach:** state the change and how it solves the problem under `### What this PR does`, then show the corrected steps and outcome for the same input or action. Do not add a separate flow heading.
+- Make a short ASCII diagram, numbered sequence, or worked example the main explanation. Put component roles, key values, and the failure or correction beside the relevant steps. Define unfamiliar names on first use; a code identifier alone is not a definition.
+- Do not repeat the flow in surrounding paragraphs. Add only context the visual cannot show clearly. For a simple change with no useful multi-step flow, a concrete sentence is enough.
+
+### Key Implementation Decisions
+
+Always include the folded `<details>` block, without an `open` attribute. Use compact decisions to tell the reviewer which choices deserve attention, rather than listing components or commits.
+
+Use a plain bold title (`**<decision name>**`) followed by the `**Chosen:**` explanation. Do not number decision titles or make them Markdown headings. For changes across several parts of the system, prefer two to four decisions grouped by the area a reviewer should inspect. Add a small diagram or pseudocode when needed to explain a contract, validation, state change, or storage behavior. Omit mechanical edits and test inventories; mention tests only when they clarify behavior coverage or risk.
+
+## Preserve existing content
+
+A body is managed only if it is empty or starts with:
 
 ```html
 <!-- ping-xia-pr-body:v1 -->
 ```
 
-If the existing PR body is non-empty and does not start with this marker, treat it as manually edited and skip the PR body update.
+Otherwise, skip the update. For an empty body, initialize this marker followed by a blank line. For a managed body, use the original text as the base; do not regenerate the whole body.
 
-Update the managed body by splicing new generated content into the existing body:
+Only replace the managed sections. Match section headings exactly; a section ends at the next heading starting with `## ` or at the end of the body.
 
-1. If the existing PR body is empty, initialize the base text to the hidden marker followed by a blank line.
-2. Otherwise, keep the original body as the base text. Do not regenerate the whole body from scratch.
-3. Locate section headings that start with `## `. Each section ends at the next such heading or at the end of the body. When updating a managed section, replace its full content.
-4. Generate new content only for the managed `## TL;DR`, `## Problem`, `## Approach`, and optional `## Dev Test` sections, using the PR title, managed body, commit list, changed files, full PR diff, and available execution records for Rapid test drives (`rapid td` commands) or Hotdog deployments made with `hotdog-deploy` from the conversation or command output.
-   - Before drafting these sections, read the `## Writing Style` section from your memory file and apply it to the generated prose.
-   - Assume the reviewer understands software engineering fundamentals but has no prior knowledge of the repository or its internal terminology.
-   - Write for a reviewer who is deciding what to inspect first.
-   - Prefer concrete review areas over broad architecture phrasing.
-   - Do not compress multiple subsystems into one long sentence.
-   - Do not enumerate every touched file, test, or mechanical edit.
-   - Skip mechanical details such as added unit tests, renamed variables, or changed function arguments unless they are essential to understanding the design.
-   - If the PR spans multiple subsystems, use short bullets grouped by review boundary.
-5. Upsert the `## TL;DR` section:
-   - If a line exactly matching `## TL;DR` exists, replace that full section. The section starts at `## TL;DR` and ends immediately before the next `## ` heading, or at end of body.
-   - If it does not exist, create a new `## TL;DR` section after the marker and any immediately following blank lines.
-6. Upsert the `## Problem` section:
-   - If a line exactly matching `## Problem` exists, replace that full section. The section starts at `## Problem` and ends immediately before the next `## ` heading, or at end of body.
-   - Otherwise, if a line exactly matching the legacy heading `## Context` exists, replace that full section with `## Problem` and its generated content.
-   - If neither heading exists, create a new `## Problem` section immediately after the `## TL;DR` section.
-7. Upsert the `## Approach` section:
-   - If a line exactly matching `## Approach` exists, replace that full section. The section starts at `## Approach` and ends immediately before the next `## ` heading, or at end of body.
-   - If it does not exist, create a new `## Approach` section immediately after the `## Problem` section.
-8. The `## TL;DR` section must give the reviewer a fast, plain-language summary:
+| Section | If present | If absent |
+| --- | --- | --- |
+| `## TL;DR` | Replace the full section. | Insert after the marker and its following blank lines. |
+| `## Problem` | Replace the full section. | Replace legacy `## Context` with Problem; if neither exists, insert after TL;DR. |
+| `## Approach` | Replace the full section. | Insert after Problem. |
+| `## Dev Test` | Replace or remove according to the rules below. | Append only when the rules below qualify it. |
 
-   ```markdown
-   ## TL;DR
+Keep Dev Test last when included. Preserve every byte outside the managed sections and any migrated legacy Context section, except for the blank-line separator needed when appending Dev Test. Do not edit or reorder other content.
 
-   <observable behavior change and why it matters>
-   ```
+## Dev Test
 
-   Requirements:
-   - State the main behavior change and its value in no more than three sentences.
-   - Name an important scope boundary when it prevents the reviewer from assuming the PR does more than it does.
-   - Do not include implementation details, review guidance, or a list of changed files.
-9. The `## Problem` section must be concise and reviewer-digestible:
+Include this section only when execution records show a Rapid test drive (`rapid td` commands) or a Hotdog deployment (`hotdog-deploy`) for this PR, and an actual telemetry link is available. Telemetry is a record of the tested system's execution, such as an LLM Observability trace recording a language model's execution.
 
-   ```markdown
-   ## Problem
+The section contains only direct links to telemetry from that qualifying run. Label each link with the tested scenario and telemetry type, using the format in the body template.
 
-   <why this change is needed>
-   ```
+Use links from the conversation, command output, or retrieved telemetry records. Keep earlier links only if they meet these rules; remove duplicates and unrelated entries. Do not invent URLs, use generic landing pages, or include commands, deployment instructions, or expected-versus-observed summaries.
 
-   Requirements:
-   - State the current limitation or missing capability in plain language.
-   - State the concrete user or system impact of that limitation.
-   - Describe only why the change is needed. Put the solution, implementation, and review guidance in `## Approach`.
-   - Do not use solution-led sentences such as "This PR adds," "This PR moves," or "This PR introduces."
-   - Use no more than five sentences in total.
-   - Avoid umbrella phrases like "end-to-end path" unless the following text names the concrete boundaries.
-10. The `## Approach` section must be concise, reviewer-digestible, and organized into a walkthrough followed by folded implementation decisions:
-
-   ```markdown
-   ## Approach
-
-   ### What this PR does
-
-   <plain-language walkthrough of the PR at a high level>
-
-   <details>
-   <summary><strong>Key Implementation Decisions</strong></summary>
-
-   <chosen implementation decisions>
-   </details>
-   ```
-
-   Requirements for the whole `## Approach` section:
-   - Always include both `### What this PR does` and the `Key Implementation Decisions` `<details>` block.
-   - Leave the `<details>` tag without the `open` attribute so GitHub folds the decisions by default.
-   - Keep implementation detail high-level enough that a reviewer can choose where to dive into the diff.
-   - Mention tests only when they clarify behavior coverage or reviewer risk.
-
-   Requirements for `### What this PR does`:
-   - Start with the observable before/after behavior, then name the components that implement it.
-   - Define each repository-specific or domain-specific term when it first appears. A code identifier is not a definition.
-   - Prefer an example, ASCII diagram, before/after flow, or short pseudocode when it makes the behavior easier to review.
-   - Keep the walkthrough high-level: describe the user-visible or system-visible flow, not every file touched.
-   - Focus on what changes for the caller, user, operator, or adjacent system.
-
-   Requirements for `### Key Implementation Decisions`:
-   - Write compact key implementation decisions, not a component inventory.
-   - Organize decisions for review, not by commit order.
-   - For multi-subsystem PRs, prefer 2-4 decision blocks.
-   - Prefer this shape for each decision:
-     - `#### D<n>: <decision name>`
-     - `**Chosen:** <what this PR does>.`
-   - Use small diagrams or pseudocode for contracts, validation paths, state transitions, and persistence behavior when they make the decision easier to review.
-11. Include `## Dev Test` only when execution records show that a Rapid test drive (`rapid td` commands) was run or a Hotdog deployment was made with `hotdog-deploy` for this PR. When included, keep it as the last section of the body.
-
-   **What counts as a dev test**
-
-   Only these actions qualify:
-
-   - A Rapid test drive run through `rapid td` commands.
-   - A Hotdog deployment made with `hotdog-deploy`, including any checks performed against that deployment.
-
-
-
-   **What to record**
-
-   Record direct links to telemetry from the qualifying dev test, such as an LLM Observability trace (a record of the language model's execution). Give each link a short label identifying the tested scenario and the type of telemetry. The section should contain telemetry links, not commands, deployment instructions, or expected-versus-observed result summaries.
-
-   ```markdown
-   ## Dev Test
-
-   - [<tested scenario> — LLM Observability trace](<actual telemetry URL from the dev test>)
-   ```
-
-   Use telemetry URLs from the conversation, command output, or retrieved telemetry records. Each link must belong to the qualifying dev test. Do not invent URLs, link unrelated runs, or use a generic telemetry landing page.
-
-   Keep previous telemetry links only if they meet these rules. Remove other entries and duplicate links.
-
-   If no qualifying actions are recorded, omit the entire `## Dev Test` section. Remove any existing managed `## Dev Test` section, including its heading and content. Do not add an empty section or a placeholder explaining that no dev test was run.
-   If a qualifying dev test ran but no telemetry link is available, omit the section until a link is available.
-12. Apply the readability check before updating the PR:
-   - Read only the generated TL;DR, Problem, Approach, and Dev Test (when included) as an engineer who is new to the repository.
-   - Confirm the reader can explain what happens today, why it is a problem, what behavior changes, and which parts need careful review.
-   - Confirm every internal term needed to understand the change is defined before it is used.
-   - Confirm each paragraph has one main purpose and does not stack unrelated subsystems or unfamiliar terms.
-   - Rewrite the sections if any check fails.
-13. Leave every byte outside those managed sections (and the legacy `## Context` section when migrated) unchanged, except for the blank-line separator needed when appending `## Dev Test`. Do not edit, reorder, remove, or regenerate any other section or content.
-14. Then update the PR body with:
-
-```bash
-gh pr edit --repo "$repo" "$pr_url" --body-file "<body-file>"
-```
+If no qualifying run or telemetry link is available, omit the section and remove any existing managed Dev Test section. Do not leave an empty heading or placeholder.
 
 ## Examples
 
-### Simple PR
+### Fix Python investigation completion status
 
-For a small change, one sentence each for TL;DR and Problem and a few short Approach bullets can be enough. No walkthrough or decision subsections are needed here.
 
-```markdown
+````markdown
 ## TL;DR
 
-Align the field descriptions for `submit_conclusion`, the conclusion submission tool, between Python and Go investigations.
+Fix Python investigations being marked inconclusive even when the agent found a valid conclusion.
 
 ## Problem
 
-Python's `submit_conclusion` field descriptions differ from Go's.
+In the [reported staging investigation](https://dd.slack.com/archives/C0BLQUB68GJ/p1790813614511069), `e26ea5d0-4ad1-4421-9ffe-38aa00cc20d2` (organization 607371), the Python agent found a valid conclusion, but the final event caused the investigation to be marked inconclusive.
+
+```text
+Python agent finds a valid conclusion
+  +-> StepHighlySupportedHypothesis (Go record of the finding)
+  |     -> Kafka auditor (Go event publisher) ignores this step
+  |     -> Its conclusion flag stays false: only successful publication of
+  |        StepReactConclusion (Go conclusion step) sets it true
+  +-> Coordinator (Go component that ends the investigation): conclusive=true
+        -> Finish (completion call) receives no conclusion result
+        -> Kafka auditor uses its own false flag
+        -> InvestigationFinished (final event): conclusive=false
+        -> Investigation is marked inconclusive
+```
 
 ## Approach
 
-- Match field descriptions with Go.
-- Add checks for citation guidance and existing validation rules.
+### What this PR does
+
+Use the coordinator's conclusion result in the final event so valid Python conclusions are marked conclusive.
+
+```text
+Python agent finds a valid conclusion
+  +-> StepHighlySupportedHypothesis (Go record of the finding)
+  |     -> Kafka auditor (Go event publisher) still ignores this step
+  +-> Coordinator (Go component that ends the investigation): conclusive=true
+        -> Finish (completion call) now receives conclusive=true
+        -> Shared auditor forwards the result to each auditor
+        -> Kafka auditor uses the supplied result instead of its own flag
+        -> InvestigationFinished (final event): conclusive=true
+        -> Investigation is marked conclusive
 ```
+
+<details>
+<summary><strong>Key Implementation Decisions</strong></summary>
+
+**Use the coordinator's conclusion result**
+
+**Chosen:** Set `InvestigationFinished.Conclusive` from the result passed to `Finish` and remove the Kafka auditor's internal conclusion flag. Whether the agent found a conclusion is independent of whether a conclusion event was delivered. The separate `Success` field still reports whether the investigation finished without an error.
+
+**Keep conclusion-event publication separate**
+
+**Chosen:** Python continues to own publication of `ReactConclusionReached`, the event containing the conclusion. This change corrects the final completion status; the missing conclusion-event publication reported in Slack remains a separate issue.
+
+</details>
+````
