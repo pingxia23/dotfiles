@@ -71,6 +71,7 @@ screen_reader_detection_done = true
 "gpt-5.5" = 4
 "gpt-5.6-sol" = 4
 gpt-6-astra = 4
+"gpt-6.1-sol" = 1
 
 [projects."/Users/ping.xia/dotfiles"]
 trust_level = "trusted"
@@ -214,6 +215,12 @@ enabled = false
 enabled = false
 
 [apps.connector_openai_hotline]
+enabled = false
+
+[apps.connector_openai_chatgpt_pets]
+enabled = false
+
+[apps.connector_openai_pages]
 enabled = false
 
 [shell_environment_policy.set]
