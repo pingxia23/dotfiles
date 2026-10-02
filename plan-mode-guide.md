@@ -22,23 +22,36 @@ Support important claims about existing behavior, performance, caching, or safet
 
 ## Implementation
 
-Use pseudocode as the main explanation whenever the change affects behavior. Show the start, important calls or data changes, conditions, error paths, and final result. Do not repeat the pseudocode in prose.
+Break implementation into numbered steps in dependency or execution order. Give each step a short, action-oriented title and its own focused pseudocode block. Show that step's input, important calls or data changes, conditions, error paths, and result as applicable. Use `text` code fences for pseudocode.
+
+Keep the required changes, reasons, and supporting code references directly under the step they explain. Use short bullets for details that the pseudocode does not express. Do not repeat the pseudocode in prose, combine the whole implementation into one large code block, or append a separate catch-all "Required changes" list.
 
 For example:
+
+**1. Validate the request**
 
 ```text
 receive input
 validate input
 if invalid:
     return the existing error
-call the service
+pass validated input to execution
+```
+
+- Reuse the existing validator so the request keeps the same validation rules.
+
+**2. Execute and return the result**
+
+```text
+receive validated input
+call the service with validated input
 store the result
 return the result to the user
 ```
 
-After the pseudocode, list only the required changes. Use one short bullet per behavior or subsystem. State the change and its reason in the same bullet. Do not create a file-by-file inventory. Mention a file path only when it helps locate the code.
+- Update the caller to pass validated input to the service.
 
-For documentation or configuration changes with no control flow, use short bullets instead of forced pseudocode.
+Organize steps by behavior or subsystem, not by file. Mention a file path only when it helps locate the code. For documentation or configuration-only steps, show the proposed structure or field assignments in that step's block instead of inventing control flow.
 
 ## Validation
 
