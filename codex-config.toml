@@ -1,4 +1,4 @@
-model = "gpt-6.1-sol"
+model = "gpt-6-astra"
 model_reasoning_effort = "high"
 model_supports_reasoning_summaries = true
 model_context_window = 800000
