@@ -106,6 +106,7 @@ When editing existing code:
 When your changes create orphans:
 - Remove imports/variables/functions that YOUR changes made unused.
 - Don't remove pre-existing dead code unless asked.
+- Change tests only when the corresponding production code changes or when needed to fix existing tests.
 
 ## Python Code Style
 - When writing or changing Python code, read `$HOME/dotfiles/python-implementation-guide.md`.
