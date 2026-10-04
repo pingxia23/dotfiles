@@ -1,17 +1,6 @@
 import { fileURLToPath } from "node:url";
 
 export const REVIEWER_MODELS = Object.freeze({
-  gpt: Object.freeze({
-    provider: "ai-gw-openai",
-    model: "openai/gpt-5.6-sol",
-    thinking: "medium",
-    serviceTier: "fast",
-  }),
-  gemini: Object.freeze({
-    provider: "ai-gw-google",
-    model: "gemini-3.7-flash",
-    thinking: "medium",
-  }),
   glm: Object.freeze({
     provider: "ai-gw-baseten",
     model: "baseten/zai-org/GLM-5.3",
@@ -58,12 +47,6 @@ export const REVIEWER_LAUNCH_SPACING_MS = 5 * 1000;
 
 export const CODE_REVIEWER_CONFIGS = Object.freeze([
   piReviewerConfig({
-    reviewer: "code_review_gemini",
-    model: REVIEWER_MODELS.gemini,
-    outputExtensionPath: CODE_REVIEW_OUTPUT_EXTENSION_PATH,
-    tools: "read,bash,grep,find,ls,submit_review",
-  }),
-  piReviewerConfig({
     reviewer: "code_review_glm",
     model: REVIEWER_MODELS.glm,
     outputExtensionPath: CODE_REVIEW_OUTPUT_EXTENSION_PATH,
@@ -84,12 +67,6 @@ export const CODE_REVIEWER_CONFIGS = Object.freeze([
 ]);
 
 export const PLAN_REVIEWER_CONFIGS = Object.freeze([
-  piReviewerConfig({
-    reviewer: "plan_gemini",
-    model: REVIEWER_MODELS.gemini,
-    outputExtensionPath: PLAN_REVIEW_OUTPUT_EXTENSION_PATH,
-    tools: "read,bash,edit,write,grep,find,ls,mcp,submit_plan_review",
-  }),
   piReviewerConfig({
     reviewer: "plan_glm",
     model: REVIEWER_MODELS.glm,
