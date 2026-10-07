@@ -1,6 +1,5 @@
 model = "gpt-6-astra"
-model_reasoning_effort = "medium"
-model_supports_reasoning_summaries = true
+model_reasoning_effort = "high"
 model_context_window = 800000
 model_auto_compact_token_limit = 700000
 model_verbosity="low"
@@ -52,8 +51,8 @@ BROWSER_USE_AVAILABLE_BACKENDS = "chrome"
 BROWSER_USE_TINYSKY_ENABLED = "1"
 NODE_REPL_INSTRUCTIONS_USE_CASE_CHROME = "Control the Chrome browser in conjunction with the Chrome Plugin. Prefer this method of controlling Chrome over alternatives (such as Computer Use) unless the user explicitly mentions an alternative."
 BROWSER_USE_CODEX_APP_BUILD_FLAVOR = "prod"
-BROWSER_USE_CODEX_APP_VERSION = "26.930.21537"
-NODE_REPL_TRUSTED_SERVICES = '{"browser":"/Users/ping.xia/.codex/plugins/cache/openai-bundled/browser/26.930.21537/scripts/browser-service.mjs"}'
+BROWSER_USE_CODEX_APP_VERSION = "26.930.61225"
+NODE_REPL_TRUSTED_SERVICES = '{"browser":"/Users/ping.xia/.codex/plugins/cache/openai-bundled/browser/26.930.61225/scripts/browser-service.mjs"}'
 CODEX_CLI_PATH = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"
 
 [mcp_servers.cua_repl]
@@ -157,6 +156,9 @@ enabled = true
 [plugins."unified-computer-use@openai-bundled"]
 enabled = false
 
+[plugins."code-review@openai-bundled"]
+enabled = true
+
 [memories]
 generate_memories = true
 use_memories = true
@@ -219,6 +221,9 @@ enabled = false
 enabled = false
 
 [apps.connector_openai_pages]
+enabled = false
+
+[apps.connector_openai_search_service]
 enabled = false
 
 [shell_environment_policy.set]
