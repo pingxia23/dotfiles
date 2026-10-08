@@ -2,8 +2,16 @@
 
 Use this guide for a final proposed plan unless the change is trivial.
 
+## Rules
 
-**Before drafting the plan, read and apply the `## Writing Style` rules from the memory file. Apply those rules to every section of the plan, including pseudocode labels and validation steps.**
+- **Read and apply the `## Writing Style` rules from the memory file. Apply those rules to every section of the plan, including pseudocode labels and validation steps.**
+- Distinguish required changes from existing behavior in the generated plan
+  - **Implementation steps must include only work that needs to change.** Do not present existing behavior as a proposed change or add entries whose action is "keep unchanged."
+  - Include existing behavior only when it is needed to explain a change, and explicitly label it **Unchanged — existing behavior**. 
+  - If a full flow after the change is useful, present it as a separate overview. Explicitly label every **unchanged** step or branch. Never make the reader infer which parts require implementation.
+- Before returning the plan, check that every implementation step names an actual change and that any existing behavior shown for context is clearly marked.
+
+## Plan Template
 
 Keep the five-section output structure below. Use short bullets, not long paragraphs. Do not repeat information across sections. Prefer pseudocode to prose for behavior, data flow, conditions, state changes, and error paths. Use an ASCII diagram only when it explains ownership or structure better than pseudocode.
 
@@ -28,7 +36,7 @@ Keep the required changes, reasons, and supporting code references directly unde
 
 For example:
 
-**1. Validate the request**
+**1. Add validation at the new entry point**
 
 ```text
 receive input
@@ -38,18 +46,14 @@ if invalid:
 pass validated input to execution
 ```
 
-- Reuse the existing validator so the request keeps the same validation rules.
-
-**2. Execute and return the result**
+**2. Pass the validated input to the service**
 
 ```text
 receive validated input
 call the service with validated input
-store the result
-return the result to the user
+(unchanged) store the result
+(unchanged) return the result to the user
 ```
-
-- Update the caller to pass validated input to the service.
 
 Organize steps by behavior or subsystem, not by file. Mention a file path only when it helps locate the code. For documentation or configuration-only steps, show the proposed structure or field assignments in that step's block instead of inventing control flow.
 
