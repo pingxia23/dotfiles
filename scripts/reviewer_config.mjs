@@ -2,8 +2,8 @@ import { fileURLToPath } from "node:url";
 
 export const REVIEWER_MODELS = Object.freeze({
   glm: Object.freeze({
-    provider: "ai-gw-baseten",
-    model: "baseten/zai-org/GLM-5.3",
+    provider: "ai-gw-logical",
+    model: "glm-5-3",
     thinking: "high",
   }),
   claude: Object.freeze({
@@ -12,8 +12,8 @@ export const REVIEWER_MODELS = Object.freeze({
     thinking: "medium",
   }),
   kimi: Object.freeze({
-    provider: "ai-gw-databricks",
-    model: "databricks/system.ai.kimi-k3",
+    provider: "ai-gw-logical",
+    model: "kimi-k3",
     thinking: "high",
   }),
 });

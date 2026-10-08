@@ -1,6 +1,6 @@
 {
-  "defaultProvider": "ai-gw-baseten",
-  "defaultModel": "baseten/zai-org/GLM-5.3",
+  "defaultProvider": "ai-gw-logical",
+  "defaultModel": "glm-5-3",
   "defaultThinkingLevel": "high",
   "extensions": [
     "~/dotfiles/pi-extensions/slack-notify.mjs"
@@ -15,8 +15,26 @@
     "../../dd/datadog-pi-packages/packages/research-web",
     "../../dd/datadog-pi-packages/packages/session-cost",
     "../../dd/datadog-pi-packages/packages/compaction-continue",
-    "../../dd/datadog-pi-packages/packages/dd-pi-packages-sync"
+    "../../dd/datadog-pi-packages/packages/dd-pi-packages-sync",
+    "../../dd/datadog-pi-packages/packages/pi-npm-guard",
+    "../../dd/datadog-pi-packages/packages/npm-update-cooldown",
+    "../../dd/datadog-pi-packages/packages/mcp-port-forward",
+    "npm:@getpipher/vision"
   ],
-  "lastChangelogVersion": "0.85.1",
-  "theme": "dark"
+  "lastChangelogVersion": "1.1.0",
+  "theme": "dark",
+  "npmCommand": [
+    "/Users/ping.xia/dd/datadog-pi-packages/packages/pi-npm-guard/bin/pi-npm-guard.mjs"
+  ],
+  "npmGuard": {
+    "enabled": true,
+    "middlewares": [
+      {
+        "path": "/Users/ping.xia/dd/datadog-pi-packages/packages/npm-update-cooldown/middleware/cooldown.mjs",
+        "config": {
+          "days": 2
+        }
+      }
+    ]
+  }
 }

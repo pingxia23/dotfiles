@@ -563,7 +563,7 @@ else
 fi
 
 if [ -f "$DOTFILES_DIR/pi-mcp.json" ]; then
-  create_symlink "$DOTFILES_DIR/pi-mcp.json" "$HOME/.pi/agent/mcp.json"
+  create_symlink "$DOTFILES_DIR/pi-mcp.json" "$HOME/.pi/agent/mcp-adapter.json"
 else
   echo "  pi-mcp.json not found in dotfiles directory"
 fi
