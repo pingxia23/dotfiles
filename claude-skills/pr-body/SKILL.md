@@ -1,6 +1,6 @@
 ---
 name: pr-body
-description: "Create or update the managed GitHub PR body for a PR URL. Use when a workflow needs to initialize or refresh the managed TL;DR, Problem, Approach, and optional Dev Test sections on an existing PR."
+description: "Create or update the managed GitHub PR body for a PR URL. Use when a workflow needs to initialize or refresh the managed TL;DR, Problem, Approach, Review Guide, and optional Dev Test sections on an existing PR."
 ---
 
 # PR Body
@@ -25,7 +25,7 @@ Input: a PR URL.
    gh pr diff --repo "$repo" "$pr_url"
    ```
 
-   Trace the affected scenario before and after the change. Inspect callers, surrounding code, and the base version when needed. Use the PR records and code as evidence; do not invent intermediate steps. Collect any qualifying development-test records for **Dev Test** below.
+   Trace the affected scenario before and after the change. Inspect callers, surrounding code, and the base version when needed. Use the PR records and code as evidence; do not invent intermediate steps. Collect affected areas, review concerns, and recorded test commands and results for **Review Guide**, plus any qualifying development-test records for **Dev Test** below.
 
 3. Read the `## Writing Style` section in your memory file. Draft the managed sections using **Body format**, then splice them into the original body using **Preserve existing content**.
 4. Read the draft as an engineer new to the repository. Check that the before and after flows cover the same scenario, explain unfamiliar terms, and show the failure and correction without repeated prose. Check that unrelated content is unchanged. Revise any part that fails these checks.
@@ -62,20 +62,32 @@ Use this template for the body structure and the example below as the model for 
 
 ## Approach
 
-### What this PR does
-
 <one or two sentences stating the change and how it solves the problem>
 
 ```text
 <corrected flow for the same scenario: trigger -> relevant steps -> correction -> outcome>
 ```
 
+## Review Guide
+
+<short explanation of the dependency or impact chain and where reviewers should start>
+
 <details>
-<summary><strong>Key Implementation Decisions</strong></summary>
+<summary><b>1. <affected area and relevant package or path></b></summary>
 
-**<decision name>**
+**What changed:** <concrete change and why it is needed, with links to relevant code>
 
-**Chosen:** <implementation choice and its effect or important constraint>
+**Impact lineage:** <source of change -> affected contract or behavior -> affected area>
+
+**What to scrutinize:**
+
+- <specific behavior, constraint, or risk to check>
+
+**How this was tested:**
+
+```bash
+<recorded test command>
+```
 
 </details>
 
@@ -93,15 +105,24 @@ State the observable behavior change and its value in no more than three sentenc
 Treat these as a matched pair. Introduce each flow in one or two sentences, then let the flow carry the explanation. A call path is the sequence of calls between functions or components; a user experience is the sequence of actions and outcomes seen by the user.
 
 - **Problem:** show the triggering input or action, the relevant steps, the failure or missing behavior, and its impact. Describe the current behavior; reserve the solution for Approach.
-- **Approach:** state the change and how it solves the problem under `### What this PR does`, then show the corrected steps and outcome for the same input or action. Do not add a separate flow heading.
+- **Approach:** state the change and how it solves the problem directly under `## Approach`, then show the corrected steps and outcome for the same input or action. Do not add subsection headings.
 - Make a short ASCII diagram, numbered sequence, or worked example the main explanation. Put component roles, key values, and the failure or correction beside the relevant steps. Define unfamiliar names on first use; a code identifier alone is not a definition.
 - Do not repeat the flow in surrounding paragraphs. Add only context the visual cannot show clearly. For a simple change with no useful multi-step flow, a concrete sentence is enough.
 
-### Key Implementation Decisions
+### Review Guide
 
-Always include the folded `<details>` block, without an `open` attribute. Use compact decisions to tell the reviewer which choices deserve attention, rather than listing components or commits.
+Place `## Review Guide` after Approach and before Dev Test. Follow the numbered, collapsed area blocks in the [reference PR's reviewer guide](https://github.com/ddoghq/dd-source/pull/126839). Keep the format self-contained as shown in the template; the reference illustrates it.
 
-Use a plain bold title (`**<decision name>**`) followed by the `**Chosen:**` explanation. Do not number decision titles or make them Markdown headings. For changes across several parts of the system, prefer two to four decisions grouped by the area a reviewer should inspect. Add a small diagram or pseudocode when needed to explain a contract, validation, state change, or storage behavior. Omit mechanical edits and test inventories; mention tests only when they clarify behavior coverage or risk.
+Start with a short explanation of the dependency or impact chain and where to begin reviewing. Group changes by affected package, component, or team responsibility in numbered `<details>` blocks, without an `open` attribute. Use one block for a small change. Explain each area's role; a package name or path alone is not enough.
+
+Each block contains:
+
+- **What changed:** explain the concrete change and why it is needed. Link to relevant files or code locations in the PR's repository and revision so reviewers can inspect it.
+- **Impact lineage:** show how the change reaches this area, using a short `source -> changed behavior or contract -> affected area` chain. This is the chain of effects, not a commit history.
+- **What to scrutinize:** give specific review checks for behavior, constraints, or risks. Identify mechanical changes as such instead of inventing risks. Add a small diagram or pseudocode only when it helps assess a concern.
+- **How this was tested**: include recorded commands. If execution evidence is unavailable, do not invent a command or imply tests passed.
+
+Keep each block focused on what its reviewer needs to inspect, without repeating the full Problem or Approach. Test commands and results belong here; the optional Dev Test section remains limited to qualifying telemetry links.
 
 ## Preserve existing content
 
@@ -120,6 +141,7 @@ Only replace the managed sections. Match section headings exactly; a section end
 | `## TL;DR` | Replace the full section. | Insert after the marker and its following blank lines. |
 | `## Problem` | Replace the full section. | Replace legacy `## Context` with Problem; if neither exists, insert after TL;DR. |
 | `## Approach` | Replace the full section. | Insert after Problem. |
+| `## Review Guide` | Replace the full section. | Insert after Approach, before Dev Test. |
 | `## Dev Test` | Replace or remove according to the rules below. | Append only when the rules below qualify it. |
 
 Keep Dev Test last when included. Preserve every byte outside the managed sections and any migrated legacy Context section, except for the blank-line separator needed when appending Dev Test. Do not edit or reorder other content.
@@ -163,8 +185,6 @@ Python agent finds a valid conclusion
 
 ## Approach
 
-### What this PR does
-
 Use the coordinator's conclusion result in the final event so valid Python conclusions are marked conclusive.
 
 ```text
@@ -179,16 +199,25 @@ Python agent finds a valid conclusion
         -> Investigation is marked conclusive
 ```
 
+## Review Guide
+
+Start with the coordinator, the component that ends the investigation, then follow its conclusion result through the auditors that publish investigation events.
+
 <details>
-<summary><strong>Key Implementation Decisions</strong></summary>
+<summary><b>1. Investigation completion and event publication</b></summary>
 
-**Use the coordinator's conclusion result**
+**What changed:** `Finish`, the completion call, now receives the coordinator's conclusion result. The shared auditor forwards it to each auditor, and the Kafka auditor uses it to set `InvestigationFinished.Conclusive`, the final event's conclusion status.
 
-**Chosen:** Set `InvestigationFinished.Conclusive` from the result passed to `Finish` and remove the Kafka auditor's internal conclusion flag. Whether the agent found a conclusion is independent of whether a conclusion event was delivered. The separate `Success` field still reports whether the investigation finished without an error.
+**Impact lineage:** coordinator's conclusion result -> Finish argument -> shared auditor -> Kafka auditor -> final event's conclusion status
 
-**Keep conclusion-event publication separate**
+**What to scrutinize:**
 
-**Chosen:** Python continues to own publication of `ReactConclusionReached`, the event containing the conclusion. This change corrects the final completion status; the missing conclusion-event publication reported in Slack remains a separate issue.
+- The conclusion result reaches every auditor without changing its value.
+- A valid Python conclusion sets the final event's conclusion status to true even when the Kafka auditor did not publish a separate conclusion event.
+- `Success`, the field that reports whether execution finished without an error, remains independent of conclusion status.
+
+**How this was tested:** No execution evidence is available in this example.
 
 </details>
+
 ````
