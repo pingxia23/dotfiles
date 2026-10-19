@@ -159,6 +159,9 @@ enabled = false
 [plugins."code-review@openai-bundled"]
 enabled = true
 
+[plugins."trajectory@trajectory"]
+enabled = false
+
 [memories]
 generate_memories = true
 use_memories = true
@@ -224,6 +227,9 @@ enabled = false
 enabled = false
 
 [apps.connector_openai_search_service]
+enabled = false
+
+[apps.connector_76869538009648d5b282a4bb21c3d157]
 enabled = false
 
 [shell_environment_policy.set]
