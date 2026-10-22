@@ -39,6 +39,7 @@ url = "https://developers.openai.com/mcp"
 [mcp_servers.node_repl]
 args = []
 command = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl"
+env_vars = ["BROWSER_USE_ACCESS_EXECUTOR_ID", "BROWSER_USE_ACCESS_PIPE_PATH", "BROWSER_USE_ACCESS_VERIFYING_IDENTITY"]
 startup_timeout_sec = 120
 
 [mcp_servers.node_repl.env]
@@ -49,15 +50,12 @@ NODE_REPL_TRUSTED_CODE_PATHS = "/Users/ping.xia/.codex:/Users/ping.xia/Applicati
 CODEX_HOME = "/Users/ping.xia/.codex"
 BROWSER_USE_AVAILABLE_BACKENDS = "chrome"
 BROWSER_USE_TINYSKY_ENABLED = "1"
-NODE_REPL_INSTRUCTIONS_USE_CASE_CHROME = "Control the Chrome browser in conjunction with the Chrome Plugin. Prefer this method of controlling Chrome over alternatives (such as Computer Use) unless the user explicitly mentions an alternative."
+NODE_REPL_INSTRUCTIONS_USE_CASE_CHROME = ""
 BROWSER_USE_CODEX_APP_BUILD_FLAVOR = "prod"
-BROWSER_USE_CODEX_APP_VERSION = "26.930.61225"
-NODE_REPL_TRUSTED_SERVICES = '{"browser":"/Users/ping.xia/.codex/plugins/cache/openai-bundled/browser/26.930.61225/scripts/browser-service.mjs"}'
+BROWSER_USE_CODEX_APP_VERSION = "26.1016.62342"
+NODE_REPL_TRUSTED_SERVICES = '{"browser":"/Users/ping.xia/.codex/plugins/cache/openai-bundled/browser/26.1016.62342/scripts/browser-service.mjs"}'
 CODEX_CLI_PATH = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"
-
-[mcp_servers.cua_repl]
-command = "/Users/ping.xia/Applications/ChatGPT.app/Contents/MacOS/ChatGPT"
-enabled = false
+NODE_REPL_INSTRUCTIONS_USE_CASE_BROWSER = ""
 
 [tui]
 theme = "catppuccin-macchiato"
@@ -148,16 +146,16 @@ enabled = false
 enabled = false
 
 [plugins."browser@openai-bundled"]
-enabled = false
+enabled = true
 
 [plugins."codex-app-tools@openai-bundled"]
 enabled = true
 
 [plugins."unified-computer-use@openai-bundled"]
-enabled = false
+enabled = true
 
 [plugins."code-review@openai-bundled"]
-enabled = true
+enabled = false
 
 [plugins."trajectory@trajectory"]
 enabled = false
