@@ -544,6 +544,12 @@ fi
 
 # Setup Pi configuration (symlinked)
 echo "Setting up Pi configuration..."
+if [ -d "$DOTFILES_DIR/claude-skills" ]; then
+  create_symlink "$DOTFILES_DIR/claude-skills" "$HOME/.pi/agent/skills"
+else
+  echo "  claude-skills directory not found in dotfiles directory"
+fi
+
 if [ -f "$DOTFILES_DIR/claude-global.md" ]; then
   create_symlink "$DOTFILES_DIR/claude-global.md" "$HOME/.pi/agent/AGENTS.md"
 else
