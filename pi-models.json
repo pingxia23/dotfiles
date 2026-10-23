@@ -95,6 +95,37 @@
           ],
           "contextWindow": 200000,
           "maxTokens": 16384
+        },
+        {
+          "id": "anthropic/claude-opus-5-5",
+          "api": "anthropic-messages",
+          "reasoning": true,
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 200000,
+          "maxTokens": 128000,
+          "compat": {
+            "forceAdaptiveThinking": true,
+            "supportsTemperature": false
+          },
+          "name": "Claude Opus 5.5 (AI Gateway, 200k)",
+          "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": "xhigh",
+            "max": "max"
+          },
+          "inputLimits": {
+            "maxRequestBytes": 33554432,
+            "images": {
+              "maxPerRequest": 600
+            }
+          }
         }
       ]
     },
@@ -127,6 +158,37 @@
           ],
           "contextWindow": 1000000,
           "maxTokens": 16384
+        },
+        {
+          "id": "anthropic/claude-opus-5-5",
+          "api": "anthropic-messages",
+          "reasoning": true,
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 1000000,
+          "maxTokens": 128000,
+          "compat": {
+            "forceAdaptiveThinking": true,
+            "supportsTemperature": false
+          },
+          "name": "Claude Opus 5.5 (AI Gateway, 1M)",
+          "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": "xhigh",
+            "max": "max"
+          },
+          "inputLimits": {
+            "maxRequestBytes": 33554432,
+            "images": {
+              "maxPerRequest": 600
+            }
+          }
         }
       ]
     },
@@ -160,6 +222,30 @@
           },
           "thinkingLevelMap": {
             "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": null,
+            "high": "high",
+            "xhigh": null,
+            "max": "max"
+          }
+        },
+        {
+          "id": "deepseek-v4-1-flash-1017",
+          "name": "DeepSeek V4.1 Flash 1017 (AI Gateway logical)",
+          "api": "openai-completions",
+          "reasoning": true,
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 1048576,
+          "maxTokens": 32768,
+          "compat": {
+            "supportsDeveloperRole": false
+          },
+          "thinkingLevelMap": {
+            "off": "none",
             "minimal": null,
             "low": "low",
             "medium": null,

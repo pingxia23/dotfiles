@@ -1,6 +1,6 @@
 {
-  "defaultProvider": "ai-gw-logical",
-  "defaultModel": "glm-5-3",
+  "defaultProvider": "ai-gw-anthropic-1m",
+  "defaultModel": "anthropic/claude-opus-5-5",
   "defaultThinkingLevel": "high",
   "extensions": [
     "-builtin:mcp",
