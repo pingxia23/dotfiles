@@ -569,7 +569,11 @@ else
 fi
 
 if [ -f "$DOTFILES_DIR/pi-mcp.json" ]; then
-  create_symlink "$DOTFILES_DIR/pi-mcp.json" "$HOME/.pi/agent/mcp-adapter.json"
+  # Remove the old adapter-config link; this file uses Pi's native format.
+  if [ -L "$HOME/.pi/agent/mcp-adapter.json" ] && [ "$(readlink "$HOME/.pi/agent/mcp-adapter.json")" = "$DOTFILES_DIR/pi-mcp.json" ]; then
+    rm "$HOME/.pi/agent/mcp-adapter.json"
+  fi
+  create_symlink "$DOTFILES_DIR/pi-mcp.json" "$HOME/.pi/agent/mcp.json"
 else
   echo "  pi-mcp.json not found in dotfiles directory"
 fi

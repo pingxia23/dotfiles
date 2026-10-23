@@ -2,11 +2,7 @@
   "mcpServers": {
     "atlassian": {
       "type": "http",
-      "url": "https://mcp.atlassian.com/v1/mcp",
-      "auth": "oauth",
-      "oauth": {
-         "skipIssuerMetadataValidation": true
-       }
+      "url": "https://mcp.atlassian.com/v1/mcp"
     },
     "datadog": {
       "type": "http",
@@ -21,7 +17,16 @@
       "url": "https://mcp.slack.com/mcp",
       "oauth": {
         "clientId": "1601185624273.8899143856786",
-        "redirectUri": "http://localhost:3118/callback"
+        "callbackUrl": "http://localhost:3118/callback"
+      }
+    },
+    "trajectory": {
+      "args": [
+        "mcp"
+      ],
+      "command": "/Users/ping.xia/.pi/agent/extensions/trajectory/.trajectory-bundles/9614748be64b5b55cd8c5264962d67ab267e122baafcf88a091b6ab1edf02bd3/trajectory/bin/trajectory",
+      "env": {
+        "TRAJECTORY_HOME": "/Users/ping.xia/.trajectory"
       }
     }
   }

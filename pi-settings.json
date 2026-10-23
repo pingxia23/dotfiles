@@ -3,12 +3,10 @@
   "defaultModel": "anthropic/claude-opus-5-5",
   "defaultThinkingLevel": "high",
   "extensions": [
-    "-builtin:mcp",
     "~/dotfiles/pi-extensions/slack-notify.mjs"
   ],
   "packages": [
     "npm:pi-subagents",
-    "npm:pi-mcp-adapter",
     "npm:pi-powerline-footer",
     "npm:@juicesharp/rpiv-ask-user-question",
     "npm:@datadog/pi-plugin",
@@ -22,7 +20,7 @@
     "../../dd/datadog-pi-packages/packages/mcp-port-forward",
     "npm:@getpipher/vision"
   ],
-  "lastChangelogVersion": "1.1.0",
+  "lastChangelogVersion": "1.4.0",
   "theme": "dark",
   "npmCommand": [
     "/Users/ping.xia/dd/datadog-pi-packages/packages/pi-npm-guard/bin/pi-npm-guard.mjs"
