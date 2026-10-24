@@ -16,10 +16,10 @@ export const REVIEWER_MODELS = Object.freeze({
     model: "kimi-k3",
     thinking: "high",
   }),
-  sol: Object.freeze({
-    provider: "ai-gw-openai",
-    model: "openai/gpt-5.6-sol",
-    thinking: "medium",
+  gemini: Object.freeze({
+    provider: "ai-gw-google",
+    model: "gemini-4-argon",
+    thinking: "low",
   }),
 });
 
@@ -70,8 +70,8 @@ export const CODE_REVIEWER_CONFIGS = Object.freeze([
     tools: "read,bash,grep,find,ls,submit_review",
   }),
   piReviewerConfig({
-    reviewer: "code_review_sol",
-    model: REVIEWER_MODELS.sol,
+    reviewer: "code_review_gemini",
+    model: REVIEWER_MODELS.gemini,
     outputExtensionPath: CODE_REVIEW_OUTPUT_EXTENSION_PATH,
     tools: "read,bash,grep,find,ls,submit_review",
   }),
@@ -97,8 +97,8 @@ export const PLAN_REVIEWER_CONFIGS = Object.freeze([
     tools: "read,bash,edit,write,grep,find,ls,mcp,submit_plan_review",
   }),
   piReviewerConfig({
-    reviewer: "plan_sol",
-    model: REVIEWER_MODELS.sol,
+    reviewer: "plan_gemini",
+    model: REVIEWER_MODELS.gemini,
     outputExtensionPath: PLAN_REVIEW_OUTPUT_EXTENSION_PATH,
     tools: "read,bash,edit,write,grep,find,ls,mcp,submit_plan_review",
   }),
