@@ -28,6 +28,92 @@
           "maxTokens": 128000,
           "thinkingLevelMap": {
             "off": "none",
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": "xhigh",
+            "max": "max"
+          }
+        },
+        {
+          "id": "openai/gpt-6-astra",
+          "name": "GPT-6 Astra (OpenAI)",
+          "api": "openai-responses",
+          "reasoning": true,
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 272000,
+          "maxTokens": 128000,
+          "compat": {
+            "supportsStrictMode": true,
+            "supportsOpenAIGrammarTools": true,
+            "supportsAdditionalTools": true,
+            "supportsToolSearch": true,
+            "supportsMidConvoSystemMessages": true,
+            "supportsExplicitPromptCacheMode": true
+          },
+          "inputLimits": {
+            "maxRequestBytes": 536870912,
+            "images": {
+              "maxPerRequest": 1500,
+              "resize": {
+                "maxWidth": 2000,
+                "maxHeight": 2000,
+                "maxBytes": 4718592,
+                "jpegQuality": 80
+              }
+            }
+          },
+          "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": "xhigh",
+            "max": "max"
+          }
+        },
+        {
+          "id": "openai/gpt-6.1-sol",
+          "name": "GPT-6.1 Sol (OpenAI)",
+          "api": "openai-responses",
+          "reasoning": true,
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 272000,
+          "maxTokens": 128000,
+          "compat": {
+            "supportsStrictMode": true,
+            "supportsOpenAIGrammarTools": true,
+            "supportsAdditionalTools": true,
+            "supportsToolSearch": true,
+            "supportsMidConvoSystemMessages": true,
+            "supportsExplicitPromptCacheMode": true
+          },
+          "inputLimits": {
+            "maxRequestBytes": 536870912,
+            "images": {
+              "maxPerRequest": 1500,
+              "resize": {
+                "maxWidth": 2000,
+                "maxHeight": 2000,
+                "maxBytes": 4718592,
+                "jpegQuality": 80
+              }
+            }
+          },
+          "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
             "xhigh": "xhigh",
             "max": "max"
           }
@@ -51,8 +137,8 @@
       },
       "models": [
         {
-          "id": "gemini-3.7-flash",
-          "name": "Gemini 3.7 Flash (Google)",
+          "id": "gemini-4-argon",
+          "name": "Gemini 4 Argon (Google)",
           "api": "google-generative-ai",
           "reasoning": true,
           "input": [
@@ -60,70 +146,15 @@
             "image"
           ],
           "contextWindow": 1048576,
-          "maxTokens": 65536,
-          "thinkingLevelMap": {
-            "off": null
-          }
-        }
-      ]
-    },
-    "ai-gw-anthropic-200k": {
-      "baseUrl": "https://ai-gateway.us1.ddbuild.io",
-      "api": "anthropic-messages",
-      "apiKey": "!sh -c \"ddtool auth token rapid-ai-platform --datacenter us1.ddbuild.io 2>/dev/null | grep -E '^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$' | head -1\"",
-      "headers": {
-        "source": "pi",
-        "org-id": "2",
-        "x-llmo-force-redaction": "true",
-        "x-dd-tag-ml_app": "pi",
-        "x-dd-tag-ml_app_id": "aidevx.pi",
-        "x-dd-tag-client_session_id": "$PI_CLIENT_SESSION_ID",
-        "x-dd-tag-dd.user_email": "ping.xia@datadoghq.com",
-        "x-dd-tag-dd.team": "team-appliedai",
-        "provider": "anthropic"
-      },
-      "authHeader": true,
-      "models": [
-        {
-          "id": "anthropic/claude-opus-4-6",
-          "name": "Claude Opus 4.6 (AI Gateway, 200k)",
-          "api": "anthropic-messages",
-          "reasoning": true,
-          "input": [
-            "text",
-            "image"
-          ],
-          "contextWindow": 200000,
-          "maxTokens": 16384
-        },
-        {
-          "id": "anthropic/claude-opus-5-5",
-          "api": "anthropic-messages",
-          "reasoning": true,
-          "input": [
-            "text",
-            "image"
-          ],
-          "contextWindow": 200000,
-          "maxTokens": 128000,
-          "compat": {
-            "forceAdaptiveThinking": true,
-            "supportsTemperature": false
-          },
-          "name": "Claude Opus 5.5 (AI Gateway, 200k)",
+          "maxTokens": 32768,
           "thinkingLevelMap": {
             "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
-            "high": "high",
-            "xhigh": "xhigh",
-            "max": "max"
+            "minimal": null
           },
           "inputLimits": {
-            "maxRequestBytes": 33554432,
+            "maxRequestBytes": 20971520,
             "images": {
-              "maxPerRequest": 600
+              "maxPerRequest": 3600
             }
           }
         }
@@ -157,7 +188,13 @@
             "image"
           ],
           "contextWindow": 1000000,
-          "maxTokens": 16384
+          "maxTokens": 16384,
+          "thinkingLevelMap": {
+            "max": "max"
+          },
+          "compat": {
+            "forceAdaptiveThinking": true
+          }
         },
         {
           "id": "anthropic/claude-opus-5-5",
@@ -270,7 +307,9 @@
           },
           "thinkingLevelMap": {
             "off": null,
+            "minimal": null,
             "low": "low",
+            "medium": null,
             "high": "high",
             "max": "max"
           }

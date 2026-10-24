@@ -16,6 +16,11 @@ export const REVIEWER_MODELS = Object.freeze({
     model: "kimi-k3",
     thinking: "high",
   }),
+  sol: Object.freeze({
+    provider: "ai-gw-openai",
+    model: "openai/gpt-5.6-sol",
+    thinking: "medium",
+  }),
 });
 
 const CODE_REVIEW_OUTPUT_EXTENSION_PATH = fileURLToPath(
@@ -64,6 +69,12 @@ export const CODE_REVIEWER_CONFIGS = Object.freeze([
     outputExtensionPath: CODE_REVIEW_OUTPUT_EXTENSION_PATH,
     tools: "read,bash,grep,find,ls,submit_review",
   }),
+  piReviewerConfig({
+    reviewer: "code_review_sol",
+    model: REVIEWER_MODELS.sol,
+    outputExtensionPath: CODE_REVIEW_OUTPUT_EXTENSION_PATH,
+    tools: "read,bash,grep,find,ls,submit_review",
+  }),
 ]);
 
 export const PLAN_REVIEWER_CONFIGS = Object.freeze([
@@ -82,6 +93,12 @@ export const PLAN_REVIEWER_CONFIGS = Object.freeze([
   piReviewerConfig({
     reviewer: "plan_kimi",
     model: REVIEWER_MODELS.kimi,
+    outputExtensionPath: PLAN_REVIEW_OUTPUT_EXTENSION_PATH,
+    tools: "read,bash,edit,write,grep,find,ls,mcp,submit_plan_review",
+  }),
+  piReviewerConfig({
+    reviewer: "plan_sol",
+    model: REVIEWER_MODELS.sol,
     outputExtensionPath: PLAN_REVIEW_OUTPUT_EXTENSION_PATH,
     tools: "read,bash,edit,write,grep,find,ls,mcp,submit_plan_review",
   }),
