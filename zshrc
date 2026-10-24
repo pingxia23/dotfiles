@@ -57,9 +57,12 @@ export PATH="$HOME/.local/bin:$PATH"
 # Cross-shell commands maintained in this repository
 export PATH="$HOME/dotfiles/bin:$PATH"
 
-alias codex_medium="workspace_agent_auth && codex --model gpt-6-astra -c 'model_reasoning_effort=\"medium\"' -c 'service_tier=\"fast\"' --dangerously-bypass-approvals-and-sandbox"
-alias codex_high="workspace_agent_auth && codex --model gpt-6-astra -c 'model_reasoning_effort=\"high\"' -c 'service_tier=\"fast\"' --dangerously-bypass-approvals-and-sandbox"
-alias codex_xhigh="workspace_agent_auth && codex --model gpt-6-astra -c 'model_reasoning_effort=\"xhigh\"' -c 'service_tier=\"fast\"' --dangerously-bypass-approvals-and-sandbox"
+
+alias pi_gpt_medium='workspace_agent_auth && pi --provider ai-gw-openai --model openai/gpt-6-astra --thinking medium'
+
+alias pi_gpt_high='workspace_agent_auth && pi --provider ai-gw-openai --model openai/gpt-6-astra --thinking high'
+
+alias pi_claude_high='workspace_agent_auth && pi --provider ai-gw-anthropic-1m --model anthropic/claude-opus-5-5 --thinking high'
 
 export MCP_OAUTH_CALLBACK_PORT=41111
 

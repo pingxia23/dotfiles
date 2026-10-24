@@ -130,6 +130,18 @@ install_codex() {
   fi
 }
 
+# Install the native Claude Code CLI if not already installed
+install_claude_code() {
+  if command_exists claude; then
+    echo "Claude Code is already installed"
+    return 0
+  fi
+
+  echo "Installing Claude Code CLI..."
+  curl -fsSL https://claude.ai/install.sh | bash
+  echo "Claude Code installed successfully"
+}
+
 # Install uv (Python package manager)
 install_uv_uvx() {
   if ! command_exists uv; then
@@ -468,6 +480,9 @@ install_pi
 # Install Codex CLI
 install_codex
 
+# Install Claude Code
+install_claude_code
+
 # Install uv
 install_uv_uvx
 
@@ -540,6 +555,26 @@ if [ -f "$DOTFILES_DIR/codex-hooks/hooks.json" ]; then
   create_symlink "$DOTFILES_DIR/codex-hooks/hooks.json" "$HOME/.codex/hooks.json"
 else
   echo "  codex-hooks/hooks.json not found in dotfiles directory"
+fi
+
+# Setup Claude Code configuration (symlinked)
+echo "Setting up Claude Code configuration..."
+if [ -f "$DOTFILES_DIR/claude-global.md" ]; then
+  create_symlink "$DOTFILES_DIR/claude-global.md" "$HOME/.claude/CLAUDE.md"
+else
+  echo "  claude-global.md not found in dotfiles directory"
+fi
+
+if [ -d "$DOTFILES_DIR/claude-skills" ]; then
+  create_symlink "$DOTFILES_DIR/claude-skills" "$HOME/.claude/skills"
+else
+  echo "  claude-skills directory not found in dotfiles directory"
+fi
+
+if [ -f "$DOTFILES_DIR/claude-settings.json" ]; then
+  create_symlink "$DOTFILES_DIR/claude-settings.json" "$HOME/.claude/settings.json"
+else
+  echo "  claude-settings.json not found in dotfiles directory"
 fi
 
 # Setup Pi configuration (symlinked)
