@@ -37,25 +37,31 @@ X-Datadog-MCP-Toolsets = "core,llmobs,ddsql,apm,kubernetes,synthetics"
 url = "https://developers.openai.com/mcp"
 
 [mcp_servers.node_repl]
-args = []
 command = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl"
 env_vars = ["BROWSER_USE_ACCESS_EXECUTOR_ID", "BROWSER_USE_ACCESS_PIPE_PATH", "BROWSER_USE_ACCESS_VERIFYING_IDENTITY"]
-startup_timeout_sec = 120
+startup_timeout_sec = 120.0
 
 [mcp_servers.node_repl.env]
+BROWSER_USE_AVAILABLE_BACKENDS = "chrome"
+BROWSER_USE_CODEX_APP_BUILD_FLAVOR = "prod"
+BROWSER_USE_CODEX_APP_VERSION = "26.1016.62342"
+BROWSER_USE_TINYSKY_ENABLED = "1"
+CODEX_CLI_PATH = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"
+CODEX_HOME = "/Users/ping.xia/.codex"
+NODE_REPL_INSTRUCTIONS_USE_CASE_BROWSER = ""
+NODE_REPL_INSTRUCTIONS_USE_CASE_CHROME = ""
 NODE_REPL_NATIVE_PIPE_CONNECT_TIMEOUT_MS = "1000"
 NODE_REPL_NODE_MODULE_DIRS = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/cua_node/lib/node_modules"
 NODE_REPL_NODE_PATH = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node"
 NODE_REPL_TRUSTED_CODE_PATHS = "/Users/ping.xia/.codex:/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/cua_node/lib/node_modules"
-CODEX_HOME = "/Users/ping.xia/.codex"
-BROWSER_USE_AVAILABLE_BACKENDS = "chrome"
-BROWSER_USE_TINYSKY_ENABLED = "1"
-NODE_REPL_INSTRUCTIONS_USE_CASE_CHROME = ""
-BROWSER_USE_CODEX_APP_BUILD_FLAVOR = "prod"
-BROWSER_USE_CODEX_APP_VERSION = "26.1016.62342"
 NODE_REPL_TRUSTED_SERVICES = '{"browser":"/Users/ping.xia/.codex/plugins/cache/openai-bundled/browser/26.1016.62342/scripts/browser-service.mjs"}'
-CODEX_CLI_PATH = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"
-NODE_REPL_INSTRUCTIONS_USE_CASE_BROWSER = ""
+
+[mcp_servers.trajectory]
+command = "/Users/ping.xia/.trajectory/bin/trajectory"
+args = ["mcp"]
+
+[mcp_servers.trajectory.env]
+TRAJECTORY_HOME = "/Users/ping.xia/.trajectory"
 
 [tui]
 theme = "catppuccin-macchiato"
@@ -121,6 +127,10 @@ source = "/Users/ping.xia/.codex/.tmp/bundled-marketplaces/openai-bundled"
 source_type = "local"
 source = "/Users/ping.xia/.cache/codex-runtimes/codex-primary-runtime/plugins/openai-primary-runtime"
 
+[marketplaces.trajectory]
+source_type = "local"
+source = "/Users/ping.xia/.trajectory/codex-marketplace"
+
 [plugins."slack@openai-curated"]
 enabled = true
 
@@ -158,7 +168,7 @@ enabled = true
 enabled = false
 
 [plugins."trajectory@trajectory"]
-enabled = false
+enabled = true
 
 [memories]
 generate_memories = true
@@ -199,6 +209,58 @@ trusted_hash = "sha256:b6e41908e20c93a3e48fb62589a52d8bcf217a7b07adf7128ee7a2ff9
 
 [hooks.state."/home/bits/.codex/hooks.json:user_prompt_submit:0:0"]
 trusted_hash = "sha256:b6e41908e20c93a3e48fb62589a52d8bcf217a7b07adf7128ee7a2ff9d58d235"
+
+[hooks.state."trajectory@trajectory:hooks.json:pre_tool_use:0:0"]
+enabled = true
+trusted_hash = "sha256:7d95696226b33f734e4b8c44bdcb33ccb055f19464396e5408a5567ebbf260c6"
+
+[hooks.state."trajectory@trajectory:hooks.json:pre_tool_use:1:0"]
+enabled = false
+trusted_hash = "sha256:74c00616ea5c8cbe227530d68f3563b20893fe02a8fe2549b6af5d911d5d6dcf"
+
+[hooks.state."trajectory@trajectory:hooks.json:permission_request:0:0"]
+enabled = false
+trusted_hash = "sha256:773d36b25030b4c8a6ae091df652f7600acbdbd3ec8bfc8d0abeb322d2dc6ff0"
+
+[hooks.state."trajectory@trajectory:hooks.json:post_tool_use:0:0"]
+enabled = true
+trusted_hash = "sha256:44ad8a13864195a7ff7d59526bc38d1574ef3525c0d45f189aa5f87a7c1b5ad6"
+
+[hooks.state."trajectory@trajectory:hooks.json:post_tool_use:1:0"]
+enabled = false
+trusted_hash = "sha256:c8a258d384620083affdecce34e300fcb02463ffcb48bd7f11614e79740bdf2c"
+
+[hooks.state."trajectory@trajectory:hooks.json:pre_compact:0:0"]
+enabled = false
+trusted_hash = "sha256:61ac077ecd9c8832137c3a3029d7070d7d95a44c8d6a0377fc0eeab9a48ef122"
+
+[hooks.state."trajectory@trajectory:hooks.json:post_compact:0:0"]
+enabled = false
+trusted_hash = "sha256:9c0ee86772457123d0b5ec7f1a2f7bfb7b4e419b6a21e16c760eb68ba388609e"
+
+[hooks.state."trajectory@trajectory:hooks.json:session_start:0:0"]
+enabled = true
+trusted_hash = "sha256:879f48adfe9fd5b7ecd8ceeb984ba8bdfe49d4fc82626df683a87cf2a4cf4288"
+
+[hooks.state."trajectory@trajectory:hooks.json:user_prompt_submit:0:0"]
+enabled = true
+trusted_hash = "sha256:40392c008cc59d7b86eaaaa6695634072aac0388fcd54c5b69183dea5ab32c70"
+
+[hooks.state."trajectory@trajectory:hooks.json:subagent_start:0:0"]
+enabled = false
+trusted_hash = "sha256:65047763725acaf6e5b1ec73b217654974332890ee676bdf9c57c9cf410866ef"
+
+[hooks.state."trajectory@trajectory:hooks.json:subagent_stop:0:0"]
+enabled = false
+trusted_hash = "sha256:72e77d36f8637ccdd806145dfc48ab611cf7a6635e624513d8bab35628b174b2"
+
+[hooks.state."trajectory@trajectory:hooks.json:stop:0:0"]
+enabled = true
+trusted_hash = "sha256:8c9d47102faca26c06dde836962ed0ba18030aa2c081b7e07e641335e821a292"
+
+[hooks.state."trajectory@trajectory:hooks.json:session_end:0:0"]
+enabled = true
+trusted_hash = "sha256:ff1600ab78a664ade3cf0c97796c5f8d1ee305bd3b36ee2c38dc90ffa70d8ed5"
 
 [apps.connector_20205bf7d4e99a89d7154bb849718324]
 enabled = false

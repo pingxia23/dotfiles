@@ -21,13 +21,12 @@
       }
     },
     "trajectory": {
-      "args": [
-        "mcp"
-      ],
+      "args": ["mcp"],
       "command": "/Users/ping.xia/.pi/agent/extensions/trajectory/.trajectory-bundles/9614748be64b5b55cd8c5264962d67ab267e122baafcf88a091b6ab1edf02bd3/trajectory/bin/trajectory",
       "env": {
         "TRAJECTORY_HOME": "/Users/ping.xia/.trajectory"
-      }
+      },
+      "lifecycle": "lazy"
     }
   }
 }
