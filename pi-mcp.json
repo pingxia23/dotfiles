@@ -29,6 +29,12 @@
         "TRAJECTORY_HOME": "/Users/ping.xia/.trajectory"
       },
       "lifecycle": "lazy"
+    },
+    "datadog-gmail": {
+      "url": "https://gmail-mcp-server-834963730936.us-central1.run.app/mcp"
+    },
+    "datadog-google-workspace": {
+      "url": "https://google-workspace-mcp-server-834963730936.us-central1.run.app/mcp"
     }
   }
 }
