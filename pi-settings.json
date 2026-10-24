@@ -23,13 +23,16 @@
   "lastChangelogVersion": "1.4.0",
   "theme": "dark",
   "npmCommand": [
-    "/Users/ping.xia/dd/datadog-pi-packages/packages/pi-npm-guard/bin/pi-npm-guard.mjs"
+    "sh",
+    "-c",
+    "exec \"$HOME/dd/datadog-pi-packages/packages/pi-npm-guard/bin/pi-npm-guard.mjs\" \"$@\"",
+    "pi-npm-guard"
   ],
   "npmGuard": {
     "enabled": true,
     "middlewares": [
       {
-        "path": "/Users/ping.xia/dd/datadog-pi-packages/packages/npm-update-cooldown/middleware/cooldown.mjs",
+        "path": "../../npm-update-cooldown/middleware/cooldown.mjs",
         "config": {
           "days": 2
         }
