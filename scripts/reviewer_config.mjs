@@ -1,14 +1,14 @@
 import { fileURLToPath } from "node:url";
 
 export const REVIEWER_MODELS = Object.freeze({
-  glm: Object.freeze({
-    provider: "ai-gw-logical",
-    model: "glm-5-3",
-    thinking: "high",
+  gpt: Object.freeze({
+    provider: "ai-gw-openai",
+    model: "openai/gpt-5.6-sol",
+    thinking: "medium",
   }),
   claude: Object.freeze({
     provider: "ai-gw-anthropic-1m",
-    model: "anthropic/claude-opus-5-5",
+    model: "anthropic/claude-opus-4-6",
     thinking: "medium",
   }),
   kimi: Object.freeze({
@@ -19,7 +19,7 @@ export const REVIEWER_MODELS = Object.freeze({
   gemini: Object.freeze({
     provider: "ai-gw-google",
     model: "gemini-4-argon",
-    thinking: "low",
+    thinking: "medium",
   }),
 });
 
@@ -52,8 +52,8 @@ export const REVIEWER_LAUNCH_SPACING_MS = 5 * 1000;
 
 export const CODE_REVIEWER_CONFIGS = Object.freeze([
   piReviewerConfig({
-    reviewer: "code_review_glm",
-    model: REVIEWER_MODELS.glm,
+    reviewer: "code_review_gpt",
+    model: REVIEWER_MODELS.gpt,
     outputExtensionPath: CODE_REVIEW_OUTPUT_EXTENSION_PATH,
     tools: "read,bash,grep,find,ls,submit_review",
   }),
@@ -79,8 +79,8 @@ export const CODE_REVIEWER_CONFIGS = Object.freeze([
 
 export const PLAN_REVIEWER_CONFIGS = Object.freeze([
   piReviewerConfig({
-    reviewer: "plan_glm",
-    model: REVIEWER_MODELS.glm,
+    reviewer: "plan_gpt",
+    model: REVIEWER_MODELS.gpt,
     outputExtensionPath: PLAN_REVIEW_OUTPUT_EXTENSION_PATH,
     tools: "read,bash,edit,write,grep,find,ls,mcp,submit_plan_review",
   }),
