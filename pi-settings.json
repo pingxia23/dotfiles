@@ -22,6 +22,9 @@
   ],
   "lastChangelogVersion": "1.4.0",
   "theme": "dark",
+  "powerline": {
+    "separator": "pipe"
+  },
   "npmCommand": [
     "sh",
     "-c",
