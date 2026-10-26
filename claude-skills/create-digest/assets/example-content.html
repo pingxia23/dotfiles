@@ -1,0 +1,92 @@
+<!-- Content fragment for scripts/build_digest.py. Copy the structure, not the words; the topic is invented.
+     Write plain HTML only: no <html>/<head>, CSS, script, overview, numbers, or badges (the build adds them).
+     Required (the build fails without them): h1, p.scope, details.coverage, and per article.topic:
+     data-tags, data-evidence, h2, p.tldr, section.why, section.takeaway, details.deep with a <summary>.
+     Articles go in final order. details.skipped is optional. Escape < > & in text; use absolute URLs. -->
+<!-- Components go inside details.deep: flow (.node, .node.hot, .node.ok), ol.steps, stats, figure.bars
+     (--v value, --max axis maximum, default 100; .hi highlights, .lo mutes), split (.before/.after),
+     table, ul.voices (li.claim/.agree/.pushback/.correction/.question), aside.callout
+     (.action/.caveat/.gap/.note), pre.diagram, svg.figure (use currentColor). -->
+<h1>Example weekly digest</h1>
+<p class="scope">Slack #example-channel · 2026-10-15 12:00 EDT (inclusive) to 2026-10-22 12:00 EDT (exclusive) · America/New_York</p>
+<p class="summary">One or two sentences: the most useful thing this week and why it matters.</p>
+<details class="coverage">
+  <summary>Coverage: 38 of 40 threads read · 2 gaps</summary>
+  <ul>
+    <li>Read 100 top-level messages; kept threads with more than 5 replies or more than 10 reactions.</li>
+    <li>Gap: two X/Twitter posts could not be read (login required).</li>
+  </ul>
+</details>
+
+<article class="topic" data-tags="agents, reliability" data-evidence="measured">
+  <h2><a href="https://example.com/thread">Durable timers beat in-process timers for agent follow-ups</a></h2>
+  <p class="byline">Jane Doe · #example-channel · 12 replies</p>
+  <p class="tldr">Scheduled agent follow-ups kept only in memory vanish on every deploy; move them to a durable scheduler.</p>
+
+  <section class="why">
+    <h3>Why this matters</h3>
+    <p>Any agent that "checks back later" depends on its scheduler surviving restarts. This thread shows a silent failure and the fix.</p>
+  </section>
+  <section class="takeaway">
+    <h3>Main takeaway</h3>
+    <p>A stored row is not a scheduled job: the follow-up must be re-armed on startup or owned by a durable scheduler. The fix is staged, not yet in production.</p>
+  </section>
+
+  <details class="deep">
+    <summary>Deep dive</summary>
+
+    <h4>1. How a follow-up is scheduled today</h4>
+    <p>Short paragraph that explains what each component is and what it does.</p>
+    <div class="flow">
+      <div class="node"><b>schedule_turn</b><small>agent asks for a follow-up</small></div>
+      <div class="node"><b>Key-value row</b><small>record only</small></div>
+      <div class="node hot"><b>In-memory timer</b><small>lost on deploy</small></div>
+    </div>
+
+    <h4>2. What the fix changes</h4>
+    <div class="split">
+      <div class="before"><h5>Before</h5><p>Timer lives in one server process.</p></div>
+      <div class="after"><h5>After</h5><p>A durable scheduler owns the timer and survives restarts.</p></div>
+    </div>
+    <ol class="steps">
+      <li><b>Write the desired schedule</b>The agent writes a row, as before.</li>
+      <li><b>Sync to the scheduler</b>A sync job turns rows into durable schedules.</li>
+      <li><b>Deliver</b>The scheduler fires through a queue that retries.</li>
+    </ol>
+
+    <h4>3. The numbers</h4>
+    <div class="stats">
+      <div class="stat"><b>4 h</b><span>longest follow-up today</span><small>per the bot itself</small></div>
+      <div class="stat"><b>0</b><span>timers re-armed after restart</span><small>read from the code</small></div>
+    </div>
+    <figure class="bars" style="--max:100">
+      <figcaption>Illustrative comparison (made-up numbers)</figcaption>
+      <div class="bar hi" style="--v:92"><span>Durable scheduler</span><b>92%</b></div>
+      <div class="bar" style="--v:61"><span>In-process timers</span><b>61%</b></div>
+      <p class="note">Condition, baseline, and sample size go here.</p>
+    </figure>
+    <table>
+      <tr><th>Option</th><th>Durable</th><th>Cron</th></tr>
+      <tr><td>Key-value row + timer</td><td>No</td><td>No</td></tr>
+      <tr><td>Durable scheduler</td><td>Yes</td><td>Yes</td></tr>
+    </table>
+
+    <h4>4. What the discussion added</h4>
+    <ul class="voices">
+      <li class="claim"><b>Alice</b><em>claim</em><p>We can call the scheduler API directly.</p></li>
+      <li class="correction"><b>Bob</b><em>correction</em><p>Writes must go through the sync job; direct calls are not allowed.</p></li>
+      <li class="agree"><b>Alice</b><em>agree</em><p>Agreed; keep the row layer.</p></li>
+    </ul>
+    <aside class="callout caveat">The production rollout date is not in the material.</aside>
+    <aside class="callout action">If your agent relies on long follow-ups, re-test them after the next deploy.</aside>
+    <aside class="callout gap">The linked design doc could not be read.</aside>
+    <pre class="diagram">Use a pre.diagram only when no component fits.</pre>
+  </details>
+</article>
+
+<details class="skipped">
+  <summary>Not covered (3)</summary>
+  <ul>
+    <li><a href="https://example.com/a">Thread title</a> — joke thread, no engineering content.</li>
+  </ul>
+</details>

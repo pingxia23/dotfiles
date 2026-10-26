@@ -1,4 +1,4 @@
 interface:
   display_name: "Create Digest"
-  short_description: "Select and explain useful topics from prepared material"
-  default_prompt: "Use $create-digest to select, group, order, and present a technical digest from this prepared source material."
+  short_description: "Build a skimmable HTML digest of useful topics from prepared material"
+  default_prompt: "Use $create-digest to select, group, order, and present a technical digest page from this prepared source material."
