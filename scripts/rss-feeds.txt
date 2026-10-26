@@ -6,6 +6,7 @@ https://openai.com/news/engineering/rss.xml
 https://developers.openai.com/rss.xml
 https://claude.dev/rss.xml
 https://raw.githubusercontent.com/taobojlen/anthropic-rss-feed/main/anthropic_engineering_rss.xml
+https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic_research.xml
 https://www.tobyord.com/writing?format=rss
 https://cursor.com/changelog/rss.xml
 https://research.meta.ai/
