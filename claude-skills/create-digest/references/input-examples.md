@@ -42,7 +42,7 @@ Optional fields are preserved without filling in unknown facts:
     "empty_result_text": "Nothing interesting this week.",
     "audience": "Backend engineer building agent products",
     "ordering": "technical usefulness",
-    "output": "rendered Markdown here"
+    "output": "HTML page at /absolute/path/digest.html"
   }
 }
 ```

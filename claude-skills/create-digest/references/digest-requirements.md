@@ -96,9 +96,9 @@ Before returning a digest, perform the Readability Check above on every item and
 
 ### Output format
 
-Start with one short line identifying the supplied scope: an issue and date, an exact time window, or the supplied notes. State known material coverage gaps near the beginning. Do not invent a weekly window for a newsletter or recalculate supplied boundaries. Omit frontmatter, a table of contents, and a separate Sources section.
+Start with one short line identifying the supplied scope: an issue and date, an exact time window, or the supplied notes. State known material coverage gaps near the beginning. Do not invent a weekly window for a newsletter or recalculate supplied boundaries. Omit frontmatter and a separate Sources section.
 
-Use this format for each item, separated by a horizontal rule:
+Give each item the structure below. It is shown in Markdown for brevity; render it as HTML:
 
 ```markdown
 ## [Topic title](original_source_url) — author or submitter, when known
@@ -145,4 +145,4 @@ First complete the mandatory Writing Style and Readability Check above, includin
 
 Check the deep dive's visual structure: can the reader locate each main idea and follow the steps without searching through a wall of text? Add useful subheadings or a teaching visual where needed, while preserving the explanation between steps.
 
-Verify that topics are deduplicated, requested ordering is respected, and every item has `Why this matters`, `Main takeaway`, and `Deep dive`, with no `What to do` section. Check that relevance names the concrete capability or finding worth this reader's attention, the takeaway works without its links, and the deep dive preserves the primary source's flow through connected teaching steps. Headings and visuals should make those steps visible, with enough explanation to show how each leads to the next. Evidence must support every important number and conclusion, and disagreements or known coverage gaps must remain visible. If a reader would still need the original to understand a central mechanism, fill that gap from supplied evidence or state what is missing. Respect source quotation and summarization limits; reduce scope rather than inventing evidence or exceeding those limits. Remove filler. Return rendered Markdown directly unless a file or another delivery format was requested. Write a file only when an output path is specified.
+Verify that topics are deduplicated, requested ordering is respected, and every item has `Why this matters`, `Main takeaway`, and `Deep dive`, with no `What to do` section. Check that relevance names the concrete capability or finding worth this reader's attention, the takeaway works without its links, and the deep dive preserves the primary source's flow through connected teaching steps. Headings and visuals should make those steps visible, with enough explanation to show how each leads to the next. Evidence must support every important number and conclusion, and disagreements or known coverage gaps must remain visible. If a reader would still need the original to understand a central mechanism, fill that gap from supplied evidence or state what is missing. Respect source quotation and summarization limits; reduce scope rather than inventing evidence or exceeding those limits. Remove filler. Deliver the digest as an HTML page that is easy to read and skim unless another delivery format was requested.
