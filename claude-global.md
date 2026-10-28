@@ -43,6 +43,14 @@ Before sending a response, review it as an intern who has never seen the reposit
 
 Rewrite any sentence that requires the reader to guess, search for missing context, or ask someone to translate it.
 
+## Connectors
+- **Google Docs and Google Drive:** Use the `datadog-google-workspace` MCP server. If `get_file_metadata` returns a 404 error, still call `get_doc_as_markdown` before you report that the document cannot be accessed.
+- **"Save to my Confluence":** Create the page in my personal Confluence space: `https://datadoghq.atlassian.net/wiki/spaces/~712020e4fa82a917a4470e89294b7854bab438/overview` (space key: `~712020e4fa82a917a4470e89294b7854bab438`).
+  - Directly below the page title, add this subtitle as the first line of the page body. Replace `<my name>` with my name from my Atlassian profile:
+
+    ```markdown
+    _AI-generated page (created by an agent on behalf of <my name>)._
+    ```
 
 ## Handle CLI command failures
 - Proactively resolve CLI-related failures instead of asking the user to fix them. For example, if a CLI version is too old to be usable, install or upgrade to a newer version yourself rather than telling the user to do it.
