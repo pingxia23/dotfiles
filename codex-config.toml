@@ -38,23 +38,23 @@ url = "https://developers.openai.com/mcp"
 
 [mcp_servers.node_repl]
 args = []
-command = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl"
+command = "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl"
 env_vars = ["BROWSER_USE_ACCESS_EXECUTOR_ID", "BROWSER_USE_ACCESS_PIPE_PATH", "BROWSER_USE_ACCESS_VERIFYING_IDENTITY"]
 startup_timeout_sec = 120
 
 [mcp_servers.node_repl.env]
 NODE_REPL_NATIVE_PIPE_CONNECT_TIMEOUT_MS = "1000"
-NODE_REPL_NODE_MODULE_DIRS = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/cua_node/lib/node_modules"
-NODE_REPL_NODE_PATH = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node"
-NODE_REPL_TRUSTED_CODE_PATHS = "/Users/ping.xia/.codex:/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/cua_node/lib/node_modules"
+NODE_REPL_NODE_MODULE_DIRS = "/Applications/ChatGPT.app/Contents/Resources/cua_node/lib/node_modules"
+NODE_REPL_NODE_PATH = "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node"
+NODE_REPL_TRUSTED_CODE_PATHS = "/Users/ping.xia/.codex:/Applications/ChatGPT.app/Contents/Resources/cua_node/lib/node_modules"
 CODEX_HOME = "/Users/ping.xia/.codex"
 BROWSER_USE_AVAILABLE_BACKENDS = "chrome"
 BROWSER_USE_TINYSKY_ENABLED = "1"
 NODE_REPL_INSTRUCTIONS_USE_CASE_CHROME = ""
 BROWSER_USE_CODEX_APP_BUILD_FLAVOR = "prod"
-BROWSER_USE_CODEX_APP_VERSION = "26.1016.62342"
-NODE_REPL_TRUSTED_SERVICES = '{"browser":"/Users/ping.xia/.codex/plugins/cache/openai-bundled/browser/26.1016.62342/scripts/browser-service.mjs"}'
-CODEX_CLI_PATH = "/Users/ping.xia/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"
+BROWSER_USE_CODEX_APP_VERSION = "26.1021.31345"
+NODE_REPL_TRUSTED_SERVICES = '{"browser":"/Users/ping.xia/.codex/plugins/cache/openai-bundled/browser/26.1021.31345/scripts/browser-service.mjs"}'
+CODEX_CLI_PATH = "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"
 NODE_REPL_INSTRUCTIONS_USE_CASE_BROWSER = ""
 
 [mcp_servers.trajectory]
@@ -172,9 +172,6 @@ enabled = true
 enabled = true
 
 [plugins."trajectory@trajectory"]
-enabled = true
-
-[plugins."code-review@openai-bundled"]
 enabled = true
 
 [memories]
@@ -301,3 +298,15 @@ enabled = false
 
 [shell_environment_policy.set]
 NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S = "9230e2bd8b24b7ac7a0ba6774c64bf0d78ecdabbdd91d0ed627b02a587bae2df"
+
+[hooks.state."/Users/ping.xia/.local/share/aigw-openweights/codex-home/hooks.json:session_start:0:0"]
+trusted_hash = "sha256:ac47a21a96720cb9d1473caa1dea1b58a7426c41e0568fcd18634b9307a232f1"
+
+[hooks.state."/Users/ping.xia/.local/share/aigw-openweights/codex-home/hooks.json:user_prompt_submit:0:0"]
+trusted_hash = "sha256:b6e41908e20c93a3e48fb62589a52d8bcf217a7b07adf7128ee7a2ff9d58d235"
+
+[hooks.state."/Users/ping.xia/.local/share/aigw-openweights/codex-home/hooks.json:stop:0:0"]
+trusted_hash = "sha256:1d374ea956912e71bf3682f86a44c794c6aac8bde169b17222c4dfc71ca27b00"
+
+[hooks.state."/Users/ping.xia/.local/share/aigw-openweights/codex-home/hooks.json:stop:1:0"]
+trusted_hash = "sha256:5fcff6cbca89be762be16f81b898baeff0ad79746f20190bbbc6408b17b44352"
