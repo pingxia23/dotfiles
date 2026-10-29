@@ -1,6 +1,6 @@
 ---
 name: student-math-practice
-description: "Create or revise student math practice from a target concept, learning goal, and focus or exclusion constraints. Research relevant online math education resources, design varied problems, and provide clear step-by-step solutions with helpful visuals. Use for worksheets, practice sets, puzzles, or answer keys, rather than a single standalone math question."
+description: "Create or revise student math practice from a target concept, learning goal, and focus or exclusion constraints. Research relevant online math education resources, design varied problems, and provide clear step-by-step solutions with helpful visuals. Use for worksheets, practice sets, or puzzles, rather than a single standalone math question."
 ---
 
 # Student Math Practice
@@ -32,7 +32,7 @@ Search the web for the target concept at the learner's level before designing a 
 - Read the relevant lessons or activities. Look for prerequisites, useful representations, common misconceptions, age-appropriate methods, and different ways to assess the same concept.
 - Use a small set of complementary sources when available. Stop when they support a coherent teaching approach and useful problem variety; avoid collecting links without using them.
 - Translate the findings into design choices. For example, if equal-sized wholes are essential to a fraction comparison, make that explicit in the diagrams and include a question that checks it.
-- Write original questions informed by the teaching approach. Do not reproduce a publisher's worksheet or answer key wholesale.
+- Write original questions informed by the teaching approach. Do not reproduce a publisher's worksheet wholesale.
 - Keep a brief teacher/parent source note with direct links and what each source informed. Place it after the solutions or in accompanying notes so citations do not interrupt the student's work. Distinguish sourced teaching guidance from your own design choices; do not claim curriculum alignment without checking the relevant standard.
 - If browsing or a source is unavailable, report the limitation and use accessible material or existing knowledge transparently. Never invent sources or imply research occurred when it did not.
 
@@ -56,7 +56,7 @@ Before laying out the document, map each problem to its purpose, problem type, a
 
 ## 4. Write easy-to-follow solutions
 
-Read [the solution guide](references/visual-solution-guide.md) when writing the answer key. Its core teaching pattern applies across topics:
+Read [the solution guide](references/visual-solution-guide.md) when writing the solutions. Its core teaching pattern applies across topics:
 
 1. State the immediate goal and identify the relevant information in the problem.
 2. Show one manageable reasoning step and explain why it is valid.

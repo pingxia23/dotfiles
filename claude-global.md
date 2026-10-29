@@ -51,7 +51,7 @@ Rewrite any sentence that requires the reader to guess, search for missing conte
     ```markdown
     _AI-generated page (created by an agent on behalf of <my name>)._
     ```
-
+- **Save to my note:** Create a new md in my local obsidian folder `/Users/ping.xia/Documents/obsidian/Digests/saved`
 ## Handle CLI command failures
 - Proactively resolve CLI-related failures instead of asking the user to fix them. For example, if a CLI version is too old to be usable, install or upgrade to a newer version yourself rather than telling the user to do it.
 

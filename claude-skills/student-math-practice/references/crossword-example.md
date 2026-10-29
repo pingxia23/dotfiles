@@ -31,7 +31,7 @@ Keep the original staggered layout and the positions of A–F. These are the fiv
 | Left column | A × C × 10 = 210 |
 | Right column | B × 10 × E = 630 |
 
-The table describes the example for the author. In the student answer key, use the grid beside each explanation.
+The table describes the example for the author. In the worked solutions, use the grid beside each explanation.
 
 ### Pick A and inspect its own clues
 
