@@ -33,15 +33,6 @@
             "timeout": 900
           }
         ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/dotfiles/codex-hooks/stop-notify.sh\"",
-            "timeout": 10
-          }
-        ]
       }
     ]
   }
