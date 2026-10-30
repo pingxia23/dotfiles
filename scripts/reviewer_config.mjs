@@ -8,7 +8,7 @@ export const REVIEWER_MODELS = Object.freeze({
   }),
   claude: Object.freeze({
     provider: "ai-gw-anthropic-1m",
-    model: "anthropic/claude-opus-4-6",
+    model: "anthropic/claude-opus-5-5",
     thinking: "medium",
   }),
   kimi: Object.freeze({
