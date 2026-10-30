@@ -3,7 +3,8 @@
   "defaultModel": "anthropic/claude-opus-5-5",
   "defaultThinkingLevel": "high",
   "extensions": [
-    "~/dotfiles/pi-extensions/slack-notify.mjs"
+    "~/dotfiles/pi-extensions/slack-notify.mjs",
+    "~/dotfiles/pi-extensions/mcp-startup-check.mjs"
   ],
   "packages": [
     "npm:pi-subagents",
