@@ -1,11 +1,6 @@
-Run the following commands
+# New workspace setup
 
-<!-- ## 1. Authentication & git signing
-```bash
-ddtool auth github login --org DataDog
-dd-gitsign install --remote --email "ping.xia@datadoghq.com" --name "Ping Xia" --github "pingxia23"
-gh auth login
-``` -->
+Replace `<my-workspace>` with your workspace name.
 
 ## Zsh plugins
 
@@ -17,13 +12,19 @@ source "$HOME/dotfiles/zshrc.plugins"
 ```
 
 ## dd-auth setup
+
 ```bash
-dd-auth --domain dd.datad0g.com --workspace workspace-pingxia-workspace-test
+dd-auth --domain dd.datad0g.com --workspace workspace-<my-workspace>
 ```
 
 ## Global git config
 
 Update the global Git config according to `~/dotfiles/git_config_template`.
+Preserve the Workspaces-managed includes in `~/.gitconfig`; do not replace that
+file with the template.
+
+Do not edit `~/.config/datadog/git/ssh_config` by hand. It is managed by
+`git-config-tool` and included from `~/.ssh/config`.
 
 Do not copy the macOS Datadog hook path into Linux workspaces:
 
@@ -61,160 +62,89 @@ For an existing `~/dd/dd-source` checkout, do not replace or symlink `.git/confi
 Update it according to `~/dotfiles/dd-source/.git-config-template`, while keeping the
 checkout-specific remote URL.
 
-## Workspace Git signing and push authentication
+## Workspace authentication and commit signing
 
-### Reasoning
+### On your personal computer
 
-Commit signing and push authentication are separate:
-
-```text
-git commit -> needs a signing key
-git push   -> needs GitHub repository authentication
-```
-
-Use explicit local private keys in the workspace so commits and pushes use
-deterministic identities. `ddoghq` and `DataDog` are separate GitHub
-enterprises/accounts, so they need separate SSH authentication keys:
-
-```text
-commit signing -> ~/.ssh/workspace_git
-ddoghq auth    -> ~/.ssh/workspace_git
-DataDog auth   -> ~/.ssh/workspace_git_datadog
-```
-
-Use `user.signingkey = ~/.ssh/workspace_git` so Git signing uses the local
-workspace key directly.
-
-Do not edit `/home/bits/.config/datadog/git/ssh_config` by hand. It is managed
-by `git-config-tool` and included from `~/.ssh/config`.
-
-### Set up ddoghq
+Install the current Workspaces command-line tool:
 
 ```bash
-ssh-keygen -t ed25519 -f ~/.ssh/workspace_git -C "workspace-git" -N ""
-chmod 600 ~/.ssh/workspace_git
-chmod 644 ~/.ssh/workspace_git.pub
-
-gh auth refresh -h github.com -s admin:public_key -s admin:ssh_signing_key
-
-gh ssh-key add ~/.ssh/workspace_git.pub --type authentication --title "workspace-git-auth"
-gh ssh-key add ~/.ssh/workspace_git.pub --type signing --title "workspace-git-signing"
-
-git config --global gpg.format ssh
-git config --global user.signingkey ~/.ssh/workspace_git
-git config --global commit.gpgsign true
+dogbrew install workspaces
 ```
 
-`~/.ssh/workspace_git.pub` must exist on the `ddoghq` GitHub account twice:
-
-```text
-authentication key -> Git push/fetch for ddoghq
-signing key        -> GitHub commit signature verification
-```
-
-### Set up DataDog
-
-Create a separate key for the GitHub account that belongs to the `DataDog`
-enterprise:
+In 1Password, enable **Settings → Developer → Integrate with 1Password SDKs**.
+Then set up signing for the workspace:
 
 ```bash
-ssh-keygen -t ed25519 -f ~/.ssh/workspace_git_datadog -C "workspace-git-datadog" -N ""
-chmod 600 ~/.ssh/workspace_git_datadog
-chmod 644 ~/.ssh/workspace_git_datadog.pub
-cat ~/.ssh/workspace_git_datadog.pub
+workspaces ssh-config <my-workspace>
 ```
 
-Upload `~/.ssh/workspace_git_datadog.pub` to the GitHub account that belongs to
-the `DataDog` enterprise as an authentication key.
+Complete any GitHub or 1Password prompts. Workspaces creates encrypted signing
+keys, registers their public keys with GitHub, and configures Git to use them.
+Signing continues after your laptop disconnects. A workspace restart or
+pause/resume may require another 1Password approval; rerun this command if
+signing needs recovery.
 
-For DataDog, SSO authorization is required for the DataDog authentication key:
+New workspaces created with the current `workspaces create` command already
+include signing setup. Use `ssh-config` for existing workspaces, workspaces
+created another way, or recovery.
 
-1. Open GitHub in a browser and complete DataDog SSO at least once.
-2. Go to GitHub -> Settings -> SSH and GPG keys.
-3. Find the `workspace-git-datadog` authentication key.
-4. Use `Configure SSO` for that key and authorize it for the DataDog
-   organization.
+See the [Workspaces signing guide](https://datadoghq.atlassian.net/wiki/spaces/DEVX/pages/7382991923)
+for details.
 
-Only authentication keys need SSO authorization for Git over SSH. The
-`workspace-git-signing` key is only for GitHub commit signature verification.
+### Inside the Linux workspace
 
-### Final SSH and Git setup
+Before refreshing credentials, ensure repositories from both GitHub organizations
+are present directly under `~/dd`, such as `ddoghq/dd-source` at `~/dd/dd-source`
+and `DataDog/devtools` at `~/dd/devtools`. The command discovers which accounts to
+refresh from those repositories. The `DataDog` login also supplies the personal
+account used for the dotfiles push setup below.
 
-Add the DataDog host alias to `~/.ssh/config`:
+Install the tools needed to refresh credentials:
 
 ```bash
-if ! grep -q '^Host datadog\.github\.com$' ~/.ssh/config 2>/dev/null; then
-  cat >> ~/.ssh/config <<'EOF'
-Host datadog.github.com
-  HostName github.com
-  User git
-  IdentityFile ~/.ssh/workspace_git_datadog
-  IdentitiesOnly yes
-EOF
-fi
-
-chmod 600 ~/.ssh/config
+dogbrew install workspaces
+dogbrew install gh-shim
+~/dotfiles/bin/workspace_agent_auth
 ```
 
-Use a small SSH wrapper so normal `ddoghq` Git operations keep using
-`~/.ssh/workspace_git`, while `DataDog` remotes use
-`~/.ssh/workspace_git_datadog`:
+`workspace_agent_auth` runs `workspaces force-auth` with the current
+`WORKSPACE_NAME`. This is equivalent to:
 
 ```bash
-cat > ~/.ssh/git-ssh-workspace <<'EOF'
-#!/bin/sh
-
-key="$HOME/.ssh/workspace_git"
-
-for arg in "$@"; do
-  case "$arg" in
-    *datadog.github.com*|*DataDog/datacenter-config.git*)
-      key="$HOME/.ssh/workspace_git_datadog"
-      ;;
-  esac
-done
-
-exec ssh -i "$key" -o IdentitiesOnly=yes "$@"
-EOF
-
-chmod 700 ~/.ssh/git-ssh-workspace
-git config --global core.sshCommand "$HOME/.ssh/git-ssh-workspace"
+workspaces force-auth <my-workspace>
 ```
 
-Route `DataDog` repositories through the DataDog host alias. Clear existing
-values first so rerunning this block does not duplicate entries:
+It refreshes GitHub credentials and Vault sessions (credentials for internal
+services), and configures Git to fetch and push over HTTPS using stored tokens.
+`gh-shim` selects the correct GitHub account. Follow login prompts with the
+employee account `ping-xia_ddog` for `ddoghq`, and the personal account
+`pingxia23` for `DataDog`.
 
-```bash
-git config --global --unset-all url.git@datadog.github.com:DataDog/.insteadOf || true
-git config --global --unset-all url.ssh://git@datadog.github.com/DataDog/.insteadOf || true
+The command discovers GitHub organizations from repositories directly under
+`~/dd`. Run it after those repositories exist, and rerun it when authentication
+expires or after adding repositories from another organization. The existing Pi
+shortcuts call `workspace_agent_auth` before launching Pi.
 
-git config --global --add url."git@datadog.github.com:DataDog/".insteadOf "https://github.com/DataDog/"
-git config --global --add url."git@datadog.github.com:DataDog/".insteadOf "git@github.com:DataDog/"
-git config --global --add url."ssh://git@datadog.github.com/DataDog/".insteadOf "ssh://git@github.com/DataDog/"
-```
+You can also run `workspaces force-auth <my-workspace>` on your personal computer
+to refresh the workspace remotely. Use this explicit command to select the
+workspace instead of relying on the script's default when `WORKSPACE_NAME` is
+unset.
 
 ## Personal dotfiles push authentication
 
 `ping-xia_ddog` is an Enterprise Managed User and cannot be added as a
-collaborator to the personal `pingxia23/dotfiles` repository. Keep commit
-signing on `~/.ssh/workspace_git`, but use the personal `pingxia23` GitHub login
-for pushes from the `~/dotfiles` checkout.
+collaborator to the personal `pingxia23/dotfiles` repository. Use the personal
+`pingxia23` GitHub login for pushes from the `~/dotfiles` checkout.
 
-Use HTTPS for this repository. This prevents Git from reusing a workspace SSH
-connection that was authenticated as `ping-xia_ddog`. The credential helper
-calls `gh-personal`, which always selects the `pingxia23` login without changing
-the active `gh` account for other terminals.
+Use HTTPS for this repository. The credential helper supplies Git's login
+credentials through `gh-personal`, which selects the `pingxia23` account.
 
-First, store the GitHub credentials on the new machine. This script skips an
-account when its stored credential is already valid:
+After the workspace authentication step above, confirm that the personal
+credential identifies the correct account:
 
 ```bash
-~/dotfiles/bin/workspace_agent_auth
-```
-
-Confirm that the personal credential identifies the correct account:
-
-```bash
+cd ~/dotfiles
 ~/dotfiles/bin/gh-personal api user --jq .login
 ```
 
@@ -229,14 +159,13 @@ Configure only the dotfiles repository:
 ```bash
 cd ~/dotfiles
 git remote set-url origin https://pingxia23@github.com/pingxia23/dotfiles.git
-git config --local --unset-all core.sshCommand || true
 git config --local --unset-all credential.helper || true
 git config --local --add credential.helper ""
 git config --local --add credential.helper "!$(pwd)/bin/gh-personal auth git-credential"
 ```
 
-The `pingxia23@` part of the URL is intentional. It prevents the global Git URL
-rules from changing this repository back to SSH.
+Keep the `pingxia23@` part of the URL so the Git URL rules in the dotfiles template
+do not rewrite it to SSH. The `gh-personal` helper selects the personal account.
 
 These settings are stored in `~/dotfiles/.git/config`. They remain in effect
 after terminal reconnects and machine restarts. Do not repeat this setup for
