@@ -1,6 +1,6 @@
 # Clear worked solutions across math topics
 
-The preferred solution is a guided explanation of what to do next and why. It connects the learner's attention to the relevant part of the problem instead of presenting a collection of calculations and leaving the learner to reconstruct the reasoning.
+Use this guide for the one or two worked teaching examples that start the worksheet. Practice problems follow without solutions or an answer key unless explicitly requested. Each example is a guided explanation of what to do next and why. It connects the learner's attention to the relevant part of the problem instead of presenting a collection of calculations and leaving the learner to reconstruct the reasoning.
 
 ## Start from the concept
 
@@ -24,7 +24,7 @@ Not every problem needs four written sentences. Match the explanation to the tas
 | Place value or regrouping | Place-value chart or grouped quantities |
 | Geometry or measurement | Labeled shape with the relevant lengths, angles, or regions highlighted |
 | Data or relationships | Table, graph, or annotated chart |
-| Equations or symbolic manipulation | Aligned equations with the changed term or operation marked |
+| Equations or symbolic manipulation | Matching operations on a separate row beneath both sides, then the simplified equation below a line |
 | Word problems | Highlighted quantities, labeled bar model, or a small relationship diagram |
 | Connected grid clues | Original grid with the current row, column, and target marked |
 
@@ -50,13 +50,33 @@ Suppose the learning goal is to explain why 3/8 is greater than 2/8, with equal 
 
 This set could vary the practice through shading a named fraction, comparing two labeled models, placing fractions on an eighths number line, and explaining an incorrect comparison. The variety tests the same concept without adding excluded topics.
 
-## Example: solving an equation without a separate picture
+## Example: make the same change on both sides
 
-If the learner is practicing one-step equations, the expression itself may be the clearest representation:
+For equation examples, show each operation on its own row beneath both sides. Keep the equals signs aligned, draw a line under each operation, and show the simplified equation below. Explain why the operation helps. Use this method consistently rather than replacing steps with a missing-part shortcut.
 
-> x + 5 = 12. We want x by itself. Subtract 5 from both sides to keep the equation balanced. Then x = 7. Check: 7 + 5 = 12.
+Example: solve `82 - x = 47`.
 
-Show aligned equations and mark the subtraction on both sides if useful. A decorative diagram or several repeated screenshots would not necessarily help. Do not use this method when algebra is outside the learner's allowed scope.
+1. Add `x` to both sides to undo subtracting `x`.
+
+   ```text
+   82 - x   =   47
+      + x       + x
+   ------       ------
+       82   =   47 + x
+   ```
+
+2. Subtract `47` from both sides to leave `x` by itself.
+
+   ```text
+       82   =   47 + x
+     - 47       - 47
+   ------       ------
+       35   =   x
+   ```
+
+3. Explain that `35 = x` means `x = 35`. Check in the original equation: `82 - 35 = 47`.
+
+In a PDF, draw these rows with text and lines rather than an image. Match the operation on the left to the operation on the right. Calculating or cancelling terms after an operation is simplification; it does not replace showing the operation on both sides. Use numbers and operations suited to the learner.
 
 ## Optional detailed layout reference
 

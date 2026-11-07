@@ -1,4 +1,4 @@
 interface:
   display_name: "Student Math Practice"
-  short_description: "Concept-focused, varied practice with clear solutions"
-  default_prompt: "Use $student-math-practice to research a math concept, create varied practice within my focus and exclusion constraints, and provide step-by-step solutions with helpful visuals in one combined PDF."
+  short_description: "Worked examples, then practice with room for reasoning"
+  default_prompt: "Use $student-math-practice to research a math concept and create one PDF within my focus and exclusion constraints, starting with one or two worked teaching examples, then a few practice problems with ample reasoning space and no practice solutions or answer key."
