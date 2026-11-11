@@ -43,16 +43,19 @@ Before sending a response, review it as an intern who has never seen the reposit
 
 Rewrite any sentence that requires the reader to guess, search for missing context, or ask someone to translate it.
 
-## Connectors
+## Documents
+- For every document you create, add this line directly after the title:
+
+  ```markdown
+  _AI-generated summary (created by an agent on behalf of Ping Xia)._
+  ```
+
+### Document Connectors
 - **Google Docs and Google Drive:** Use the `datadog-google-workspace` MCP server. If `get_file_metadata` returns a 404 error, still call `get_doc_as_markdown` before you report that the document cannot be accessed.
 - **"Save to my Confluence":** Create the page in my personal Confluence space: `https://datadoghq.atlassian.net/wiki/spaces/~712020e4fa82a917a4470e89294b7854bab438/overview` (space key: `~712020e4fa82a917a4470e89294b7854bab438`).
-  - Directly below the page title, add this subtitle as the first line of the page body. Replace `<my name>` with my name from my Atlassian profile:
-
-    ```markdown
-    _AI-generated page (created by an agent on behalf of <my name>)._
-    ```
   - Include a table of content at the beginning of the page.
 - **Save to my note:** Create a new md in my local obsidian folder `/Users/ping.xia/Documents/obsidian/Digests/saved`
+
 ## Handle CLI command failures
 - Proactively resolve CLI-related failures instead of asking the user to fix them. For example, if a CLI version is too old to be usable, install or upgrade to a newer version yourself rather than telling the user to do it.
 
