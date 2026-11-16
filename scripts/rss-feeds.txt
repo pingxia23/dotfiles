@@ -4,7 +4,7 @@ https://lucumr.pocoo.org/feed.atom
 https://karpathy.bearblog.dev/feed/?type=rss
 https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_openai_engineering.xml
 https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_openai_research.xml
-https://developers.openai.com/rss.xml
+https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_openai_developer.xml
 https://claude.dev/rss.xml
 https://raw.githubusercontent.com/taobojlen/anthropic-rss-feed/main/anthropic_engineering_rss.xml
 https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic_research.xml

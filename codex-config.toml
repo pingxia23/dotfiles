@@ -17,7 +17,6 @@ hooks = true
 multi_agent = true
 goals = true
 js_repl = false
-in_app_browser = true
 
 [mcp_servers.atlassian]
 url = "https://mcp.atlassian.com/v2/mcp"
