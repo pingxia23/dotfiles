@@ -16,29 +16,8 @@
       },
       "models": [
         {
-          "id": "openai/gpt-5.6-sol",
-          "name": "GPT-5.6 Sol (OpenAI)",
-          "api": "openai-responses",
-          "reasoning": true,
-          "input": [
-            "text",
-            "image"
-          ],
-          "contextWindow": 800000,
-          "maxTokens": 128000,
-          "thinkingLevelMap": {
-            "off": "none",
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
-            "high": "high",
-            "xhigh": "xhigh",
-            "max": "max"
-          }
-        },
-        {
-          "id": "openai/gpt-6-astra",
-          "name": "GPT-6 Astra (OpenAI)",
+          "id": "openai/gpt-6.1-sol",
+          "name": "GPT-6.1 Sol (OpenAI)",
           "api": "openai-responses",
           "reasoning": true,
           "input": [
@@ -78,8 +57,45 @@
           }
         },
         {
-          "id": "openai/gpt-6.1-sol",
-          "name": "GPT-6.1 Sol (OpenAI)",
+          "id": "openai/gpt-5.6-sol",
+          "name": "GPT-5.6 Sol (OpenAI)",
+          "api": "openai-responses",
+          "reasoning": true,
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 272000,
+          "maxTokens": 128000,
+          "compat": {
+            "supportsStrictMode": true,
+            "supportsOpenAIGrammarTools": true,
+            "supportsAdditionalTools": true,
+            "supportsToolSearch": true,
+            "supportsMidConvoSystemMessages": true,
+            "supportsExplicitPromptCacheMode": true
+          },
+          "inputLimits": {
+            "maxRequestBytes": 536870912,
+            "images": {
+              "maxPerRequest": 1500,
+              "resize": {
+                "maxWidth": 2000,
+                "maxHeight": 2000,
+                "maxBytes": 4718592,
+                "jpegQuality": 80
+              }
+            }
+          },
+          "thinkingLevelMap": {
+            "off": "none",
+            "xhigh": "xhigh",
+            "max": "max"
+          }
+        },
+        {
+          "id": "openai/gpt-6-astra",
+          "name": "GPT-6 Astra (OpenAI)",
           "api": "openai-responses",
           "reasoning": true,
           "input": [
@@ -137,6 +153,58 @@
       },
       "models": [
         {
+          "id": "gemini-4-neon",
+          "name": "Gemini 4 Neon (Google)",
+          "api": "google-generative-ai",
+          "reasoning": true,
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 1048576,
+          "maxTokens": 65536,
+          "inputLimits": {
+            "maxRequestBytes": 20971520,
+            "images": {
+              "maxPerRequest": 3600
+            }
+          },
+          "thinkingLevelMap": {
+            "off": null,
+            "minimal": null
+          }
+        },
+        {
+          "id": "gemini-4-hydrogen",
+          "name": "Gemini 4 Hydrogen (Google)",
+          "api": "google-generative-ai",
+          "reasoning": true,
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 1048576,
+          "maxTokens": 65536,
+          "thinkingLevelMap": {
+            "off": null
+          }
+        },
+        {
+          "id": "gemini-4-carbon",
+          "name": "Gemini 4 Carbon (Google)",
+          "api": "google-generative-ai",
+          "reasoning": true,
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 1048576,
+          "maxTokens": 65536,
+          "thinkingLevelMap": {
+            "off": null
+          }
+        },
+        {
           "id": "gemini-4-argon",
           "name": "Gemini 4 Argon (Google)",
           "api": "google-generative-ai",
@@ -147,15 +215,15 @@
           ],
           "contextWindow": 1048576,
           "maxTokens": 32768,
-          "thinkingLevelMap": {
-            "off": null,
-            "minimal": null
-          },
           "inputLimits": {
             "maxRequestBytes": 20971520,
             "images": {
               "maxPerRequest": 3600
             }
+          },
+          "thinkingLevelMap": {
+            "off": null,
+            "minimal": null
           }
         }
       ]
@@ -179,24 +247,6 @@
       },
       "models": [
         {
-          "id": "anthropic/claude-opus-4-6",
-          "name": "Claude Opus 4.6 (AI Gateway, 1M)",
-          "api": "anthropic-messages",
-          "reasoning": true,
-          "input": [
-            "text",
-            "image"
-          ],
-          "contextWindow": 1000000,
-          "maxTokens": 16384,
-          "thinkingLevelMap": {
-            "max": "max"
-          },
-          "compat": {
-            "forceAdaptiveThinking": true
-          }
-        },
-        {
           "id": "anthropic/claude-opus-5-5",
           "api": "anthropic-messages",
           "reasoning": true,
@@ -211,6 +261,12 @@
             "supportsTemperature": false
           },
           "name": "Claude Opus 5.5 (AI Gateway, 1M)",
+          "inputLimits": {
+            "maxRequestBytes": 33554432,
+            "images": {
+              "maxPerRequest": 600
+            }
+          },
           "thinkingLevelMap": {
             "off": null,
             "minimal": null,
@@ -219,12 +275,30 @@
             "high": "high",
             "xhigh": "xhigh",
             "max": "max"
+          }
+        },
+        {
+          "id": "anthropic/claude-opus-4-6",
+          "name": "Claude Opus 4.6 (AI Gateway, 1M)",
+          "api": "anthropic-messages",
+          "reasoning": true,
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 1000000,
+          "maxTokens": 128000,
+          "compat": {
+            "forceAdaptiveThinking": true
           },
           "inputLimits": {
             "maxRequestBytes": 33554432,
             "images": {
               "maxPerRequest": 600
             }
+          },
+          "thinkingLevelMap": {
+            "max": "max"
           }
         }
       ]
@@ -307,9 +381,7 @@
           },
           "thinkingLevelMap": {
             "off": null,
-            "minimal": null,
             "low": "low",
-            "medium": null,
             "high": "high",
             "max": "max"
           }
