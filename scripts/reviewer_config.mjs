@@ -18,7 +18,7 @@ export const REVIEWER_MODELS = Object.freeze({
   }),
   gemini: Object.freeze({
     provider: "ai-gw-google",
-    model: "gemini-4-argon",
+    model: "gemini-4-neon",
     thinking: "medium",
   }),
 });
